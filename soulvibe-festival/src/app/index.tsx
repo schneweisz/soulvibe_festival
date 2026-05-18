@@ -53,7 +53,12 @@ function PulseDot({ color = SV.primaryContainer }: { color?: string }) {
   return <Animated.View style={[styles.pulseDot, { backgroundColor: color, transform: [{ scale }] }]} />;
 }
 
-/** Scale-spring animated pressable */
+/**
+ * Scale-spring animated pressable.
+ * Layout style goes on Animated.View (direct child of flex parent → flex:1 works).
+ * Pressable is absoluteFill underneath children so it captures touches without
+ * interfering with flex layout or child positioning.
+ */
 function AnimPressable({
   onPress,
   style,
@@ -65,14 +70,20 @@ function AnimPressable({
 }) {
   const scale = useRef(new Animated.Value(1)).current;
   const pressIn = () =>
-    Animated.spring(scale, { toValue: 0.94, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
   const pressOut = () =>
     Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 40, bounciness: 8 }).start();
 
   return (
-    <Pressable onPress={onPress} onPressIn={pressIn} onPressOut={pressOut}>
-      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
-    </Pressable>
+    <Animated.View style={[style, { transform: [{ scale }] }]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        style={StyleSheet.absoluteFill}
+      />
+      {children}
+    </Animated.View>
   );
 }
 
@@ -233,11 +244,11 @@ const styles = StyleSheet.create({
   countValueHL: { color: SV.primaryContainer },
   countLabel: { color: SV.outline, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1.5 },
 
-  heroActions: { flexDirection: 'row', gap: 14, width: '100%', maxWidth: 340, justifyContent: 'center' },
-  btnPrimary: { flex: 1, backgroundColor: SV.primaryContainer, paddingVertical: 14, borderRadius: 6, alignItems: 'center', justifyContent: 'center', ...neonShadow },
-  btnPrimaryText: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase' },
-  btnOutline: { flex: 1, borderWidth: 1.5, borderColor: SV.primaryContainer, paddingVertical: 14, borderRadius: 6, alignItems: 'center', justifyContent: 'center' },
-  btnOutlineText: { color: SV.primaryContainer, fontWeight: '800', fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase' },
+  heroActions: { flexDirection: 'row', gap: 12, width: '100%', maxWidth: 340 },
+  btnPrimary: { flex: 1, backgroundColor: SV.primaryContainer, paddingVertical: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center', ...neonShadow },
+  btnPrimaryText: { color: '#0a1a00', fontWeight: '900', fontSize: 14, letterSpacing: 1.5, textTransform: 'uppercase' },
+  btnOutline: { flex: 1, borderWidth: 1.5, borderColor: SV.primaryContainer, paddingVertical: 15, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  btnOutlineText: { color: SV.primaryContainer, fontWeight: '900', fontSize: 14, letterSpacing: 1.5, textTransform: 'uppercase' },
 
   // Sections
   section: { paddingHorizontal: 20, paddingTop: 36 },

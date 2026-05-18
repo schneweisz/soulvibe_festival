@@ -1,41 +1,62 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SV } from '@/constants/theme';
+
+interface TabIconProps {
+  name: string;
+  color: string;
+  size: number;
+  focused: boolean;
+}
+
+function TabIcon({ name, color, size, focused }: TabIconProps) {
+  return (
+    <View style={styles.iconWrap}>
+      {focused && <View style={styles.activeDot} />}
+      <MaterialIcons name={name as any} size={size} color={color} />
+    </View>
+  );
+}
+
+const HIDDEN: any = {
+  tabBarButton: () => null,
+  tabBarStyle: { display: 'none' },
+};
 
 export default function AppTabs() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
+        tabBarHideOnKeyboard: true,
         tabBarStyle: {
           backgroundColor: SV.surfaceContainerLowest,
           borderTopColor: SV.outlineVariant,
           borderTopWidth: 1,
-          height: 68,
-          paddingBottom: 10,
-          paddingTop: 8,
-          elevation: 20,
+          height: Platform.OS === 'ios' ? 82 : 68,
+          paddingBottom: Platform.OS === 'ios' ? 22 : 10,
+          paddingTop: 6,
+          elevation: 24,
         },
         tabBarActiveTintColor: SV.primaryContainer,
         tabBarInactiveTintColor: SV.onSurfaceVariant,
         tabBarLabelStyle: {
           fontFamily: 'monospace',
           fontSize: 10,
-          letterSpacing: 1.2,
+          letterSpacing: 1,
           textTransform: 'uppercase',
-          marginTop: 2,
+          fontWeight: '600',
         },
-        tabBarIconStyle: {
-          marginBottom: 0,
-        },
+        tabBarIconStyle: { marginBottom: 0 },
       }}>
       <Tabs.Screen
         name="index"
         options={{
           title: 'HOME',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="home" size={size + 2} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon name="home" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -43,8 +64,8 @@ export default function AppTabs() {
         name="lineup"
         options={{
           title: 'LINEUP',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="event-note" size={size + 2} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon name="event-note" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -52,8 +73,8 @@ export default function AppTabs() {
         name="map"
         options={{
           title: 'MAP',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="map" size={size + 2} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon name="map" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -61,8 +82,8 @@ export default function AppTabs() {
         name="gastro"
         options={{
           title: 'GASTRO',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="fastfood" size={size + 2} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon name="fastfood" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -70,28 +91,33 @@ export default function AppTabs() {
         name="info"
         options={{
           title: 'INFO',
-          tabBarIcon: ({ color, size }) => (
-            <MaterialIcons name="info" size={size + 2} color={color} />
+          tabBarIcon: ({ color, size, focused }) => (
+            <TabIcon name="info" color={color} size={size} focused={focused} />
           ),
         }}
       />
-      {/* Stack-like screens: hidden from tab bar, tab bar also hidden when on these screens */}
-      <Tabs.Screen
-        name="profile"
-        options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }}
-      />
-      <Tabs.Screen
-        name="cart"
-        options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }}
-      />
-      <Tabs.Screen
-        name="wallet"
-        options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }}
-      />
-      <Tabs.Screen
-        name="explore"
-        options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }}
-      />
+      <Tabs.Screen name="profile" options={HIDDEN} />
+      <Tabs.Screen name="cart" options={HIDDEN} />
+      <Tabs.Screen name="wallet" options={HIDDEN} />
+      <Tabs.Screen name="explore" options={HIDDEN} />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  iconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+  },
+  activeDot: {
+    width: 18,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: SV.primaryContainer,
+    shadowColor: SV.primaryContainer,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.9,
+    shadowRadius: 5,
+  },
+});
