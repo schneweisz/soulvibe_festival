@@ -11,8 +11,8 @@ Ez a dokumentum rögzíti a 4 fős csapat szerepköreit, a feladatok elosztásá
 _Felelős a 20 pontos dizájn kategóriáért, a felhasználói élményért és a csütörtöki bemutatóért._
 
 - **Fő feladatok:**
-  - Felskicceli a képernyőket sötét módban (fekete háttér, neon-zöld és elektromos lila gombok).
-  - Kiválasztja az arculathoz passzoló ikonokat az `expo` online ikonkeresőjéből (pl. Ionicons, MaterialIcons).
+  - fellepo menetrendek, stage felosztasok naprol napra beosztva
+  - kaja spotok etlap, kreativ etel nevek
   - Megírja a fiktív, hangulatos szövegeket (fellépők leírásai, gasztró standok ajánlatai, szponzorok bemutatása).
   - Felépíti a csütörtöki prezentáció sztoriját és elkészíti a diavetítést.
 
