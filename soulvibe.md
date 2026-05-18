@@ -1,12 +1,16 @@
-# SUBVOLT FESTIVAL 2026 - Alkalmazás Koncepció és Adatbázis Alapok
+# SOULVIBE FESTIVAL 2026 - Alkalmazás Koncepció és Adatbázis Alapok
 
 ## 1. Arculati Kézikönyv Alapok
 
-- **Fesztivál Neve:** SubVolt Festival
+- **Fesztivál Neve:** SoulVibe Festival
 - **Időpont:** 2026. július 18–20.
 - **Helyszín:** SkyWave Park, Zamárdi, Hungary
 - **Vibe/Stílus:** Nyári szabadtéri Rap, Trap és Techno hibrid fúzió.
-- **UI Dizájn Irányvonal:** Kifejezetten sötét módra (Dark Mode) optimalizált felület. A háttér mélyszürke/fekete, a kiemelések, gombok és interaktív elemek pedig élénk **neon-zöld (#39FF14)** és **elektromos lila** színeket kapnak a modern, underground klubhangulat eléréséhez.
+- **UI Dizájn Irányvonal:** Sötét módra (Dark Mode) optimalizált felület. A háttér mélyszürke/fekete, a kiemelések, gombok és aktív elemek pedig élénk **neon-zöld (#39FF14)** és **elektromos lila** színeket kapnak, tükrözve a modern underground éjszakai életet.
+
+### A név mögötti történet (Lore)
+
+A **SoulVibe** nem csupán egy fesztivál, hanem egy kollektív tudatállapot. A név a gépies, hipnotikus techno és a trap nyers, mély utcai kultúrájának fúziójából született, ahol az elektronikus ütemek és a masszív basszusok közvetlenül a lélekig (**Soul**) hatolnak. A SoulVibe az a hely, ahol a sötét klubok underground energiája kiszabadul a nyári égbolt alá, és a tánctér hömpölygő tömegét egyetlen lüktető, közös rezgéssé (**Vibe**) kovácsolja össze. Ez a belső szabadság, a zenei megtisztulás és a modern rituálék három napja.
 
 ---
 
