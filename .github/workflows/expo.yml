@@ -2,8 +2,7 @@ name: Expo Auto Update
 on:
   push:
     branches:
-      - main # Vagy master, ha az a fő ág neve
-
+      - main
 jobs:
   update:
     name: EAS Update
@@ -11,22 +10,18 @@ jobs:
     steps:
       - name: Kód letöltése
         uses: actions/checkout@v4
-
       - name: Node.js beállítása
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          # Kitöröltük a cache sort, így nem fogja hiányolni a lock fájlt
-
       - name: Expo környezet beállítása
         uses: expo/expo-github-action@v8
         with:
           eas-version: latest
           token: ${{ secrets.EXPO_TOKEN }}
-          packager: npm
-
-      - name: Függőségek (Dependencies) telepítése
-        run: npm install # 'npm ci' helyett 'npm install'-t használunk, ez legyártja magának a szerveren
-
+      - name: Függőségek telepítése
+        working-directory: ./soulvibe-festival
+        run: npm install
       - name: Frissítés küldése az Expoba
+        working-directory: ./soulvibe-festival
         run: eas update --auto --non-interactive
