@@ -1,38 +1,96 @@
 import { Tabs } from 'expo-router';
 import React from 'react';
-import { useColorScheme } from 'react-native';
-import { Colors } from '@/constants/theme';
-import { Ionicons } from '@expo/vector-icons';
+import { MaterialIcons } from '@expo/vector-icons';
+import { SV } from '@/constants/theme';
 
 export default function AppTabs() {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
-
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: colors.text,
+        headerShown: false,
         tabBarStyle: {
-          backgroundColor: colors.background,
+          backgroundColor: SV.surfaceContainerLowest,
+          borderTopColor: SV.outlineVariant,
+          borderTopWidth: 1,
+          height: 68,
+          paddingBottom: 10,
+          paddingTop: 8,
+          elevation: 20,
+        },
+        tabBarActiveTintColor: SV.primaryContainer,
+        tabBarInactiveTintColor: SV.onSurfaceVariant,
+        tabBarLabelStyle: {
+          fontFamily: 'monospace',
+          fontSize: 10,
+          letterSpacing: 1.2,
+          textTransform: 'uppercase',
+          marginTop: 2,
+        },
+        tabBarIconStyle: {
+          marginBottom: 0,
         },
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
+          title: 'HOME',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+            <MaterialIcons name="home" size={size + 2} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="lineup"
         options={{
-          title: 'Explore',
+          title: 'LINEUP',
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search" size={size} color={color} />
+            <MaterialIcons name="event-note" size={size + 2} color={color} />
           ),
         }}
+      />
+      <Tabs.Screen
+        name="map"
+        options={{
+          title: 'MAP',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="map" size={size + 2} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="gastro"
+        options={{
+          title: 'GASTRO',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="fastfood" size={size + 2} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="info"
+        options={{
+          title: 'INFO',
+          tabBarIcon: ({ color, size }) => (
+            <MaterialIcons name="info" size={size + 2} color={color} />
+          ),
+        }}
+      />
+      {/* Stack-like screens: hidden from tab bar, tab bar also hidden when on these screens */}
+      <Tabs.Screen
+        name="profile"
+        options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }}
+      />
+      <Tabs.Screen
+        name="cart"
+        options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }}
+      />
+      <Tabs.Screen
+        name="wallet"
+        options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }}
+      />
+      <Tabs.Screen
+        name="explore"
+        options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }}
       />
     </Tabs>
   );

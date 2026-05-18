@@ -1,116 +1,111 @@
-import {
-  Tabs,
-  TabList,
-  TabTrigger,
-  TabSlot,
-  TabTriggerSlotProps,
-  TabListProps,
-} from 'expo-router/ui';
-import { Ionicons } from '@expo/vector-icons';
+import { Tabs, TabList, TabTrigger, TabSlot, TabTriggerSlotProps, TabListProps } from 'expo-router/ui';
+import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
-import { Pressable, useColorScheme, View, StyleSheet } from 'react-native';
+import { Pressable, View, StyleSheet, Text } from 'react-native';
 
-import { ExternalLink } from './external-link';
-import { ThemedText } from './themed-text';
-import { ThemedView } from './themed-view';
+import { SV, MaxContentWidth, Spacing } from '@/constants/theme';
 
-import { Colors, MaxContentWidth, Spacing } from '@/constants/theme';
+const NAV_ITEMS = [
+  { name: 'home', href: '/' as const, label: 'HOME', icon: 'home' },
+  { name: 'lineup', href: '/lineup' as const, label: 'LINEUP', icon: 'event-note' },
+  { name: 'map', href: '/map' as const, label: 'MAP', icon: 'map' },
+  { name: 'gastro', href: '/gastro' as const, label: 'GASTRO', icon: 'fastfood' },
+  { name: 'info', href: '/info' as const, label: 'INFO', icon: 'info' },
+] as const;
 
 export default function AppTabs() {
   return (
     <Tabs>
       <TabSlot style={{ height: '100%' }} />
       <TabList asChild>
-        <CustomTabList>
-          <TabTrigger name="home" href="/" asChild>
-            <TabButton>Home</TabButton>
-          </TabTrigger>
-          <TabTrigger name="explore" href="/explore" asChild>
-            <TabButton>Explore</TabButton>
-          </TabTrigger>
-        </CustomTabList>
+        <WebNavBar>
+          {NAV_ITEMS.map(item => (
+            <TabTrigger key={item.name} name={item.name} href={item.href} asChild>
+              <NavButton icon={item.icon} label={item.label} />
+            </TabTrigger>
+          ))}
+        </WebNavBar>
       </TabList>
     </Tabs>
   );
 }
 
-export function TabButton({ children, isFocused, ...props }: TabTriggerSlotProps) {
+export function NavButton({ children, isFocused, icon, label, ...props }: TabTriggerSlotProps & { icon?: string; label?: string }) {
   return (
-    <Pressable {...props} style={({ pressed }) => pressed && styles.pressed}>
-      <ThemedView
-        type={isFocused ? 'backgroundSelected' : 'backgroundElement'}
-        style={styles.tabButtonView}>
-        <ThemedText type="small" themeColor={isFocused ? 'text' : 'textSecondary'}>
-          {children}
-        </ThemedText>
-      </ThemedView>
+    <Pressable {...props} style={({ pressed }) => [styles.navBtn, pressed && styles.pressed]}>
+      <View style={[styles.navBtnInner, isFocused && styles.navBtnActive]}>
+        <MaterialIcons
+          name={(icon ?? 'home') as any}
+          size={20}
+          color={isFocused ? SV.primaryContainer : SV.onSurfaceVariant}
+        />
+        <Text style={[styles.navLabel, isFocused && styles.navLabelActive]}>
+          {label ?? String(children)}
+        </Text>
+      </View>
     </Pressable>
   );
 }
 
-export function CustomTabList(props: TabListProps) {
-  const scheme = useColorScheme();
-  const colors = Colors[scheme === 'unspecified' ? 'light' : scheme];
-
+export function WebNavBar(props: TabListProps) {
   return (
-    <View {...props} style={styles.tabListContainer}>
-      <ThemedView type="backgroundElement" style={styles.innerContainer}>
-        <ThemedText type="smallBold" style={styles.brandText}>
-          Expo Starter
-        </ThemedText>
-
-        {props.children}
-
-        <ExternalLink href="https://docs.expo.dev" asChild>
-          <Pressable style={styles.externalPressable}>
-            <ThemedText type="link">Docs</ThemedText>
-            <Ionicons
-              color={colors.text}
-              name="open-outline"
-              size={12}
-            />
-          </Pressable>
-        </ExternalLink>
-      </ThemedView>
+    <View style={styles.navBarWrapper}>
+      <View style={styles.navBar}>
+        <View style={styles.navItems}>{props.children}</View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  tabListContainer: {
+  navBarWrapper: {
     position: 'absolute',
+    bottom: 0,
     width: '100%',
-    padding: Spacing.three,
-    justifyContent: 'center',
     alignItems: 'center',
-    flexDirection: 'row',
+    zIndex: 50,
   },
-  innerContainer: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.five,
-    borderRadius: Spacing.five,
+  navBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexGrow: 1,
-    gap: Spacing.two,
+    justifyContent: 'center',
+    width: '100%',
     maxWidth: MaxContentWidth,
+    paddingHorizontal: Spacing.two,
+    height: 64,
+    backgroundColor: SV.surfaceContainerLowest,
+    borderTopWidth: 1,
+    borderTopColor: SV.outlineVariant,
   },
-  brandText: {
-    marginRight: 'auto',
-  },
-  pressed: {
-    opacity: 0.7,
-  },
-  tabButtonView: {
-    paddingVertical: Spacing.one,
-    paddingHorizontal: Spacing.three,
-    borderRadius: Spacing.three,
-  },
-  externalPressable: {
+  navItems: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: Spacing.one,
-    marginLeft: Spacing.three,
+    justifyContent: 'space-around',
+    width: '100%',
+    gap: 0,
   },
+  navBtn: { flex: 1, alignItems: 'center' },
+  navBtnInner: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 6,
+    width: '100%',
+    borderRadius: 8,
+  },
+  navBtnActive: {
+    backgroundColor: 'rgba(57,255,20,0.12)',
+  },
+  navLabel: {
+    color: SV.onSurfaceVariant,
+    fontFamily: 'monospace',
+    fontSize: 11,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+  },
+  navLabelActive: {
+    color: SV.primaryContainer,
+    fontWeight: '700',
+  },
+  pressed: { opacity: 0.75 },
 });
