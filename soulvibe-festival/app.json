@@ -2,12 +2,12 @@
   "expo": {
     "name": "soulvibe-festival",
     "slug": "soulvibe-festival",
+    "owner": "schneweisz",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "soulvibefestival",
     "userInterfaceStyle": "automatic",
-    "owner": "soulvibe-festival",
     "ios": {
       "icon": "./assets/expo.icon"
     },
@@ -44,14 +44,14 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "ded5a872-3a7a-49ce-9031-69c2d0b5a704"
+        "projectId": "20aeddd4-0061-4461-8ad0-447d23988d8b"
       }
     },
     "runtimeVersion": {
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/ded5a872-3a7a-49ce-9031-69c2d0b5a704"
+      "url": "https://u.expo.dev/20aeddd4-0061-4461-8ad0-447d23988d8b"
     }
   }
 }
