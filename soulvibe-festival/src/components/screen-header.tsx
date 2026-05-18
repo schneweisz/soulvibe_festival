@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, Link } from 'expo-router';
 import React, { useRef } from 'react';
-import { Animated, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SV, neonShadow } from '@/constants/theme';
 import { useMenu } from '@/components/menu-drawer';
@@ -139,9 +139,11 @@ const styles = StyleSheet.create({
   },
 
   fab: {
-    position: 'absolute',
+    // Web: 'fixed' anchors to viewport so the FAB sits just above the bottom nav
+    // regardless of scroll or sidebar layout. Native: 'absolute' inside screen View.
+    position: Platform.OS === 'web' ? ('fixed' as any) : 'absolute',
     right: 20,
-    bottom: 84,
+    bottom: Platform.OS === 'web' ? 72 : 84,
     zIndex: 100,
     elevation: 20,
   },

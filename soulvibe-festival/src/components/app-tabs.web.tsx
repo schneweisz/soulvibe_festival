@@ -16,7 +16,8 @@ const NAV_ITEMS = [
 export default function AppTabs() {
   return (
     <Tabs>
-      <TabSlot style={{ height: '100%' }} />
+      {/* paddingBottom reserves space above the fixed nav bar so content isn't hidden */}
+      <TabSlot style={{ flex: 1, paddingBottom: 64 }} />
       <TabList asChild>
         <WebNavBar>
           {NAV_ITEMS.map(item => (
@@ -59,9 +60,13 @@ export function WebNavBar(props: TabListProps) {
 
 const styles = StyleSheet.create({
   navBarWrapper: {
-    position: 'absolute',
+    // 'fixed' anchors to the VIEWPORT bottom regardless of expo-router/ui's sidebar layout.
+    // On narrow viewports expo-router/ui stacks vertically so 'absolute' worked on localhost;
+    // on wider viewports (desktop/expo.dev) it switches to row/sidebar — 'fixed' is required.
+    position: 'fixed' as any,
     bottom: 0,
-    width: '100%',
+    left: 0,
+    right: 0,
     alignItems: 'center',
     zIndex: 50,
   },

@@ -69,10 +69,18 @@ function AnimPressable({
   const pressOut = () =>
     Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 40, bounciness: 8 }).start();
 
+  // Animated.View holds layout style (flex:1 works as direct flex-row child).
+  // Pressable with absoluteFill captures touches without disrupting layout or hiding children.
   return (
-    <Pressable onPress={onPress} onPressIn={pressIn} onPressOut={pressOut}>
-      <Animated.View style={[style, { transform: [{ scale }] }]}>{children}</Animated.View>
-    </Pressable>
+    <Animated.View style={[style, { transform: [{ scale }] }]}>
+      <Pressable
+        onPress={onPress}
+        onPressIn={pressIn}
+        onPressOut={pressOut}
+        style={StyleSheet.absoluteFill}
+      />
+      {children}
+    </Animated.View>
   );
 }
 
