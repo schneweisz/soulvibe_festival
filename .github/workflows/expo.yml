@@ -1,0 +1,31 @@
+name: Expo Auto Update
+on:
+  push:
+    branches:
+      - main # Vagy master, attól függően, hogy hívjátok a fő ágat
+
+jobs:
+  update:
+    name: EAS Update
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kód letöltése
+        uses: actions/checkout@v4
+
+      - name: Node.js beállítása
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+
+      - name: Expo környezet beállítása
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Függőségek (Dependencies) telepítése
+        run: npm ci
+
+      - name: Frissítés küldése az Expoba
+        run: eas update --auto --non-interactive
