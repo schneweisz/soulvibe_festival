@@ -38,12 +38,6 @@ _Felelős a dinamikus listákért, a személyre szabott menetrendért és a szer
 
 ### 💾 4. Backend Fejlesztő / Tech Lead (Az Adatmotor) -- Vili
 
-_Felelős a technikai stabilitásért (25 pont) és a gördülékeny adatfolyamért._
-
-- **Fő feladatok:**
-  - Inicializálja az Expo projektet, beállítja a TypeScriptet és a közös GitHub repót.
-  - Beköti a Firebase vagy Supabase SDK-t az Expo appba.
-  - Strukturálja a JSON adatmodelleket (koncertek, fellépők, gasztró standok), és feltölti vele a felhőalapú adatbázist.
-  - _(Opcionális extra pontért):_ Beállítja az `expo-sqlite` vagy `async-storage` csomagot, hogy a programtábla offline is elérhető legyen.
+- nem tudom, nem ertek hozza
 
 ---
