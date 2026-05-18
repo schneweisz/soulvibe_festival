@@ -2,7 +2,7 @@ name: Expo Auto Update
 on:
   push:
     branches:
-      - main # Vagy master, attól függően, hogy hívjátok a fő ágat
+      - main # Vagy master, ha az a fő ág neve
 
 jobs:
   update:
@@ -16,7 +16,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          cache: npm
+          # Kitöröltük a cache sort, így nem fogja hiányolni a lock fájlt
 
       - name: Expo környezet beállítása
         uses: expo/expo-github-action@v8
@@ -25,7 +25,7 @@ jobs:
           token: ${{ secrets.EXPO_TOKEN }}
 
       - name: Függőségek (Dependencies) telepítése
-        run: npm ci
+        run: npm install # 'npm ci' helyett 'npm install'-t használunk, ez legyártja magának a szerveren
 
       - name: Frissítés küldése az Expoba
         run: eas update --auto --non-interactive
