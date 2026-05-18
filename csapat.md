@@ -6,7 +6,7 @@ Ez a dokumentum rögzíti a 4 fős csapat szerepköreit, a feladatok elosztásá
 
 ## 1. Szerepkörök és Feladatmegosztás
 
-### 🎨 1. UX/UI Dizájner & Projektmenedzser (A "Vibe" Felelős) -- Levi
+### 🎨 1. UX/UI Dizájner & Projektmenedzser (A "Vibe" Felelős) -- B. Levi
 
 _Felelős a 20 pontos dizájn kategóriáért, a felhasználói élményért és a csütörtöki bemutatóért._
 
@@ -26,7 +26,7 @@ _Felelős az alkalmazás vázáért, az első benyomásért és a vizuális kohe
   - Elkészíti az **Info és Támogatói** felületet (beemelve az 5 kötelező szponzor logóját).
   - Lekódolja a **Gasztró szekció** statikus kártyás felületeit (TrapGrill, Wired Pizza, stb.).
 
-### ⚙️ 3. Frontend Fejlesztő "B" (Adatvezérelt & Komplex Funkciók) -- Levi?
+### ⚙️ 3. Frontend Fejlesztő "B" (Adatvezérelt & Komplex Funkciók) -- Levi
 
 _Felelős a dinamikus listákért, a személyre szabott menetrendért és a szerdai kríziskártyáért._
 
