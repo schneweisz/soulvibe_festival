@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router, usePathname } from 'expo-router';
 import React, {
   createContext,
@@ -22,6 +23,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SV, neonShadow } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
+import { supabase } from '../utils/supabase';
+import type { Session } from '@supabase/supabase-js';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 320);
 const DURATION_IN = 300;
@@ -113,6 +116,18 @@ function Drawer({ onClose }: { onClose: () => void }) {
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
+  const [session, setSession] = useState<Session | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+  }, []);
+
+  const username = session?.user?.email
+    ? session.user.email.split('@')[0].toUpperCase()
+    : t('GUEST', 'VENDÉG');
+  const avatarUri = session?.user?.email
+    ? `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(session.user.email)}`
+    : null;
 
   useEffect(() => {
     Animated.parallel([
@@ -178,15 +193,27 @@ function Drawer({ onClose }: { onClose: () => void }) {
         {/* Profile card */}
         <Pressable style={styles.profileCard} onPress={() => navigate('/profile')}>
           <View style={styles.profileAvatar}>
-            <MaterialIcons name="person" size={28} color={SV.primaryContainer} />
+            {avatarUri ? (
+              <Image
+                source={{ uri: avatarUri }}
+                style={styles.profileAvatarImg}
+                contentFit="cover"
+              />
+            ) : (
+              <MaterialIcons name="person" size={28} color={SV.primaryContainer} />
+            )}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.profileName}>RAVER_082</Text>
-            <Text style={styles.profileLevel}>{t('PULSE LEVEL: HIGH', 'PULZUS SZINT: MAGAS')}</Text>
+            <Text style={styles.profileName} numberOfLines={1}>{username}</Text>
+            <Text style={styles.profileLevel}>
+              {session ? t('PULSE LEVEL: HIGH', 'PULZUS SZINT: MAGAS') : t('TAP TO SIGN IN', 'BEJELENTKEZÉS')}
+            </Text>
           </View>
-          <View style={styles.profileBadge}>
-            <Text style={styles.profileBadgeText}>VIP</Text>
-          </View>
+          {session && (
+            <View style={styles.profileBadge}>
+              <Text style={styles.profileBadgeText}>VIP</Text>
+            </View>
+          )}
         </Pressable>
 
         {/* Divider */}
@@ -324,9 +351,15 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     backgroundColor: SV.surfaceContainer,
     alignItems: 'center',
+    overflow: 'hidden',
     justifyContent: 'center',
     borderWidth: 1.5,
     borderColor: SV.primaryContainer,
+  },
+  profileAvatarImg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   profileName: {
     color: SV.primaryFixedDim,
