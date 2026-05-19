@@ -183,8 +183,11 @@ function Drawer({ onClose }: { onClose: () => void }) {
         ]}>
         {/* Header */}
         <View style={styles.drawerHeader}>
-          <Text style={styles.drawerBrand}>SOULVIBE</Text>
-          <Text style={styles.drawerBrandYear}>2026</Text>
+          <Image
+            source={require('../../assets/images/soulvibe2026.png')}
+            style={styles.drawerLogo}
+            contentFit="contain"
+          />
           <TouchableOpacity onPress={close} style={styles.closeBtn} hitSlop={12}>
             <MaterialIcons name="close" size={22} color={SV.onSurfaceVariant} />
           </TouchableOpacity>
@@ -305,24 +308,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
-  drawerBrand: {
-    color: SV.primaryContainer,
-    fontSize: 22,
-    fontWeight: '900',
-    fontFamily: 'monospace',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    textShadowColor: 'rgba(57,255,20,0.6)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
-  },
-  drawerBrandYear: {
-    color: SV.outline,
-    fontSize: 13,
-    fontFamily: 'monospace',
-    letterSpacing: 1.5,
-    marginLeft: 10,
+  drawerLogo: {
     flex: 1,
+    height: 25,
   },
   closeBtn: {
     width: 36,
