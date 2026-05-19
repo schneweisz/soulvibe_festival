@@ -2,13 +2,13 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React from 'react';
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
 import { useLanguage } from '@/context/LanguageContext';
@@ -59,7 +59,10 @@ export default function ProfileScreen() {
               style={[styles.langBtn, lang === 'hu' && styles.langBtnActive]}
               onPress={() => setLang('hu')}
               activeOpacity={0.75}>
-              <Text style={styles.langBtnFlag}>HU</Text>
+              <Image
+                source={{ uri: 'https://flagcdn.com/w80/hu.png' }}
+                style={styles.langBtnFlag}
+              />
               <Text style={[styles.langBtnLabel, lang === 'hu' && styles.langBtnLabelActive]}>
                 Magyar
               </Text>
@@ -71,7 +74,10 @@ export default function ProfileScreen() {
               style={[styles.langBtn, lang === 'en' && styles.langBtnActive]}
               onPress={() => setLang('en')}
               activeOpacity={0.75}>
-              <Text style={styles.langBtnFlag}>EN</Text>
+              <Image
+                source={{ uri: 'https://flagcdn.com/w80/gb.png' }}
+                style={styles.langBtnFlag}
+              />
               <Text style={[styles.langBtnLabel, lang === 'en' && styles.langBtnLabelActive]}>
                 English
               </Text>
@@ -235,7 +241,7 @@ const styles = StyleSheet.create({
     borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
   },
   langBtnActive: { borderColor: SV.primaryContainer, backgroundColor: SV.surfaceContainerHighest },
-  langBtnFlag: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' },
+  langBtnFlag: { width: 24, height: 18, marginRight: 8, borderRadius: 2 },
   langBtnLabel: { flex: 1, color: SV.onSurfaceVariant, fontSize: 13 },
   langBtnLabelActive: { color: SV.onSurface, fontWeight: '700' },
 
