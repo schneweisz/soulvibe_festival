@@ -30,7 +30,10 @@ jobs:
 
       - name: CLI jogosultságok javítása
         working-directory: ./app
-        run: chmod +x node_modules/expo/bin/cli node_modules/.bin/expo || true
+        run: |
+          find node_modules/.bin -type f | xargs chmod +x 2>/dev/null || true
+          find node_modules/expo/bin -type f | xargs chmod +x 2>/dev/null || true
+          find node_modules/react-native/sdks -type f | xargs chmod +x 2>/dev/null || true
 
       - name: Frissítés küldése az Expoba
         working-directory: ./app
