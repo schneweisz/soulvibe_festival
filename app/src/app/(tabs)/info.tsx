@@ -1,1 +1,2 @@
-export { InfoScreen as default } from '../info';
+import { InfoScreen } from '../info';
+export default InfoScreen;

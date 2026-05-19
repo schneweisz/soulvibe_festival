@@ -1,1 +1,2 @@
-export { GastroScreen as default } from '../gastro';
+import { GastroScreen } from '../gastro';
+export default GastroScreen;

@@ -1,1 +1,2 @@
-export { MapScreen as default } from '../map';
+import { MapScreen } from '../map';
+export default MapScreen;

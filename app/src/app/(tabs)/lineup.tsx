@@ -1,1 +1,2 @@
-export { LineupScreen as default } from '../lineup';
+import { LineupScreen } from '../lineup';
+export default LineupScreen;
