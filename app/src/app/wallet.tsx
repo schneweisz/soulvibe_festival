@@ -285,12 +285,21 @@ export default function WalletScreen() {
   const handleProcessDone = async () => {
     const newBalance = (balance ?? 0) + finalAmount;
 
-    // Write new balance and transaction back to Supabase
     if (userId) {
-      // 1. Update Profile Balance
+      // 1. Fetch current points
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('points')
+        .eq('id', userId)
+        .single();
+      
+      const currentPoints = profileData?.points ?? 0;
+      const newPoints = currentPoints + 50; // Award 50 points for top-up
+
+      // 2. Update Profile Balance & Points
       const { error: profileErr } = await supabase
         .from('profiles')
-        .update({ balance: newBalance })
+        .update({ balance: newBalance, points: newPoints })
         .eq('id', userId);
 
       if (profileErr) {
@@ -298,7 +307,7 @@ export default function WalletScreen() {
         setUpdateErr(true);
       }
 
-      // 2. Insert Transaction Record
+      // 3. Insert Transaction Record
       const { data: newTx, error: txErr } = await supabase
         .from('transactions')
         .insert([{
@@ -313,9 +322,17 @@ export default function WalletScreen() {
       if (txErr) {
         console.error('Transaction insert failed:', txErr.message);
       } else if (newTx) {
-        // Optimistically update the UI list
         setTransactions(prev => [newTx, ...prev]);
       }
+
+      // 4. Log Pulse Points
+      await supabase
+        .from('pulse_logs')
+        .insert([{
+          user_id: userId,
+          points_change: 50,
+          reason: 'Wallet Top-Up Bonus'
+        }]);
     }
 
     setBalance(newBalance);

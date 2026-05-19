@@ -28,7 +28,18 @@ export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<{ balance: number } | null>(null);
+  const [profile, setProfile] = useState<{ balance: number, points: number } | null>(null);
+
+  // Helper to determine rank based on PULSE_POINTS_PLAN.md
+  const getRank = (pts: number) => {
+    if (pts >= 3500) return { level: 4, name: 'THE SOURCE', next: null };
+    if (pts >= 1500) return { level: 3, name: 'RESONANCE', next: 3500 };
+    if (pts >= 500)  return { level: 2, name: 'FREQUENCY', next: 1500 };
+    return { level: 1, name: 'STATIC', next: 500 };
+  };
+
+  const rank = getRank(profile?.points || 0);
+  const progressPercent = rank.next ? ((profile?.points || 0) / rank.next) * 100 : 100;
 
   // Check auth and fetch profile every time the screen is focused
   useFocusEffect(
@@ -50,7 +61,7 @@ export default function ProfileScreen() {
             // Fetch extra data from 'profiles' table
             const { data, error } = await supabase
               .from('profiles')
-              .select('balance')
+              .select('balance, points')
               .eq('id', currentSession.user.id)
               .single();
             
@@ -214,15 +225,21 @@ export default function ProfileScreen() {
             <Text style={styles.pulsePts}>PTS</Text>
           </View>
           <View style={styles.progressBar}>
-            <View style={styles.progressFill} />
+            <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
           </View>
           <View style={styles.progressLabels}>
             <Text style={styles.progressLabel}>
-              {lang === 'hu' ? '3. Szint: RAIDER' : 'Lvl 3: RAIDER'}
+              {lang === 'hu' ? `${rank.level}. Szint: ${rank.name}` : `Lvl ${rank.level}: ${rank.name}`}
             </Text>
-            <Text style={styles.progressLabel}>
-              {lang === 'hu' ? '750 a 4. szintig' : '750 to Lvl 4'}
-            </Text>
+            {rank.next ? (
+              <Text style={styles.progressLabel}>
+                {lang === 'hu' ? `${rank.next - (profile?.points || 0)} a ${rank.level + 1}. szintig` : `${rank.next - (profile?.points || 0)} to Lvl ${rank.level + 1}`}
+              </Text>
+            ) : (
+              <Text style={styles.progressLabel}>
+                {lang === 'hu' ? 'MAX SZINT ELÉRVE' : 'MAX LEVEL REACHED'}
+              </Text>
+            )}
           </View>
         </View>
 

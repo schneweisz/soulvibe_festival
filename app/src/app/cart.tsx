@@ -75,6 +75,30 @@ export default function CartScreen() {
         type: 'debit',
         label: 'Gastro App Order'
       }]);
+      
+    // Log Pulse Points for purchasing
+    await supabase
+      .from('pulse_logs')
+      .insert([{
+        user_id: userId,
+        points_change: 15,
+        reason: 'Gastro Purchase'
+      }]);
+      
+    // 1. Fetch current points and update
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('points')
+      .eq('id', userId)
+      .single();
+    
+    const currentPoints = profileData?.points ?? 0;
+    const newPoints = currentPoints + 15; // Award 15 points for ordering
+
+    await supabase
+      .from('profiles')
+      .update({ points: newPoints })
+      .eq('id', userId);
 
     setBalance(newBalance);
     setPaid(true);
