@@ -1,10 +1,10 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
+import { Stack } from 'expo-router';
 import React from 'react';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { MenuProvider } from '@/components/menu-drawer';
 import AppTabs from '@/components/app-tabs';
-import { LanguageProvider } from '@/context/LanguageContext';
 
 const SoulVibeDarkTheme = {
   ...DarkTheme,
@@ -20,13 +20,11 @@ const SoulVibeDarkTheme = {
 
 export default function RootLayout() {
   return (
-    <LanguageProvider>
-      <ThemeProvider value={SoulVibeDarkTheme}>
-        <MenuProvider>
-          <AnimatedSplashOverlay />
-          <AppTabs />
-        </MenuProvider>
-      </ThemeProvider>
-    </LanguageProvider>
+    <ThemeProvider value={SoulVibeDarkTheme}>
+      <MenuProvider>
+        <AnimatedSplashOverlay />
+        <AppTabs />
+      </MenuProvider>
+    </ThemeProvider>
   );
 }
