@@ -192,12 +192,12 @@ export default function HomeScreen() {
           </AnimPressable>
         </View>
 
-        {/* System Log */}
+        {/* Notifications */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <MaterialIcons name="feed" size={18} color={SV.outline} />
-              <Text style={styles.sectionTitle}>{t('SYSTEM LOG', 'RENDSZERNAPLÓ')}</Text>
+              <Text style={styles.sectionTitle}>{t('NOTIFICATIONS', 'ÉRTESÍTÉSEK')}</Text>
             </View>
           </View>
 
