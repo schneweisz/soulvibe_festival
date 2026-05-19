@@ -28,29 +28,46 @@ export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<{ balance: number; points: number, ticket: string } | null>(null);
 
-  // Check auth every time the screen is focused
+  // Check auth and fetch profile every time the screen is focused
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
 
-      async function checkSession() {
+      async function loadData() {
         try {
           const { data: { session: currentSession } } = await supabase.auth.getSession();
           if (isMounted) {
             setSession(currentSession);
-            setLoading(false);
+            
             if (!currentSession) {
+              setLoading(false);
               router.push('/auth');
+              return;
+            }
+
+            // Fetch extra data from 'users' table
+            const { data, error } = await supabase
+              .from('users')
+              .select('balance, points, ticket')
+              .eq('id', currentSession.user.id)
+              .single();
+            
+            if (isMounted) {
+              if (!error && data) {
+                setProfile(data);
+              }
+              setLoading(false);
             }
           }
         } catch (e) {
-          console.error('Session check failed', e);
+          console.error('Data loading failed', e);
           if (isMounted) setLoading(false);
         }
       }
 
-      checkSession();
+      loadData();
 
       return () => {
         isMounted = false;
@@ -166,9 +183,8 @@ export default function ProfileScreen() {
             <View style={styles.ticketHeader}>
               <View>
                 <Text style={styles.ticketName}>
-                  {lang === 'hu' ? 'VIP HETVEGE' : 'VIP WEEKEND'}
+                  {profile?.ticket?.toUpperCase() || (lang === 'hu' ? 'NINCS AKTÍV JEGY' : 'NO ACTIVE TICKET')}
                 </Text>
-                <Text style={styles.ticketId}>ID: SV26-8842-XQ</Text>
               </View>
               <View style={styles.liveBadge}>
                 <View style={styles.liveDot} />
@@ -194,7 +210,7 @@ export default function ProfileScreen() {
             {lang === 'hu' ? 'Pulse Pontok' : 'Pulse Points'}
           </Text>
           <View style={styles.pulseRow}>
-            <Text style={styles.pulseValue}>4,250</Text>
+            <Text style={styles.pulseValue}>{profile?.points?.toLocaleString() || '0'}</Text>
             <Text style={styles.pulsePts}>PTS</Text>
           </View>
           <View style={styles.progressBar}>
@@ -220,7 +236,7 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.walletRow}>
             <View style={styles.walletAmountRow}>
-              <Text style={styles.walletAmount}>12,500</Text>
+              <Text style={styles.walletAmount}>{profile?.balance?.toLocaleString() || '0'}</Text>
               <Text style={styles.walletCurrency}>HUF</Text>
             </View>
             <TouchableOpacity style={styles.topUpBtn} onPress={() => router.push('/wallet')}>
