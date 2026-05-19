@@ -28,6 +28,10 @@ jobs:
         working-directory: ./app
         run: npm install
 
+      - name: CLI jogosultságok javítása
+        working-directory: ./app
+        run: chmod +x node_modules/expo/bin/cli node_modules/.bin/expo || true
+
       - name: Frissítés küldése az Expoba
         working-directory: ./app
         env:
