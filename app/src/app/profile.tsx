@@ -1,17 +1,22 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
-import React from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
 import { useLanguage } from '@/context/LanguageContext';
+import { supabase } from '../utils/supabase';
+import { Session } from '@supabase/supabase-js';
+import { ThemedView } from '../components/themed-view';
 
 const MY_LINEUP = [
   { time: '22:00', day: 'FRI', artist: 'Charlotte de Witte', stage: 'THE GRID' },
@@ -21,6 +26,66 @@ const MY_LINEUP = [
 
 export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  // Check auth every time the screen is focused
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+
+      async function checkSession() {
+        try {
+          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          if (isMounted) {
+            setSession(currentSession);
+            setLoading(false);
+            if (!currentSession) {
+              router.push('/auth');
+            }
+          }
+        } catch (e) {
+          console.error('Session check failed', e);
+          if (isMounted) setLoading(false);
+        }
+      }
+
+      checkSession();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [])
+  );
+
+  async function handleSignOut() {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      Alert.alert('Error signing out', error.message);
+    } else {
+      setSession(null);
+      router.replace('/auth');
+    }
+  }
+
+  if (loading) {
+    return (
+      <ThemedView style={styles.center}>
+        <ActivityIndicator size="large" color={SV.primaryContainer} />
+        <Text style={styles.loadingText}>SCANNING BIOMETRICS...</Text>
+      </ThemedView>
+    );
+  }
+
+  if (!session) {
+    return (
+      <ThemedView style={styles.center}>
+        <TouchableOpacity style={styles.authBtn} onPress={() => router.push('/auth')}>
+          <Text style={styles.authBtnText}>AUTHORIZE SYSTEM ACCESS</Text>
+        </TouchableOpacity>
+      </ThemedView>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -31,10 +96,10 @@ export default function ProfileScreen() {
         <View style={styles.profileHero}>
           <View style={styles.heroGlass} />
           <Image
-            source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAy1EowdBNK22w-bmef-d9wgdV_Hhmr42gKSUWaHp8oUtQ1q3N3tf0nEHWSQPllXX5j5FtGKH0YL-sUZPvsLtlnqzOhH55nBzHAvzFtn3YxFI7F6fMeJRdleOQ0cvGYFbpsnlpIJu5ccU2Xqs9d2aG39HRmcTVCL66-cEJMzReAwhjtFQmDUxXfc4X7ZKxnmixJv2oG2S0gMdkCkV1nfnyDJW9TYCA4UvYe_X8SkQBMEaCmWPcm7Zf_JioJ9-UHkfwTzbHc_eS9nBxV' }}
+            source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}` }}
             style={styles.avatar}
           />
-          <Text style={styles.username}>RAVER_082</Text>
+          <Text style={styles.username}>{session.user.email?.split('@')[0].toUpperCase()}</Text>
           <View style={styles.badgeRow}>
             <View style={styles.badgePrimary}>
               <Text style={styles.badgePrimaryText}>PULSE LEVEL: HIGH</Text>
@@ -96,27 +161,27 @@ export default function ProfileScreen() {
             </Text>
             <MaterialIcons name="confirmation-number" size={20} color={SV.primaryContainer} />
           </View>
-          <View style={styles.ticketBox}>
-            <View style={styles.ticketGlow} />
-            <View style={styles.ticketHeader}>
+          <View style={ticketStyles.ticketBox}>
+            <View style={ticketStyles.ticketGlow} />
+            <View style={ticketStyles.ticketHeader}>
               <View>
-                <Text style={styles.ticketName}>
+                <Text style={ticketStyles.ticketName}>
                   {lang === 'hu' ? 'VIP HETVEGE' : 'VIP WEEKEND'}
                 </Text>
-                <Text style={styles.ticketId}>ID: SV26-8842-XQ</Text>
+                <Text style={ticketStyles.ticketId}>ID: SV26-8842-XQ</Text>
               </View>
-              <View style={styles.liveBadge}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>LIVE</Text>
+              <View style={ticketStyles.liveBadge}>
+                <View style={ticketStyles.liveDot} />
+                <Text style={ticketStyles.liveText}>LIVE</Text>
               </View>
             </View>
-            <View style={styles.ticketActions}>
-              <TouchableOpacity style={styles.showQrBtn}>
-                <Text style={styles.showQrText}>
+            <View style={ticketStyles.ticketActions}>
+              <TouchableOpacity style={ticketStyles.showQrBtn}>
+                <Text style={ticketStyles.showQrText}>
                   {lang === 'hu' ? 'QR MEGMUTATASA' : 'SHOW QR'}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.shareBtn}>
+              <TouchableOpacity style={ticketStyles.shareBtn}>
                 <MaterialIcons name="share" size={18} color={SV.primaryContainer} />
               </TouchableOpacity>
             </View>
@@ -199,6 +264,18 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Settings / Logout */}
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>SYSTEM</Text>
+            <MaterialIcons name="settings" size={20} color={SV.outline} />
+          </View>
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleSignOut}>
+            <MaterialIcons name="logout" size={20} color={SV.error} />
+            <Text style={styles.logoutText}>DISCONNECT FROM GRID</Text>
+          </TouchableOpacity>
+        </View>
+
         <View style={{ height: 100 }} />
       </ScrollView>
 
@@ -209,6 +286,8 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: SV.background },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: SV.background },
+  loadingText: { color: SV.primaryContainer, fontFamily: 'monospace', marginTop: 20, letterSpacing: 2 },
 
   scroll: { flex: 1 },
 
@@ -216,7 +295,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', paddingVertical: 32, marginHorizontal: 16, marginTop: 20,
     backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden',
   },
-  heroGlass: { ...StyleSheet.absoluteFillObject, backgroundColor: SV.surfaceGlass },
+  heroGlass: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(57,255,20,0.03)' },
   avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: SV.primaryContainer, marginBottom: 12, ...neonShadow },
   username: { color: SV.primaryFixedDim, fontSize: 22, fontWeight: '900', letterSpacing: -0.5, textTransform: 'uppercase', marginBottom: 10 },
   badgeRow: { flexDirection: 'row', gap: 8 },
@@ -245,22 +324,6 @@ const styles = StyleSheet.create({
   langBtnLabel: { flex: 1, color: SV.onSurfaceVariant, fontSize: 13 },
   langBtnLabelActive: { color: SV.onSurface, fontWeight: '700' },
 
-  ticketBox: {
-    backgroundColor: SV.surfaceContainerHighest, borderRadius: 10, padding: 14,
-    borderWidth: 1, borderColor: SV.primaryContainer, overflow: 'hidden', ...neonShadow,
-  },
-  ticketGlow: { position: 'absolute', right: -20, top: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(57,255,20,0.08)' },
-  ticketHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
-  ticketName: { color: SV.primaryFixedDim, fontSize: 17, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4 },
-  ticketId: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11 },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(57,255,20,0.15)', borderWidth: 1, borderColor: 'rgba(57,255,20,0.5)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: SV.primaryContainer },
-  liveText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
-  ticketActions: { flexDirection: 'row', gap: 8 },
-  showQrBtn: { flex: 1, backgroundColor: SV.primaryContainer, paddingVertical: 8, borderRadius: 2, alignItems: 'center' },
-  showQrText: { color: SV.onPrimaryFixed, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
-  shareBtn: { width: 38, height: 38, borderWidth: 1, borderColor: SV.primaryContainer, borderRadius: 2, alignItems: 'center', justifyContent: 'center' },
-
   pulseLabel: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', textAlign: 'center', marginBottom: 4 },
   pulseRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, justifyContent: 'center', marginBottom: 10 },
   pulseValue: { color: SV.primaryContainer, fontSize: 40, fontWeight: '900', textShadowColor: 'rgba(57,255,20,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
@@ -287,4 +350,42 @@ const styles = StyleSheet.create({
   setStage: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11 },
   viewScheduleBtn: { marginTop: 8, paddingVertical: 10, borderWidth: 1, borderColor: SV.surfaceVariant, borderRadius: 4, alignItems: 'center' },
   viewScheduleText: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
+
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
+  logoutText: { color: SV.error, fontFamily: 'monospace', fontSize: 13, fontWeight: '700', letterSpacing: 1 },
+
+  authBtn: {
+    backgroundColor: 'rgba(57,255,20,0.1)',
+    borderWidth: 1,
+    borderColor: SV.primaryContainer,
+    paddingHorizontal: 24,
+    paddingVertical: 14,
+    borderRadius: 4,
+    ...neonShadow,
+  },
+  authBtnText: {
+    color: SV.primaryContainer,
+    fontFamily: 'monospace',
+    fontWeight: '800',
+    fontSize: 14,
+    letterSpacing: 2,
+  },
+});
+
+const ticketStyles = StyleSheet.create({
+  ticketBox: {
+    backgroundColor: SV.surfaceContainerHighest, borderRadius: 10, padding: 14,
+    borderWidth: 1, borderColor: SV.primaryContainer, overflow: 'hidden', ...neonShadow,
+  },
+  ticketGlow: { position: 'absolute', right: -20, top: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(57,255,20,0.08)' },
+  ticketHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  ticketName: { color: SV.primaryFixedDim, fontSize: 17, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4 },
+  ticketId: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(57,255,20,0.15)', borderWidth: 1, borderColor: 'rgba(57,255,20,0.5)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: SV.primaryContainer },
+  liveText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
+  ticketActions: { flexDirection: 'row', gap: 8 },
+  showQrBtn: { flex: 1, backgroundColor: SV.primaryContainer, paddingVertical: 8, borderRadius: 2, alignItems: 'center' },
+  showQrText: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
+  shareBtn: { width: 38, height: 38, borderWidth: 1, borderColor: SV.primaryContainer, borderRadius: 2, alignItems: 'center', justifyContent: 'center' },
 });
