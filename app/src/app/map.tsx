@@ -1,8 +1,16 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import React, { useRef, useEffect, useState } from 'react';
 import {
-  Animated,
+  Animated as RNAnimated,
+  Dimensions,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,16 +19,28 @@ import {
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
 
-type FilterKey = 'ALL ZONES' | 'STAGES' | 'FOOD & DRINK' | 'SERVICES';
+// ─── Map constants ────────────────────────────────────────────────────────────
+
+const MAP_W = 1200;
+const MAP_H = 1400;
+const { width: SW, height: SH } = Dimensions.get('window');
+// Center the view on the festival heart (near "You Are Here")
+const INIT_TX = SW / 2 - 530;
+const INIT_TY = SH / 2 - 820;
+const MIN_SCALE = 0.3;
+const MAX_SCALE = 3.5;
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type FilterKey = 'ALL' | 'STAGES' | 'FOOD' | 'SERVICES';
 
 interface POI {
   id: string;
   label: string;
-  type: 'stage' | 'gastro' | 'chill' | 'wc';
-  x: number; // 0-100 %
+  type: 'stage' | 'gastro' | 'chill' | 'wc' | 'medical' | 'vip' | 'gate';
+  x: number;
   y: number;
   color: string;
-  glow: string;
   icon: string;
   size: 'large' | 'medium' | 'small';
   desc?: string;
@@ -29,293 +49,566 @@ interface POI {
 }
 
 const POIS: POI[] = [
-  { id: 'grid', label: 'THE GRID', type: 'stage', x: 45, y: 35, color: SV.primaryContainer, glow: SV.neonGlow, icon: 'speaker', size: 'large', desc: 'Main Stage • Industrial Techno', artist: 'Charlotte de Witte', time: '22:00 - 00:00' },
-  { id: 'suburbia', label: 'SUBURBIA', type: 'stage', x: 65, y: 25, color: SV.secondaryContainer, glow: SV.purpleGlow, icon: 'music-note', size: 'medium', desc: 'Second Stage • Trap/Rap', artist: 'Azahriah', time: '21:30 - 23:00' },
-  { id: 'basement', label: 'THE BASEMENT', type: 'stage', x: 30, y: 55, color: SV.tertiaryContainer, glow: SV.cyanGlow, icon: 'headphones', size: 'medium', desc: 'Underground • Tech House', artist: 'Daria Kolosova', time: '23:00 - 02:00' },
-  { id: 'gastro', label: 'GASTRO HUB', type: 'gastro', x: 60, y: 45, color: SV.onSurfaceVariant, glow: 'transparent', icon: 'fastfood', size: 'small' },
-  { id: 'backyard', label: 'THE BACKYARD', type: 'chill', x: 50, y: 65, color: SV.onSurfaceVariant, glow: 'transparent', icon: 'weekend', size: 'small' },
-  { id: 'wc1', label: '', type: 'wc', x: 35, y: 30, color: SV.onSurfaceVariant, glow: 'transparent', icon: 'wc', size: 'small' },
-  { id: 'wc2', label: '', type: 'wc', x: 70, y: 50, color: SV.onSurfaceVariant, glow: 'transparent', icon: 'wc', size: 'small' },
+  // Stages (spread across the grounds)
+  { id: 'suburbia', label: 'SUBURBIA', type: 'stage', x: 580, y: 640, color: SV.primaryContainer, icon: 'speaker', size: 'large', desc: 'Main Stage · Rap & Trap', artist: 'AZAHRIAH', time: '22:30 - 00:00' },
+  { id: 'grid', label: 'THE GRID', type: 'stage', x: 920, y: 500, color: SV.secondaryContainer, icon: 'graphic-eq', size: 'large', desc: 'Techno Stage · Industrial', artist: 'CHARLOTTE DE WITTE', time: '02:00 - 04:00' },
+  { id: 'basement', label: 'THE BASEMENT', type: 'stage', x: 250, y: 820, color: SV.tertiaryContainer, icon: 'headphones', size: 'medium', desc: 'Underground Stage', artist: 'BETON.HOFI', time: '18:00 - 19:45' },
+  // Gastro
+  { id: 'gastro1', label: 'GASTRO HUB', type: 'gastro', x: 730, y: 800, color: '#F5A623', icon: 'fastfood', size: 'medium' },
+  { id: 'gastro2', label: 'LOOP BAR', type: 'gastro', x: 420, y: 1000, color: '#F5A623', icon: 'local-bar', size: 'small' },
+  // Services
+  { id: 'chill', label: 'CHILL ZONE', type: 'chill', x: 380, y: 590, color: SV.onSurfaceVariant, icon: 'weekend', size: 'small' },
+  { id: 'vip', label: 'VIP', type: 'vip', x: 1020, y: 700, color: '#FFD700', icon: 'star', size: 'small' },
+  { id: 'medical', label: 'MEDICAL', type: 'medical', x: 600, y: 490, color: '#FF4444', icon: 'local-hospital', size: 'small' },
+  { id: 'wc1', label: '', type: 'wc', x: 310, y: 660, color: SV.onSurfaceVariant, icon: 'wc', size: 'small' },
+  { id: 'wc2', label: '', type: 'wc', x: 870, y: 960, color: SV.onSurfaceVariant, icon: 'wc', size: 'small' },
+  { id: 'gate', label: 'ENTRANCE', type: 'gate', x: 600, y: 1180, color: SV.primaryFixedDim, icon: 'meeting-room', size: 'small' },
 ];
 
+// Filter mapping
+const isVisible = (poi: POI, filter: FilterKey) => {
+  if (filter === 'ALL') return true;
+  if (filter === 'STAGES') return poi.type === 'stage';
+  if (filter === 'FOOD') return poi.type === 'gastro';
+  if (filter === 'SERVICES') return poi.type !== 'stage' && poi.type !== 'gastro';
+  return true;
+};
+
+// ─── Road helper (diagonal lines via rotation) ────────────────────────────────
+
+function roadStyle(x1: number, y1: number, x2: number, y2: number, w: number) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+  return {
+    position: 'absolute' as const,
+    width: len,
+    height: w,
+    left: (x1 + x2) / 2 - len / 2,
+    top: (y1 + y2) / 2 - w / 2,
+    transform: [{ rotate: `${angle}deg` }],
+  };
+}
+
+// ─── Pulse dot (uses RN Animated for simplicity) ──────────────────────────────
+
 function PulseDot({ color }: { color: string }) {
-  const scale = useRef(new Animated.Value(1)).current;
+  const scale = useRef(new RNAnimated.Value(1)).current;
   useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(scale, { toValue: 2.4, duration: 1000, useNativeDriver: true }),
-        Animated.timing(scale, { toValue: 1, duration: 1000, useNativeDriver: true }),
+    RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(scale, { toValue: 2.2, duration: 900, useNativeDriver: true }),
+        RNAnimated.timing(scale, { toValue: 1, duration: 900, useNativeDriver: true }),
       ])
     ).start();
   }, []);
-  return <Animated.View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: color, transform: [{ scale }] }} />;
+  return <RNAnimated.View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: color, transform: [{ scale }] }} />;
 }
 
+// ─── You-Are-Here marker ──────────────────────────────────────────────────────
+
 function YouAreHere() {
-  const pulse = useRef(new Animated.Value(1)).current;
+  const pulse = useRef(new RNAnimated.Value(1)).current;
   useEffect(() => {
-    Animated.loop(Animated.sequence([
-      Animated.timing(pulse, { toValue: 1.8, duration: 1100, useNativeDriver: true }),
-      Animated.timing(pulse, { toValue: 1, duration: 1100, useNativeDriver: true }),
+    RNAnimated.loop(RNAnimated.sequence([
+      RNAnimated.timing(pulse, { toValue: 1.9, duration: 1100, useNativeDriver: true }),
+      RNAnimated.timing(pulse, { toValue: 1, duration: 1100, useNativeDriver: true }),
     ])).start();
   }, []);
   return (
-    <View style={styles.youHereWrap}>
-      <Animated.View style={[styles.youHereRing, { transform: [{ scale: pulse }] }]} />
-      <View style={styles.youHereDot} />
-      <Text style={styles.youHereLabel}>YOU ARE HERE</Text>
+    <View style={s.yah}>
+      <RNAnimated.View style={[s.yahRing, { transform: [{ scale: pulse }] }]} />
+      <View style={s.yahDot} />
+      <View style={s.yahLabel}>
+        <Text style={s.yahLabelTxt}>YOU</Text>
+      </View>
     </View>
   );
 }
 
+// ─── Screen ──────────────────────────────────────────────────────────────────
+
 export default function MapScreen() {
-  const [filter, setFilter] = useState<FilterKey>('ALL ZONES');
+  const [filter, setFilter] = useState<FilterKey>('ALL');
   const [selected, setSelected] = useState<POI | null>(null);
-  const sheetY = useRef(new Animated.Value(300)).current;
+  const sheetY = useRef(new RNAnimated.Value(320)).current;
 
   const openSheet = (poi: POI) => {
     if (poi.type !== 'stage') return;
     setSelected(poi);
-    Animated.spring(sheetY, { toValue: 0, useNativeDriver: true }).start();
+    RNAnimated.spring(sheetY, { toValue: 0, useNativeDriver: true }).start();
   };
   const closeSheet = () => {
-    Animated.timing(sheetY, { toValue: 300, duration: 250, useNativeDriver: true }).start(() => setSelected(null));
+    RNAnimated.timing(sheetY, { toValue: 320, duration: 220, useNativeDriver: true }).start(() => setSelected(null));
   };
 
-  const isVisible = (poi: POI) => {
-    if (filter === 'ALL ZONES') return true;
-    if (filter === 'STAGES') return poi.type === 'stage';
-    if (filter === 'FOOD & DRINK') return poi.type === 'gastro';
-    if (filter === 'SERVICES') return poi.type === 'wc' || poi.type === 'chill';
-    return true;
+  // ── Gesture state ────────────────────────────────────────────────────────
+  const translateX = useSharedValue(INIT_TX);
+  const translateY = useSharedValue(INIT_TY);
+  const savedTX = useSharedValue(INIT_TX);
+  const savedTY = useSharedValue(INIT_TY);
+  const scale = useSharedValue(1);
+  const savedScale = useSharedValue(1);
+
+  const panGesture = Gesture.Pan()
+    .onUpdate((e) => {
+      translateX.value = savedTX.value + e.translationX;
+      translateY.value = savedTY.value + e.translationY;
+    })
+    .onEnd(() => {
+      savedTX.value = translateX.value;
+      savedTY.value = translateY.value;
+    });
+
+  const pinchGesture = Gesture.Pinch()
+    .onBegin(() => {
+      savedScale.value = scale.value;
+    })
+    .onUpdate((e) => {
+      scale.value = Math.min(MAX_SCALE, Math.max(MIN_SCALE, savedScale.value * e.scale));
+    })
+    .onEnd(() => {
+      savedScale.value = scale.value;
+    });
+
+  const composed = Gesture.Simultaneous(panGesture, pinchGesture);
+
+  const mapStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: translateX.value },
+      { translateY: translateY.value },
+      { scale: scale.value },
+    ],
+  }));
+
+  const ZOOM_CFG = { duration: 260, easing: Easing.out(Easing.quad) };
+  const PAN_CFG  = { duration: 380, easing: Easing.out(Easing.cubic) };
+
+  const zoomIn = () => {
+    const next = Math.min(MAX_SCALE, scale.value * 1.45);
+    scale.value = withTiming(next, ZOOM_CFG);
+    savedScale.value = next;
+  };
+  const zoomOut = () => {
+    const next = Math.max(MIN_SCALE, scale.value / 1.45);
+    scale.value = withTiming(next, ZOOM_CFG);
+    savedScale.value = next;
+  };
+  const recenter = () => {
+    translateX.value = withTiming(INIT_TX, PAN_CFG);
+    translateY.value = withTiming(INIT_TY, PAN_CFG);
+    scale.value = withTiming(1, PAN_CFG);
+    savedTX.value = INIT_TX;
+    savedTY.value = INIT_TY;
+    savedScale.value = 1;
   };
 
   return (
-    <View style={styles.root}>
+    <GestureHandlerRootView style={s.root}>
       <ScreenHeader />
 
-      {/* Map Canvas */}
-      <View style={styles.mapCanvas}>
-        {/* Grid background */}
-        <View style={styles.gridOverlay} />
+      {/* ── Map viewport ── */}
+      <View style={s.viewport}>
 
-        {/* Lake silhouette */}
-        <View style={styles.lake} />
-
-        {/* POIs */}
-        {POIS.filter(isVisible).map(poi => {
-          const big = poi.size === 'large';
-          const med = poi.size === 'medium';
-          const boxSize = big ? 72 : med ? 56 : 36;
-          return (
-            <TouchableOpacity
-              key={poi.id}
-              style={[styles.poi, { left: `${poi.x}%`, top: `${poi.y}%` }]}
-              onPress={() => openSheet(poi)}>
-              <View style={[styles.poiBox, { width: boxSize, height: boxSize, borderColor: poi.color, borderRadius: big ? 16 : 12 }]}>
-                <MaterialIcons name={poi.icon as any} size={big ? 32 : med ? 24 : 18} color={poi.color} />
-              </View>
-              {poi.label ? (
-                <View style={[styles.poiLabel, { borderColor: poi.color }]}>
-                  <Text style={[styles.poiLabelText, { color: poi.color }]}>{poi.label}</Text>
-                </View>
-              ) : null}
-            </TouchableOpacity>
-          );
-        })}
-
-        {/* You are here */}
-        <View style={[styles.poi, { left: '48%', top: '48%' }]}>
-          <YouAreHere />
-        </View>
-
-        {/* Filter chips */}
-        <View style={styles.filterRow}>
-          {(['ALL ZONES', 'STAGES', 'FOOD & DRINK', 'SERVICES'] as FilterKey[]).map(f => (
+        {/* Filter chips (above map) */}
+        <View style={s.filterRow}>
+          {(['ALL', 'STAGES', 'FOOD', 'SERVICES'] as FilterKey[]).map(f => (
             <TouchableOpacity
               key={f}
-              style={[styles.filterChip, f === filter && styles.filterChipActive]}
+              style={[s.chip, f === filter && s.chipActive]}
               onPress={() => setFilter(f)}>
-              <Text style={[styles.filterChipText, f === filter && styles.filterChipTextActive]}>{f}</Text>
+              <Text style={[s.chipTxt, f === filter && s.chipTxtActive]}>{f}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         {/* Map controls */}
-        <View style={styles.controls}>
-          <TouchableOpacity style={styles.controlBtn}>
-            <MaterialIcons name="my-location" size={20} color={SV.onSurface} />
+        <View style={s.controls}>
+          <TouchableOpacity style={s.ctrlBtn} onPress={recenter}>
+            <MaterialIcons name="my-location" size={18} color={SV.onSurface} />
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.controlBtn, { borderBottomWidth: 1, borderBottomColor: SV.white10 }]}>
-            <MaterialIcons name="add" size={20} color={SV.onSurface} />
+          <View style={s.ctrlDivider} />
+          <TouchableOpacity style={s.ctrlBtn} onPress={zoomIn}>
+            <MaterialIcons name="add" size={18} color={SV.onSurface} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.controlBtn}>
-            <MaterialIcons name="remove" size={20} color={SV.onSurface} />
+          <View style={s.ctrlDivider} />
+          <TouchableOpacity style={s.ctrlBtn} onPress={zoomOut}>
+            <MaterialIcons name="remove" size={18} color={SV.onSurface} />
           </TouchableOpacity>
         </View>
+
+        {/* Pannable / zoomable canvas */}
+        <GestureDetector gesture={composed}>
+          <Animated.View style={[s.canvas, mapStyle]}>
+
+            {/* ── Terrain ── */}
+
+            {/* Lake — north end */}
+            <View style={[s.terrain, { left: 100, top: 30, width: 1000, height: 260, borderRadius: 140, backgroundColor: 'rgba(10,35,70,0.65)' }]} />
+            {/* Lake shimmer line */}
+            <View style={{ position: 'absolute', left: 100, top: 270, width: 1000, height: 2, backgroundColor: 'rgba(80,160,255,0.18)' }} />
+
+            {/* Hill zone NE (elevated, slightly lighter) */}
+            <View style={[s.terrain, { left: 780, top: 180, width: 420, height: 500, borderRadius: 180, backgroundColor: '#0D0D16' }]} />
+            {/* Hill contour lines */}
+            <View style={{ position: 'absolute', left: 830, top: 220, width: 360, height: 420, borderRadius: 160, borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' }} />
+            <View style={{ position: 'absolute', left: 880, top: 270, width: 280, height: 320, borderRadius: 140, borderWidth: 1, borderColor: 'rgba(255,255,255,0.03)' }} />
+
+            {/* Forest patch W */}
+            <View style={[s.terrain, { left: 30, top: 580, width: 220, height: 450, borderRadius: 120, backgroundColor: 'rgba(8,18,8,0.7)' }]} />
+
+            {/* Open ground zone (darker, festival floor) */}
+            <View style={[s.terrain, { left: 180, top: 380, width: 840, height: 880, borderRadius: 60, backgroundColor: 'rgba(15,15,22,0.5)' }]} />
+
+            {/* Parking lot south */}
+            <View style={[s.terrain, { left: 350, top: 1200, width: 500, height: 180, borderRadius: 12, backgroundColor: '#0E0E16' }]}>
+              {/* Parking grid lines */}
+              {[420, 480, 540, 600, 660, 720, 780].map(px => (
+                <View key={px} style={{ position: 'absolute', left: px - 350, top: 0, bottom: 0, width: 1, backgroundColor: 'rgba(255,255,255,0.04)' }} />
+              ))}
+            </View>
+
+            {/* ── Roads ── */}
+
+            {/* Road segments are grouped by network.
+                Each segment is [x1,y1 → x2,y2, width] drawn via the roadStyle() helper.
+                Multiple short segments per "path" create gentle bends between POIs. */}
+
+            {/* ── Coastal access road (slight S-bend, connects parking → beach) ── */}
+            {([[80,296,400,278,24],[400,278,750,282,24],[750,282,1100,296,24]] as [number,number,number,number,number][]).map(([x1,y1,x2,y2,w],i)=>(
+              <View key={`coast${i}`} style={[s.road, roadStyle(x1,y1,x2,y2,w)]} />
+            ))}
+
+            {/* ── Main festival promenade (central winding path through all POIs) ── */}
+            {([
+              // Basement → WC1 junction
+              [222, 838, 308, 802, 26],
+              // WC1 → Chill Zone approach
+              [308, 802, 382, 762, 26],
+              // Chill → Suburbia west
+              [382, 762, 490, 722, 26],
+              // Suburbia west → Suburbia east
+              [490, 722, 595, 712, 26],
+              // Suburbia east → Gastro Hub
+              [595, 712, 698, 742, 26],
+              // Gastro Hub → east junction
+              [698, 742, 800, 788, 26],
+              // East junction → Grid/VIP corridor
+              [800, 788, 910, 758, 26],
+            ] as [number,number,number,number,number][]).map(([x1,y1,x2,y2,w],i)=>(
+              <View key={`prom${i}`} style={[s.road, roadStyle(x1,y1,x2,y2,w)]} />
+            ))}
+
+            {/* ── South entrance road (from Gate up to promenade) ── */}
+            {([
+              [600,1178,598,1100,30],
+              [598,1100,580,1018,28],
+              [580,1018,558,938,27],
+              [558, 938,535, 858,26],
+            ] as [number,number,number,number,number][]).map(([x1,y1,x2,y2,w],i)=>(
+              <View key={`gate${i}`} style={[s.road, roadStyle(x1,y1,x2,y2,w)]} />
+            ))}
+
+            {/* ── Medical / North spine (Medical → Suburbia) ── */}
+            {([
+              [600,490,598,568,22],
+              [598,568,585,642,22],
+            ] as [number,number,number,number,number][]).map(([x1,y1,x2,y2,w],i)=>(
+              <View key={`spine${i}`} style={[s.road, roadStyle(x1,y1,x2,y2,w)]} />
+            ))}
+
+            {/* ── Grid access (from promenade → The Grid, curves NE) ── */}
+            {([
+              [910,758,905,678,22],
+              [905,678,916,592,22],
+              [916,592,920,510,22],
+            ] as [number,number,number,number,number][]).map(([x1,y1,x2,y2,w],i)=>(
+              <View key={`grid${i}`} style={[s.road, roadStyle(x1,y1,x2,y2,w)]} />
+            ))}
+
+            {/* ── Basement stub (short connector to promenade) ── */}
+            <View style={[s.road, roadStyle(252,822,308,800,20)]} />
+
+            {/* ── WC1 stub (drops south from promenade) ── */}
+            <View style={[s.road, roadStyle(308,802,310,720,18)]} />
+
+            {/* ── Chill Zone access (north spur off promenade) ── */}
+            <View style={[s.road, roadStyle(382,762,380,590,18)]} />
+
+            {/* ── Loop Bar access (winds SW from promenade) ── */}
+            {([
+              [452,852,438,925,20],
+              [438,925,422,1002,20],
+            ] as [number,number,number,number,number][]).map(([x1,y1,x2,y2,w],i)=>(
+              <View key={`loop${i}`} style={[s.road, roadStyle(x1,y1,x2,y2,w)]} />
+            ))}
+
+            {/* ── VIP access (short spur east off Grid corridor) ── */}
+            {([
+              [910,758,968,730,18],
+              [968,730,1022,700,18],
+            ] as [number,number,number,number,number][]).map(([x1,y1,x2,y2,w],i)=>(
+              <View key={`vip${i}`} style={[s.road, roadStyle(x1,y1,x2,y2,w)]} />
+            ))}
+
+            {/* ── WC2 access (branch SE from promenade) ── */}
+            {([
+              [820,800,852,882,18],
+              [852,882,868,962,18],
+            ] as [number,number,number,number,number][]).map(([x1,y1,x2,y2,w],i)=>(
+              <View key={`wc2${i}`} style={[s.road, roadStyle(x1,y1,x2,y2,w)]} />
+            ))}
+
+            {/* ── Parking lot access forks south of Gate ── */}
+            <View style={[s.road, roadStyle(600,1178,472,1235,22)]} />
+            <View style={[s.road, roadStyle(600,1178,728,1235,22)]} />
+
+            {/* ── Festival perimeter ── */}
+            <View style={s.perimeter} />
+
+            {/* ── Subtle dot-grid texture overlay ── */}
+            {Array.from({ length: 20 }).map((_, row) =>
+              Array.from({ length: 16 }).map((__, col) => (
+                <View
+                  key={`${row}-${col}`}
+                  style={{
+                    position: 'absolute',
+                    left: col * 76 + 14,
+                    top: row * 72 + 14,
+                    width: 1.5,
+                    height: 1.5,
+                    borderRadius: 1,
+                    backgroundColor: 'rgba(255,255,255,0.032)',
+                  }}
+                />
+              ))
+            )}
+
+            {/* ── You Are Here ── */}
+            <View style={[s.poi, { left: 505, top: 795 }]}>
+              <YouAreHere />
+            </View>
+
+            {/* ── POIs ── */}
+            {POIS.filter(poi => isVisible(poi, filter)).map(poi => {
+              const isLarge = poi.size === 'large';
+              const isMed = poi.size === 'medium';
+              const boxSize = isLarge ? 68 : isMed ? 52 : 38;
+              const iconSize = isLarge ? 30 : isMed ? 22 : 16;
+              const radius = isLarge ? 14 : isMed ? 10 : 8;
+              return (
+                <TouchableOpacity
+                  key={poi.id}
+                  style={[s.poi, { left: poi.x - boxSize / 2, top: poi.y - boxSize / 2 }]}
+                  onPress={() => openSheet(poi)}
+                  activeOpacity={0.8}
+                  hitSlop={8}>
+                  <View style={[
+                    s.poiBox,
+                    {
+                      width: boxSize,
+                      height: boxSize,
+                      borderRadius: radius,
+                      borderColor: poi.color,
+                      backgroundColor: `${poi.color}18`,
+                    },
+                    isLarge && { shadowColor: poi.color, shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 12, elevation: 8 },
+                  ]}>
+                    {isLarge && <View style={[s.poiGlow, { backgroundColor: `${poi.color}14` }]} />}
+                    <MaterialIcons name={poi.icon as any} size={iconSize} color={poi.color} />
+                  </View>
+                  {poi.label ? (
+                    <View style={[s.poiTag, { borderColor: `${poi.color}55`, backgroundColor: '#09090E' }]}>
+                      <Text style={[s.poiTagTxt, { color: poi.color }]}>{poi.label}</Text>
+                    </View>
+                  ) : null}
+                </TouchableOpacity>
+              );
+            })}
+
+          </Animated.View>
+        </GestureDetector>
       </View>
 
-      {/* Bottom Sheet */}
+      {/* ── Bottom sheet ── */}
       {selected && (
         <>
-          <TouchableOpacity style={styles.overlay} onPress={closeSheet} activeOpacity={1} />
-          <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetY }] }]}>
-            <TouchableOpacity style={styles.sheetHandle} onPress={closeSheet}>
-              <View style={styles.handleBar} />
+          <TouchableOpacity style={s.overlay} onPress={closeSheet} activeOpacity={1} />
+          <RNAnimated.View style={[s.sheet, { transform: [{ translateY: sheetY }] }]}>
+            <TouchableOpacity style={s.sheetHandle} onPress={closeSheet}>
+              <View style={s.handleBar} />
             </TouchableOpacity>
 
-            <View style={styles.sheetHeader}>
+            <View style={s.sheetHead}>
               <View>
-                <View style={styles.sheetLiveBadge}>
-                  <View style={styles.sheetLiveDot} />
-                  <Text style={styles.sheetLiveTxt}>LIVE NOW</Text>
+                <View style={s.liveBadge}>
+                  <PulseDot color={SV.primaryContainer} />
+                  <Text style={s.liveTxt}>LIVE NOW</Text>
                 </View>
-                <Text style={styles.sheetStageName}>{selected.label}</Text>
-                <Text style={styles.sheetStageDesc}>{selected.desc}</Text>
+                <Text style={s.stageName}>{selected.label}</Text>
+                <Text style={s.stageDesc}>{selected.desc}</Text>
               </View>
-              <TouchableOpacity style={styles.directionsBtn}>
+              <TouchableOpacity style={s.dirBtn}>
                 <MaterialIcons name="directions" size={20} color={SV.onSurfaceVariant} />
               </TouchableOpacity>
             </View>
 
-            <View style={styles.nowPlaying}>
+            <View style={s.nowPlaying}>
               <View style={{ flex: 1 }}>
-                <Text style={styles.nowPlayingLabel}>CURRENTLY PLAYING</Text>
-                <Text style={styles.nowPlayingArtist}>{selected.artist}</Text>
-                <Text style={styles.nowPlayingTime}>{selected.time}</Text>
+                <Text style={s.npLabel}>CURRENTLY PLAYING</Text>
+                <Text style={s.npArtist}>{selected.artist}</Text>
+                <Text style={s.npTime}>{selected.time}</Text>
               </View>
-              <View style={styles.spinnerOuter}>
-                <MaterialIcons name="equalizer" size={18} color={SV.primaryContainer} />
+              <View style={s.eqIcon}>
+                <MaterialIcons name="equalizer" size={20} color={SV.primaryContainer} />
               </View>
             </View>
 
-            <View style={styles.sheetActions}>
-              <TouchableOpacity style={styles.sheetBtnPrimary} onPress={() => { closeSheet(); router.push('/lineup'); }}>
+            <View style={s.sheetActions}>
+              <TouchableOpacity style={s.btnPrimary} onPress={() => { closeSheet(); router.push('/lineup'); }}>
                 <MaterialIcons name="event" size={18} color={SV.deepCharcoal} />
-                <Text style={styles.sheetBtnPrimaryText}>SCHEDULE</Text>
+                <Text style={s.btnPrimaryTxt}>SCHEDULE</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.sheetBtnOutline}>
+              <TouchableOpacity style={s.btnOutline}>
                 <MaterialIcons name="share" size={18} color={SV.primaryContainer} />
-                <Text style={styles.sheetBtnOutlineText}>SHARE</Text>
+                <Text style={s.btnOutlineTxt}>SHARE</Text>
               </TouchableOpacity>
             </View>
-          </Animated.View>
+          </RNAnimated.View>
         </>
       )}
 
       <CartFAB count={2} />
-    </View>
+    </GestureHandlerRootView>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: SV.background },
+// ─── Styles ───────────────────────────────────────────────────────────────────
 
-  header: {
-    height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, backgroundColor: SV.surfaceGlass,
-    borderBottomWidth: 1, borderBottomColor: SV.white10, zIndex: 10, ...neonShadow,
-  },
-  headerTitle: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 17, fontWeight: '800', letterSpacing: -0.5, textTransform: 'uppercase' },
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#09090E' },
 
-  mapCanvas: { flex: 1, backgroundColor: SV.surfaceContainerHighest, position: 'relative', overflow: 'hidden' },
+  viewport: { flex: 1, overflow: 'hidden', backgroundColor: '#09090E', position: 'relative' },
 
-  gridOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.07,
+  // ── Canvas ──────────────────────────────────────────────────────────────
+  canvas: {
+    width: MAP_W,
+    height: MAP_H,
+    backgroundColor: '#09090E',
+    position: 'absolute',
   },
 
-  lake: {
-    position: 'absolute', top: '8%', left: '18%', width: '60%', height: '30%',
-    backgroundColor: SV.tertiaryFixedDim, borderRadius: 100, opacity: 0.07,
+  terrain: { position: 'absolute' },
+
+  // Roads
+  road: { position: 'absolute', backgroundColor: '#151520' },
+  roadDiag: { backgroundColor: '#151520' },
+  roadCenter: { position: 'absolute', top: '50%', left: 0, right: 0, height: 1, backgroundColor: 'rgba(255,255,220,0.06)' },
+  roadLane: { position: 'absolute', left: 20, right: 20, height: 1, backgroundColor: 'rgba(255,255,220,0.04)' },
+
+  // Festival perimeter (glowing green rectangle)
+  perimeter: {
+    position: 'absolute',
+    left: 160,
+    top: 380,
+    width: 880,
+    height: 870,
+    borderRadius: 60,
+    borderWidth: 1.5,
+    borderColor: 'rgba(57,255,20,0.2)',
+    backgroundColor: 'rgba(57,255,20,0.02)',
   },
 
+  // ── POIs ────────────────────────────────────────────────────────────────
   poi: { position: 'absolute', alignItems: 'center' },
   poiBox: {
-    borderWidth: 2, backgroundColor: SV.surfaceContainerHigh,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  poiLabel: {
-    marginTop: 6, paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 20, borderWidth: 1, backgroundColor: SV.surfaceContainerLow,
-  },
-  poiLabelText: { fontFamily: 'monospace', fontSize: 10, letterSpacing: 1, fontWeight: '700' },
-
-  youHereWrap: { alignItems: 'center' },
-  youHereRing: { position: 'absolute', width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(57,255,20,0.25)' },
-  youHereDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: SV.primaryContainer, borderWidth: 2, borderColor: SV.background, shadowColor: '#39ff14', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 8 },
-  youHereLabel: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 9, letterSpacing: 1, marginTop: 6 },
-
-  filterRow: {
-    position: 'absolute', top: 12, left: 12, right: 60,
-    flexDirection: 'row', flexWrap: 'wrap', gap: 6,
-  },
-  filterChip: {
-    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
-  },
-  filterChipActive: { backgroundColor: SV.primaryContainer, borderColor: SV.primaryContainer, ...neonShadow },
-  filterChipText: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 11, letterSpacing: 0.5 },
-  filterChipTextActive: { color: SV.onPrimaryContainer, fontWeight: '700' },
-
-  controls: {
-    position: 'absolute', right: 12, top: 12,
-    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
     overflow: 'hidden',
   },
-  controlBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  poiGlow: { ...StyleSheet.absoluteFillObject },
+  poiTag: {
+    marginTop: 5,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  poiTagTxt: { fontFamily: 'monospace', fontSize: 9, letterSpacing: 0.8, fontWeight: '700' },
 
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 30 },
+  // You Are Here
+  yah: { alignItems: 'center' },
+  yahRing: { position: 'absolute', width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(57,255,20,0.2)' },
+  yahDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: SV.primaryContainer, borderWidth: 2.5, borderColor: '#09090E', shadowColor: '#39ff14', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10 },
+  yahLabel: { marginTop: 5, backgroundColor: '#09090E', borderWidth: 1, borderColor: 'rgba(57,255,20,0.4)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 },
+  yahLabelTxt: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 8, letterSpacing: 1.5, fontWeight: '700' },
+
+  // ── Filters & controls ───────────────────────────────────────────────────
+  filterRow: {
+    position: 'absolute',
+    top: 10,
+    left: 10,
+    zIndex: 20,
+    flexDirection: 'row',
+    gap: 6,
+  },
+  chip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(14,14,22,0.88)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  chipActive: { backgroundColor: SV.primaryContainer, borderColor: SV.primaryContainer, ...neonShadow },
+  chipTxt: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 10, letterSpacing: 0.5 },
+  chipTxtActive: { color: '#000', fontWeight: '800' },
+
+  controls: {
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    zIndex: 20,
+    backgroundColor: 'rgba(14,14,22,0.9)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
+  },
+  ctrlBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  ctrlDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginHorizontal: 8 },
+
+  // ── Bottom sheet ─────────────────────────────────────────────────────────
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 30 },
 
   sheet: {
     position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 40,
-    backgroundColor: SV.surfaceContainerLow, borderTopWidth: 1, borderTopColor: SV.white10,
+    backgroundColor: '#101018',
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)',
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    padding: 20, paddingBottom: 36,
+    padding: 20, paddingBottom: 32,
   },
-  sheetHandle: { alignItems: 'center', marginBottom: 20 },
-  handleBar: { width: 40, height: 4, backgroundColor: SV.surfaceVariant, borderRadius: 2 },
-  sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  sheetLiveBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
-  sheetLiveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: SV.primaryContainer, shadowColor: '#39ff14', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 6 },
-  sheetLiveTxt: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 10, letterSpacing: 2 },
-  sheetStageName: { color: SV.onSurface, fontSize: 22, fontWeight: '800', textTransform: 'uppercase', letterSpacing: -0.5 },
-  sheetStageDesc: { color: SV.onSurfaceVariant, fontSize: 14, marginTop: 2 },
-  directionsBtn: {
-    width: 40, height: 40, borderRadius: 20, backgroundColor: SV.surfaceContainerHigh,
-    borderWidth: 1, borderColor: SV.outlineVariant, alignItems: 'center', justifyContent: 'center',
-  },
-  nowPlaying: {
-    backgroundColor: SV.deepCharcoal, borderRadius: 12, borderWidth: 1, borderColor: SV.outlineVariant,
-    padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center',
-  },
-  nowPlayingLabel: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1.5, marginBottom: 6, fontWeight: '700' },
-  nowPlayingArtist: { color: SV.onSurface, fontSize: 18, fontWeight: '700' },
-  nowPlayingTime: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, marginTop: 4 },
-  spinnerOuter: {
-    width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: SV.primaryContainer,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  sheetActions: { flexDirection: 'row', gap: 12 },
-  sheetBtnPrimary: {
-    flex: 1, backgroundColor: SV.primaryContainer, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 8, ...neonShadow,
-  },
-  sheetBtnPrimaryText: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 14, letterSpacing: 1.5 },
-  sheetBtnOutline: {
-    flex: 1, borderWidth: 1, borderColor: SV.primaryContainer, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 8, paddingVertical: 12, borderRadius: 8,
-  },
-  sheetBtnOutlineText: { color: SV.primaryContainer, fontWeight: '800', fontSize: 14, letterSpacing: 1.5 },
+  sheetHandle: { alignItems: 'center', marginBottom: 18 },
+  handleBar: { width: 36, height: 4, backgroundColor: SV.surfaceVariant, borderRadius: 2 },
 
-  fab: {
-    position: 'absolute', right: 20, bottom: 88,
-    width: 56, height: 56, borderRadius: 28, backgroundColor: SV.primaryContainer,
-    alignItems: 'center', justifyContent: 'center', zIndex: 50, ...neonShadow,
-  },
-  fabBadge: {
-    position: 'absolute', top: -4, right: -4, width: 20, height: 20, borderRadius: 10,
-    backgroundColor: SV.error, borderWidth: 2, borderColor: SV.background, alignItems: 'center', justifyContent: 'center',
-  },
-  fabBadgeText: { color: SV.onError, fontSize: 10, fontWeight: '700' },
+  sheetHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  liveTxt: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 10, letterSpacing: 2 },
+  stageName: { color: SV.onSurface, fontSize: 22, fontWeight: '800', textTransform: 'uppercase', letterSpacing: -0.5 },
+  stageDesc: { color: SV.onSurfaceVariant, fontSize: 13, marginTop: 2 },
+  dirBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: SV.surfaceContainerHigh, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', alignItems: 'center', justifyContent: 'center' },
+
+  nowPlaying: { backgroundColor: SV.deepCharcoal, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', padding: 14, marginBottom: 16, flexDirection: 'row', alignItems: 'center' },
+  npLabel: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1.5, marginBottom: 5, fontWeight: '700' },
+  npArtist: { color: SV.onSurface, fontSize: 17, fontWeight: '700' },
+  npTime: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, marginTop: 3 },
+  eqIcon: { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: SV.primaryContainer, alignItems: 'center', justifyContent: 'center' },
+
+  sheetActions: { flexDirection: 'row', gap: 12 },
+  btnPrimary: { flex: 1, backgroundColor: SV.primaryContainer, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 10, ...neonShadow },
+  btnPrimaryTxt: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 13, letterSpacing: 1.5 },
+  btnOutline: { flex: 1, borderWidth: 1.5, borderColor: SV.primaryContainer, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 13, borderRadius: 10 },
+  btnOutlineTxt: { color: SV.primaryContainer, fontWeight: '800', fontSize: 13, letterSpacing: 1.5 },
 });
