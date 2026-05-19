@@ -256,12 +256,12 @@ function Legend({ visible, onClose }: { visible: boolean; onClose: () => void })
       <View style={s.legendHeader}>
         <Text style={s.legendTitle}>LEGEND</Text>
         <TouchableOpacity onPress={onClose} hitSlop={10}>
-          <MaterialIcons name="close" size={16} color={SV.onSurfaceVariant} />
+          <MaterialIcons name="close" size={20} color={SV.onSurfaceVariant} />
         </TouchableOpacity>
       </View>
       {LEGEND_ITEMS.map(item => (
         <View key={item.label} style={s.legendRow}>
-          <MaterialIcons name={item.icon as any} size={14} color={item.color} />
+          <MaterialIcons name={item.icon as any} size={20} color={item.color} />
           <Text style={s.legendLabel}>{item.label}</Text>
         </View>
       ))}
@@ -410,7 +410,7 @@ export default function MapScreen() {
         {/* ── Legend toggle ── */}
         <View style={s.legendToggleWrap}>
           <TouchableOpacity style={s.legendToggleBtn} onPress={() => setLegendOpen(o => !o)}>
-            <MaterialIcons name="layers" size={16} color={legendOpen ? '#000' : SV.onSurface} />
+            <MaterialIcons name="layers" size={24} color={legendOpen ? '#000' : SV.onSurface} />
           </TouchableOpacity>
           <Legend visible={legendOpen} onClose={() => setLegendOpen(false)} />
         </View>
@@ -979,17 +979,17 @@ const s = StyleSheet.create({
   compassArrow: { width:1.5, height:10, backgroundColor:SV.primaryContainer, marginTop:-2 },
 
   // Legend
-  legendToggleWrap: { position:'absolute', left:10, bottom:14, zIndex:20 },
-  legendToggleBtn: { width:36, height:36, borderRadius:18, backgroundColor:'rgba(14,14,22,0.92)', borderWidth:1, borderColor:'rgba(255,255,255,0.12)', alignItems:'center', justifyContent:'center' },
+  legendToggleWrap: { position:'absolute', left:12, bottom:16, zIndex:20 },
+  legendToggleBtn: { width:50, height:50, borderRadius:25, backgroundColor:'rgba(14,14,22,0.95)', borderWidth:1.5, borderColor:'rgba(255,255,255,0.18)', alignItems:'center', justifyContent:'center' },
   legend: {
-    position:'absolute', bottom:44, left:0,
-    backgroundColor:'rgba(14,14,22,0.96)', borderRadius:12, borderWidth:1, borderColor:'rgba(255,255,255,0.1)',
-    padding:12, minWidth:150,
+    position:'absolute', bottom:62, left:0,
+    backgroundColor:'rgba(14,14,22,0.97)', borderRadius:14, borderWidth:1.5, borderColor:'rgba(255,255,255,0.14)',
+    padding:16, minWidth:190,
   },
-  legendHeader: { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:10 },
-  legendTitle: { color:SV.onSurface, fontFamily:'monospace', fontSize:10, letterSpacing:2, fontWeight:'700' },
-  legendRow: { flexDirection:'row', alignItems:'center', gap:8, marginBottom:7 },
-  legendLabel: { color:SV.onSurfaceVariant, fontFamily:'monospace', fontSize:10, letterSpacing:0.5 },
+  legendHeader: { flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom:14 },
+  legendTitle: { color:SV.onSurface, fontFamily:'monospace', fontSize:13, letterSpacing:2, fontWeight:'700' },
+  legendRow: { flexDirection:'row', alignItems:'center', gap:12, marginBottom:11 },
+  legendLabel: { color:SV.onSurfaceVariant, fontFamily:'monospace', fontSize:13, letterSpacing:0.5 },
 
   // Scale bar
   scalebar: { position:'absolute', right:10, bottom:16, zIndex:20, alignItems:'center' },
