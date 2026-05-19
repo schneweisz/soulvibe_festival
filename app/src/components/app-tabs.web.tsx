@@ -13,6 +13,13 @@ const NAV_ITEMS = [
   { name: 'info', href: '/info' as const, label: 'INFO', icon: 'info' },
 ] as const;
 
+const HIDDEN_ITEMS = [
+  { name: 'profile', href: '/profile' as const },
+  { name: 'cart', href: '/cart' as const },
+  { name: 'wallet', href: '/wallet' as const },
+  { name: 'explore', href: '/explore' as const },
+] as const;
+
 export default function AppTabs() {
   return (
     <Tabs>
@@ -24,6 +31,14 @@ export default function AppTabs() {
             <TabTrigger key={item.name} name={item.name} href={item.href} asChild>
               <NavButton icon={item.icon} label={item.label} />
             </TabTrigger>
+          ))}
+          {HIDDEN_ITEMS.map(item => (
+            <TabTrigger
+              key={item.name}
+              name={item.name}
+              href={item.href}
+              style={styles.hiddenTab}
+            />
           ))}
         </WebNavBar>
       </TabList>
@@ -113,4 +128,5 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   pressed: { opacity: 0.75 },
+  hiddenTab: { display: 'none' },
 });

@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Image,
   ScrollView,
@@ -12,13 +12,17 @@ import {
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
 
+type Lang = 'hu' | 'en';
+
 const MY_LINEUP = [
-  { time: '22:00', day: 'FRI', artist: 'Charlotte de Witte', stage: 'MAIN_GRID STAGE' },
-  { time: '01:30', day: 'SAT', artist: 'Amelie Lens', stage: 'VOID CHAMBER' },
-  { time: '03:00', day: 'SAT', artist: 'I Hate Models', stage: 'VOID CHAMBER' },
+  { time: '22:00', day: 'FRI', artist: 'Charlotte de Witte', stage: 'THE GRID' },
+  { time: '01:30', day: 'SAT', artist: 'Amelie Lens', stage: 'THE GRID' },
+  { time: '03:00', day: 'SAT', artist: 'I Hate Models', stage: 'THE GRID' },
 ];
 
 export default function ProfileScreen() {
+  const [lang, setLang] = useState<Lang>('hu');
+
   return (
     <View style={styles.root}>
       <ScreenHeader showBack />
@@ -43,17 +47,57 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Language Selector */}
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>
+              {lang === 'hu' ? 'ALKALMAZAS NYELVE' : 'APP LANGUAGE'}
+            </Text>
+            <MaterialIcons name="translate" size={20} color={SV.onSurfaceVariant} />
+          </View>
+          <View style={styles.langRow}>
+            <TouchableOpacity
+              style={[styles.langBtn, lang === 'hu' && styles.langBtnActive]}
+              onPress={() => setLang('hu')}
+              activeOpacity={0.75}>
+              <Text style={styles.langBtnFlag}>HU</Text>
+              <Text style={[styles.langBtnLabel, lang === 'hu' && styles.langBtnLabelActive]}>
+                Magyar
+              </Text>
+              {lang === 'hu' && (
+                <MaterialIcons name="check" size={16} color={SV.primaryContainer} />
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.langBtn, lang === 'en' && styles.langBtnActive]}
+              onPress={() => setLang('en')}
+              activeOpacity={0.75}>
+              <Text style={styles.langBtnFlag}>EN</Text>
+              <Text style={[styles.langBtnLabel, lang === 'en' && styles.langBtnLabelActive]}>
+                English
+              </Text>
+              {lang === 'en' && (
+                <MaterialIcons name="check" size={16} color={SV.primaryContainer} />
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Active Pass */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>ACTIVE PASS</Text>
+            <Text style={styles.cardTitle}>
+              {lang === 'hu' ? 'AKTIV BERLET' : 'ACTIVE PASS'}
+            </Text>
             <MaterialIcons name="confirmation-number" size={20} color={SV.primaryContainer} />
           </View>
           <View style={styles.ticketBox}>
             <View style={styles.ticketGlow} />
             <View style={styles.ticketHeader}>
               <View>
-                <Text style={styles.ticketName}>VIP WEEKEND</Text>
+                <Text style={styles.ticketName}>
+                  {lang === 'hu' ? 'VIP HETVEGE' : 'VIP WEEKEND'}
+                </Text>
                 <Text style={styles.ticketId}>ID: SV26-8842-XQ</Text>
               </View>
               <View style={styles.liveBadge}>
@@ -63,7 +107,9 @@ export default function ProfileScreen() {
             </View>
             <View style={styles.ticketActions}>
               <TouchableOpacity style={styles.showQrBtn}>
-                <Text style={styles.showQrText}>SHOW QR</Text>
+                <Text style={styles.showQrText}>
+                  {lang === 'hu' ? 'QR MEGMUTATASA' : 'SHOW QR'}
+                </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.shareBtn}>
                 <MaterialIcons name="share" size={18} color={SV.primaryContainer} />
@@ -74,7 +120,9 @@ export default function ProfileScreen() {
 
         {/* Pulse Points */}
         <View style={styles.card}>
-          <Text style={styles.pulseLabel}>Pulse Points</Text>
+          <Text style={styles.pulseLabel}>
+            {lang === 'hu' ? 'Pulse Pontok' : 'Pulse Points'}
+          </Text>
           <View style={styles.pulseRow}>
             <Text style={styles.pulseValue}>4,250</Text>
             <Text style={styles.pulsePts}>PTS</Text>
@@ -83,15 +131,21 @@ export default function ProfileScreen() {
             <View style={styles.progressFill} />
           </View>
           <View style={styles.progressLabels}>
-            <Text style={styles.progressLabel}>Lvl 3: RAIDER</Text>
-            <Text style={styles.progressLabel}>750 to Lvl 4</Text>
+            <Text style={styles.progressLabel}>
+              {lang === 'hu' ? '3. Szint: RAIDER' : 'Lvl 3: RAIDER'}
+            </Text>
+            <Text style={styles.progressLabel}>
+              {lang === 'hu' ? '750 a 4. szintig' : '750 to Lvl 4'}
+            </Text>
           </View>
         </View>
 
         {/* Wallet */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>WALLET BALANCE</Text>
+            <Text style={styles.cardTitle}>
+              {lang === 'hu' ? 'KARSZALAG EGYENLEG' : 'WALLET BALANCE'}
+            </Text>
             <MaterialIcons name="account-balance-wallet" size={20} color={SV.primaryContainer} />
           </View>
           <View style={styles.walletRow}>
@@ -100,7 +154,9 @@ export default function ProfileScreen() {
               <Text style={styles.walletCurrency}>HUF</Text>
             </View>
             <TouchableOpacity style={styles.topUpBtn} onPress={() => router.push('/wallet')}>
-              <Text style={styles.topUpText}>TOP UP BALANCE</Text>
+              <Text style={styles.topUpText}>
+                {lang === 'hu' ? 'FELTOLTES' : 'TOP UP'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -108,7 +164,9 @@ export default function ProfileScreen() {
         {/* My Lineup */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>MY LINEUP</Text>
+            <Text style={styles.cardTitle}>
+              {lang === 'hu' ? 'SAJÁT PROGRAMOM' : 'MY LINEUP'}
+            </Text>
             <MaterialIcons name="favorite" size={20} color={SV.secondaryFixedDim} />
           </View>
           {MY_LINEUP.map(set => (
@@ -130,7 +188,9 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           ))}
           <TouchableOpacity style={styles.viewScheduleBtn} onPress={() => router.push('/lineup')}>
-            <Text style={styles.viewScheduleText}>VIEW FULL SCHEDULE</Text>
+            <Text style={styles.viewScheduleText}>
+              {lang === 'hu' ? 'TELJES PROGRAM' : 'VIEW FULL SCHEDULE'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -144,13 +204,6 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: SV.background },
-
-  header: {
-    height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, backgroundColor: SV.surfaceGlass,
-    borderBottomWidth: 1, borderBottomColor: SV.white10, ...neonShadow,
-  },
-  headerTitle: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 17, fontWeight: '800', letterSpacing: -0.5, textTransform: 'uppercase' },
 
   scroll: { flex: 1 },
 
@@ -174,6 +227,18 @@ const styles = StyleSheet.create({
   },
   cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottomWidth: 1, borderBottomColor: SV.surfaceVariant, paddingBottom: 8 },
   cardTitle: { color: SV.onSurface, fontWeight: '700', fontSize: 14, letterSpacing: 1.5, textTransform: 'uppercase' },
+
+  // Language selector
+  langRow: { flexDirection: 'row', gap: 10 },
+  langBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: SV.surfaceContainerHigh, borderWidth: 1, borderColor: SV.outlineVariant,
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10,
+  },
+  langBtnActive: { borderColor: SV.primaryContainer, backgroundColor: SV.surfaceContainerHighest },
+  langBtnFlag: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 13, fontWeight: '700' },
+  langBtnLabel: { flex: 1, color: SV.onSurfaceVariant, fontSize: 13 },
+  langBtnLabelActive: { color: SV.onSurface, fontWeight: '700' },
 
   ticketBox: {
     backgroundColor: SV.surfaceContainerHighest, borderRadius: 10, padding: 14,
@@ -204,17 +269,10 @@ const styles = StyleSheet.create({
   walletAmountRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   walletAmount: { color: SV.primaryContainer, fontSize: 36, fontWeight: '900', textShadowColor: 'rgba(57,255,20,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
   walletCurrency: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 14, fontWeight: '700' },
-  topUpBtn: {
-    backgroundColor: 'rgba(57,255,20,0.15)', borderWidth: 1, borderColor: SV.primaryContainer,
-    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
-  },
+  topUpBtn: { backgroundColor: 'rgba(57,255,20,0.15)', borderWidth: 1, borderColor: SV.primaryContainer, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   topUpText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1 },
 
-  setRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    backgroundColor: SV.surfaceContainerLow, borderRadius: 8, borderWidth: 1, borderColor: 'transparent',
-    padding: 10, marginBottom: 8,
-  },
+  setRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: SV.surfaceContainerLow, borderRadius: 8, borderWidth: 1, borderColor: 'transparent', padding: 10, marginBottom: 8 },
   setTime: { width: 52, paddingRight: 12, borderRightWidth: 1, borderRightColor: SV.surfaceVariant },
   setTimeText: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 13, letterSpacing: 0.5 },
   setDay: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, marginTop: 2 },
@@ -222,19 +280,6 @@ const styles = StyleSheet.create({
   setArtist: { color: SV.onSurface, fontSize: 15, fontWeight: '700', textTransform: 'uppercase' },
   setStageRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 3 },
   setStage: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11 },
-  viewScheduleBtn: {
-    marginTop: 8, paddingVertical: 10, borderWidth: 1, borderColor: SV.surfaceVariant, borderRadius: 4, alignItems: 'center',
-  },
+  viewScheduleBtn: { marginTop: 8, paddingVertical: 10, borderWidth: 1, borderColor: SV.surfaceVariant, borderRadius: 4, alignItems: 'center' },
   viewScheduleText: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
-
-  fab: {
-    position: 'absolute', right: 20, bottom: 24,
-    width: 56, height: 56, borderRadius: 28, backgroundColor: SV.primaryContainer,
-    alignItems: 'center', justifyContent: 'center', ...neonShadow,
-  },
-  fabBadge: {
-    position: 'absolute', top: -4, right: -4, width: 20, height: 20, borderRadius: 10,
-    backgroundColor: SV.error, borderWidth: 2, borderColor: SV.background, alignItems: 'center', justifyContent: 'center',
-  },
-  fabBadgeText: { color: SV.onError, fontSize: 10, fontWeight: '700' },
 });

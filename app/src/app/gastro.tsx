@@ -1,8 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
-  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -12,130 +10,171 @@ import {
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
 
-type Filter = 'ALL EATS' | 'STREET FOOD' | 'DRINKS' | 'VEGAN' | 'GLUTEN-FREE' | 'DAIRY-FREE';
-
-interface Stall {
+interface MenuItem {
   id: string;
   name: string;
-  price: string;
   desc: string;
-  tags: string[];
-  featured: string;
-  type: ('food' | 'drink')[];
-  vegan?: boolean;
-  gf?: boolean;
-  df?: boolean;
-  image: string;
-  hot?: boolean;
+  price: number;
 }
 
-const STALLS: Stall[] = [
+interface Vendor {
+  id: string;
+  name: string;
+  badge: string;
+  desc: string;
+  accentColor: string;
+  icon: string;
+  items: MenuItem[];
+}
+
+const VENDORS: Vendor[] = [
   {
-    id: 'trapgrill', name: 'TrapGrill', price: '$$$', type: ['food'],
-    desc: 'Heavy-hitting smash burgers and loaded fries. The ultimate post-rave fuel station.',
-    tags: ['GF OPTION'], featured: '808 Smash Burger', gf: true, hot: true,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDMbBvRWe6vd2cWBpuEvMAmXeL4yuMRR-L6A3sknt57mXp60xlPuf0Aid8L-3SlEijitK2OXH7Nbmmy8KW5rnxMIXUHAUiLtpDDXStQ2mqjyHgsveLx4FF3ahm16otNbZfazgpzw-hsh_v3_Ob1imYe2so1KO7k8ck1dNx5EWwYX1ELECB9VQri1cnkJoe--57moY0YeP8sMynBNhWSp2tW7-xd8FusDc2RWppvuEsYFS3Ly-JxzjKIiZ9n_aisSWAyHxoItW3GTUja',
+    id: 'trapgrill',
+    name: 'TrapGrill',
+    badge: 'GRILL & MEAT',
+    desc: 'Juicy street-food smash burgers and loaded energy-boosters.',
+    accentColor: SV.primaryContainer,
+    icon: 'outdoor-grill',
+    items: [
+      { id: 'tg1', name: '808 Smash Burger', desc: 'Double patty, cheddar, secret hot BBQ sauce', price: 4100 },
+      { id: 'tg2', name: 'Moshpit Fries', desc: 'French fries, warm cheddar sauce, pulled pork', price: 2400 },
+      { id: 'tg3', name: "Lil' Spicy Wings", desc: 'Hot, sticky-glazed crispy chicken wings', price: 2900 },
+    ],
   },
   {
-    id: 'wiredpizza', name: 'Wired Pizza', price: '$$', type: ['food'],
-    desc: 'Wood-fired slices with controversial, high-energy toppings. Fast and chaotic.',
-    tags: ['VEGAN OPTION'], featured: 'Hi-Hat Pepperoni', vegan: true,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDZN6G2TtWe2kFVeyAx60VIJGuyXzmpkSwzQguaLznw08xNryEgxhmhY3zE0Jct5pjoIrFd_6N20S74ywFDIszevmK8-kosgfTibWIkZSI2Kd_j80kwFLyqB4ZdciBT5o6uQE-uvtWWLPIG9LKv_fttQGR3nwUEC7_1_oi4HZ5aDmpQWbYMV-04awYI-_ldG4dphISnYeen_JrLS1Vztv1vuXKbh6JiwFVP3mZDDw3WsA09_QGtSCwK7PLi8RDKES8prLV3P3QmSDGo',
+    id: 'wiredpizza',
+    name: 'Wired Pizza',
+    badge: 'PIZZA CORNER',
+    desc: 'Authentic, thin-crust Neapolitan pizza slices.',
+    accentColor: SV.secondaryContainer,
+    icon: 'local-pizza',
+    items: [
+      { id: 'wp1', name: 'Hi-Hat Pepperoni', desc: 'Spicy Italian salami, mozzarella, chili oil', price: 1800 },
+      { id: 'wp2', name: 'Synth-Veggie', desc: 'Goat cheese, cherry tomatoes, fresh basil', price: 1700 },
+      { id: 'wp3', name: 'Bassline BBQ', desc: 'Spicy ground beef, red onion, smoky BBQ', price: 1900 },
+    ],
   },
   {
-    id: 'munchies', name: 'Munchies Spot', price: '$', type: ['food'],
-    desc: 'Loaded fries, mac & cheese bites, and pure carb energy. 100% plant-based.',
-    tags: ['100% VEGAN', 'GF'], featured: 'Techno Truffle Fries', vegan: true, gf: true,
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBsv1FSFOE3Fy7ywyG26gFO7dyZhxrJiravwnwdB-htfJxDdUBOr0quTck0HZAlgO31e1byb_tZnqkc2Yg9XkkUjvM5yrQHqOg739lnE6qS7CUY7SxSgZUHpBCbGV5sRlYzusqVKeXyJdL29V3ISL550JCs8hX0OJIadZ8i4etZ2I02e1iuOf3Rzb14nZcMhtOa-X_gyyzszR74tYvtuCzV1bWoFZncDoJ4eDfz-mjGVq2IpuICL4YEg5bdZmZVDa6PWRrqGSxhzSSq',
+    id: 'loopbar',
+    name: 'The Loop Bar',
+    badge: 'DRINKS & SHOTS',
+    desc: 'Glowing neon cocktails and quick shots for a non-stop night.',
+    accentColor: SV.tertiaryContainer,
+    icon: 'local-bar',
+    items: [
+      { id: 'lb1', name: 'Acid Lemonade', desc: 'Neon-green gin-tonic with green apple & lime', price: 2900 },
+      { id: 'lb2', name: 'Reverb Rum', desc: 'Spiced dark rum, ginger beer, lime juice & ice', price: 3100 },
+      { id: 'lb3', name: 'Sub-Bass Shot', desc: 'Electric purple blueberry gin shooter', price: 1500 },
+    ],
   },
   {
-    id: 'loopbar', name: 'The Loop Bar', price: '$$', type: ['drink'],
-    desc: 'Industrial-strength cocktails and hydration stations. Keep the loop running.',
-    tags: ['DRINKS'], featured: 'BPM Vodka Redbull',
-    image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuByoUx75ycGDpCbcJ4H_wcQJavwWTD1oIHpHsSmYFSyj_u6p2VuSaLXIwBM_0vo-81d3hnVklvbjI4NsMvlOfdjqXfy7neTeSEKf3gKHLpJW9O5uFwKnvevMZb2btdawRYDC51iwmlS22ldPZJTWUO5XakeXUX8crdwhCJ4dW7DbvjN-KwVfhW5--3Wb5bx2t0pgZD7i8D9dezemgE47lhYR8mz7ShpP5SkHYaWhFrLJgvKu9LBWEkPogyIZLa5Hk_xzagx_cprjY54',
+    id: 'munchies',
+    name: 'Munchies Spot',
+    badge: 'SWEETS & CRAVES',
+    desc: 'Sweet delights and rich desserts for early morning cravings.',
+    accentColor: SV.primaryFixed,
+    icon: 'cake',
+    items: [
+      { id: 'ms1', name: 'Liquid Gold Gofri', desc: 'Warm waffle, salted caramel, crushed hazelnuts, whipped cream', price: 1950 },
+      { id: 'ms2', name: 'Melted Drop Palacsinta', desc: 'Huge crepe stuffed with Nutella, banana slices & powdered sugar', price: 1650 },
+    ],
   },
 ];
 
-const FILTER_ICONS: Record<Filter, string> = {
-  'ALL EATS': 'restaurant',
-  'STREET FOOD': 'local-pizza',
-  'DRINKS': 'local-bar',
-  'VEGAN': 'eco',
-  'GLUTEN-FREE': 'spa',
-  'DAIRY-FREE': 'water-drop',
-};
+type CartState = Record<string, number>;
 
 export default function GastroScreen() {
-  const [filter, setFilter] = useState<Filter>('ALL EATS');
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const [cart, setCart] = useState<CartState>({});
 
-  const addToCart = (id: string) => setCart(c => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
+  const add = (id: string) => setCart(c => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
+  const remove = (id: string) =>
+    setCart(c => {
+      const next = { ...c };
+      if ((next[id] ?? 0) <= 1) delete next[id];
+      else next[id]--;
+      return next;
+    });
+
   const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
-
-  const filtered = STALLS.filter(s => {
-    if (filter === 'ALL EATS') return true;
-    if (filter === 'STREET FOOD') return s.type.includes('food');
-    if (filter === 'DRINKS') return s.type.includes('drink');
-    if (filter === 'VEGAN') return s.vegan;
-    if (filter === 'GLUTEN-FREE') return s.gf;
-    if (filter === 'DAIRY-FREE') return s.df;
-    return true;
-  });
 
   return (
     <View style={styles.root}>
       <ScreenHeader />
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Title */}
-        <View style={styles.titleBlock}>
-          <Text style={styles.pageTitle}>GASTRO</Text>
-          <Text style={styles.pageSubtitle}>Fuel up. High-octane street food and craft drinks to keep the pulse going.</Text>
+        {/* Page header */}
+        <View style={styles.pageHeader}>
+          <Text style={styles.pageTitle}>GOURMET FUEL</Text>
+          <Text style={styles.pageSubtitle}>
+            High-octane street food and craft drinks to keep the pulse going.
+          </Text>
         </View>
 
-        {/* Filter Chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterScroll} contentContainerStyle={styles.filterContent}>
-          {(Object.keys(FILTER_ICONS) as Filter[]).map(f => (
-            <TouchableOpacity key={f} onPress={() => setFilter(f)} style={[styles.filterChip, f === filter && styles.filterChipActive]}>
-              <MaterialIcons name={FILTER_ICONS[f] as any} size={14} color={f === filter ? SV.onPrimaryFixed : SV.onSurface} />
-              <Text style={[styles.filterText, f === filter && styles.filterTextActive]}>{f}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+        {/* Vendor sections */}
+        {VENDORS.map(vendor => (
+          <View key={vendor.id} style={styles.vendorSection}>
+            {/* Vendor header */}
+            <View style={styles.vendorHeader}>
+              <View style={styles.vendorNameRow}>
+                <MaterialIcons
+                  name={vendor.icon as any}
+                  size={18}
+                  color={vendor.accentColor}
+                />
+                <Text style={styles.vendorName}>{vendor.name}</Text>
+              </View>
+              <View style={[styles.badge, { borderColor: vendor.accentColor }]}>
+                <Text style={[styles.badgeText, { color: vendor.accentColor }]}>
+                  {vendor.badge}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.vendorDesc}>{vendor.desc}</Text>
 
-        {/* Stall Cards */}
-        {filtered.map(stall => (
-          <View key={stall.id} style={styles.stallCard}>
-            <View style={styles.stallImageWrap}>
-              <Image source={{ uri: stall.image }} style={styles.stallImage} />
-              {stall.hot && (
-                <View style={styles.hotBadge}>
-                  <View style={styles.hotDot} />
-                  <Text style={styles.hotText}>HIGH DEMAND</Text>
+            {/* Menu item cards */}
+            {vendor.items.map(item => {
+              const qty = cart[item.id] ?? 0;
+              return (
+                <View key={item.id} style={styles.menuCard}>
+                  <View style={styles.menuCardRow}>
+                    <View style={styles.menuItemInfo}>
+                      <Text style={styles.menuItemName}>{item.name}</Text>
+                      <Text style={styles.menuItemDesc} numberOfLines={2}>
+                        {item.desc}
+                      </Text>
+                      <Text style={[styles.menuItemPrice, { color: vendor.accentColor }]}>
+                        {item.price.toLocaleString('hu-HU')} Ft
+                      </Text>
+                    </View>
+
+                    {qty === 0 ? (
+                      <TouchableOpacity
+                        style={[styles.getBtn, { backgroundColor: vendor.accentColor }]}
+                        onPress={() => add(item.id)}
+                        hitSlop={6}>
+                        <Text style={styles.getBtnText}>+ Get</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.stepper}>
+                        <TouchableOpacity
+                          style={[styles.stepBtn, { borderColor: vendor.accentColor }]}
+                          onPress={() => remove(item.id)}
+                          hitSlop={6}>
+                          <MaterialIcons name="remove" size={14} color={vendor.accentColor} />
+                        </TouchableOpacity>
+                        <Text style={[styles.stepQty, { color: vendor.accentColor }]}>{qty}</Text>
+                        <TouchableOpacity
+                          style={[styles.stepBtn, { backgroundColor: vendor.accentColor }]}
+                          onPress={() => add(item.id)}
+                          hitSlop={6}>
+                          <MaterialIcons name="add" size={14} color="#000" />
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                  </View>
                 </View>
-              )}
-            </View>
-            <View style={styles.stallBody}>
-              <View style={styles.stallTitleRow}>
-                <Text style={styles.stallName}>{stall.name}</Text>
-                <Text style={styles.stallPrice}>{stall.price}</Text>
-              </View>
-              <Text style={styles.stallDesc}>{stall.desc}</Text>
-              <View style={styles.tagRow}>
-                {stall.tags.map(t => (
-                  <View key={t} style={styles.tag}><Text style={styles.tagText}>{t}</Text></View>
-                ))}
-              </View>
-              <View style={styles.featuredRow}>
-                <Text style={styles.featuredLabel}>FEATURED DROP</Text>
-                <View style={styles.featuredItem}>
-                  <Text style={styles.featuredItemName}>{stall.featured}</Text>
-                </View>
-              </View>
-              <TouchableOpacity style={styles.addBtn} onPress={() => addToCart(stall.id)}>
-                <Text style={styles.addBtnText}>ADD TO CART</Text>
-              </TouchableOpacity>
-            </View>
+              );
+            })}
           </View>
         ))}
 
@@ -148,78 +187,138 @@ export default function GastroScreen() {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: SV.background },
-
-  header: {
-    height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, backgroundColor: SV.surfaceGlass,
-    borderBottomWidth: 1, borderBottomColor: SV.white10, ...neonShadow,
-  },
-  headerTitle: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 17, fontWeight: '800', letterSpacing: -0.5, textTransform: 'uppercase' },
-
+  root: { flex: 1, backgroundColor: '#07070c' },
   scroll: { flex: 1 },
 
-  titleBlock: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8 },
-  pageTitle: { color: SV.onSurface, fontSize: 36, fontWeight: '900', letterSpacing: -1, textTransform: 'uppercase' },
-  pageSubtitle: { color: SV.onSurfaceVariant, fontSize: 16, lineHeight: 24, marginTop: 6, maxWidth: 320 },
+  // ── Page header ────────────────────────────────────────────────────────────
+  pageHeader: {
+    paddingHorizontal: 20,
+    paddingTop: 24,
+    paddingBottom: 16,
+  },
+  pageTitle: {
+    color: SV.onSurface,
+    fontSize: 28,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+    textTransform: 'uppercase',
+  },
+  pageSubtitle: {
+    color: SV.onSurfaceVariant,
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 4,
+  },
 
-  filterScroll: { maxHeight: 56 },
-  filterContent: { paddingHorizontal: 20, gap: 8, alignItems: 'center', paddingVertical: 8 },
-  filterChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: SV.surfaceContainerHigh, borderWidth: 1, borderColor: SV.outlineVariant,
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+  // ── Vendor section ─────────────────────────────────────────────────────────
+  vendorSection: {
+    marginHorizontal: 16,
+    marginBottom: 28,
   },
-  filterChipActive: { backgroundColor: SV.primaryContainer, borderColor: SV.primaryContainer, ...neonShadow },
-  filterText: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 11, letterSpacing: 0.8 },
-  filterTextActive: { color: SV.onPrimaryFixed, fontWeight: '700' },
 
-  stallCard: {
-    marginHorizontal: 20, marginBottom: 16, borderRadius: 12, overflow: 'hidden',
-    backgroundColor: 'rgba(18,18,18,0.85)', borderTopWidth: 1, borderLeftWidth: 1, borderColor: SV.white10,
+  vendorHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 6,
   },
-  stallImageWrap: { height: 180, backgroundColor: SV.surfaceContainerHigh, position: 'relative' },
-  stallImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  hotBadge: {
-    position: 'absolute', top: 12, left: 12,
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(57,255,20,0.2)', borderWidth: 1, borderColor: SV.primaryContainer,
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
+  vendorNameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  hotDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: SV.primaryContainer },
-  hotText: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1 },
+  vendorName: {
+    color: SV.onSurface,
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+  },
+  badge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 20,
+    borderWidth: 1,
+    backgroundColor: 'transparent',
+  },
+  badgeText: {
+    fontFamily: 'monospace',
+    fontSize: 9,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+  },
+  vendorDesc: {
+    color: SV.onSurfaceVariant,
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 14,
+  },
 
-  stallBody: { padding: 16 },
-  stallTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  stallName: { color: SV.onSurface, fontSize: 18, fontWeight: '700', textTransform: 'uppercase' },
-  stallPrice: { color: SV.onSurfaceVariant, fontSize: 14 },
-  stallDesc: { color: SV.onSurfaceVariant, fontSize: 14, lineHeight: 20, marginBottom: 10 },
-  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 },
-  tag: {
-    backgroundColor: SV.surfaceContainerHigh, borderWidth: 1, borderColor: SV.outlineVariant,
-    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 12,
+  // ── Menu item card ─────────────────────────────────────────────────────────
+  menuCard: {
+    backgroundColor: '#0e0e18',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    padding: 14,
+    marginBottom: 10,
   },
-  tagText: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 10, letterSpacing: 0.8 },
+  menuCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  menuItemInfo: { flex: 1 },
+  menuItemName: {
+    color: SV.onSurface,
+    fontSize: 15,
+    fontWeight: '700',
+    marginBottom: 3,
+  },
+  menuItemDesc: {
+    color: SV.onSurfaceVariant,
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 6,
+  },
+  menuItemPrice: {
+    fontFamily: 'monospace',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
 
-  featuredRow: { borderTopWidth: 1, borderTopColor: SV.outlineVariant, borderStyle: 'dashed', paddingTop: 10, marginBottom: 12 },
-  featuredLabel: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1.5, marginBottom: 6 },
-  featuredItem: { backgroundColor: SV.surfaceContainer, padding: 10, borderRadius: 8 },
-  featuredItemName: { color: SV.onSurface, fontSize: 15, fontWeight: '700' },
-
-  addBtn: {
-    backgroundColor: SV.primaryContainer, paddingVertical: 12, borderRadius: 2, alignItems: 'center', ...neonShadow,
+  // ── Get button / stepper ───────────────────────────────────────────────────
+  getBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  addBtnText: { color: SV.onPrimaryFixed, fontWeight: '800', fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase' },
-
-  fab: {
-    position: 'absolute', right: 20, bottom: 88,
-    width: 56, height: 56, borderRadius: 28, backgroundColor: SV.primaryContainer,
-    alignItems: 'center', justifyContent: 'center', ...neonShadow,
+  getBtnText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
-  fabBadge: {
-    position: 'absolute', top: -4, right: -4, width: 20, height: 20, borderRadius: 10,
-    backgroundColor: SV.secondaryContainer, borderWidth: 2, borderColor: SV.deepCharcoal,
-    alignItems: 'center', justifyContent: 'center',
+  stepper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
-  fabBadgeText: { color: SV.onPrimaryFixed, fontSize: 10, fontWeight: '700' },
+  stepBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 8,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  stepQty: {
+    fontFamily: 'monospace',
+    fontSize: 14,
+    fontWeight: '800',
+    minWidth: 18,
+    textAlign: 'center',
+  },
 });
