@@ -122,9 +122,9 @@ const styles = StyleSheet.create({
   title: {
     color: SV.primaryFixedDim,
     fontFamily: 'monospace',
-    fontSize: 16,
+    fontSize: 25,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 2,
     textTransform: 'uppercase',
     textShadowColor: 'rgba(42,229,0,0.3)',
     textShadowOffset: { width: 0, height: 0 },

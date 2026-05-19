@@ -122,8 +122,10 @@ function YouAreHere() {
   }, []);
   return (
     <View style={s.yah}>
-      <RNAnimated.View style={[s.yahRing, { transform: [{ scale: pulse }] }]} />
-      <View style={s.yahDot} />
+      <View style={s.yahCenter}>
+        <RNAnimated.View style={[s.yahRing, { transform: [{ scale: pulse }] }]} />
+        <View style={s.yahDot} />
+      </View>
       <View style={s.yahLabel}>
         <Text style={s.yahLabelTxt}>YOU</Text>
       </View>
@@ -623,6 +625,7 @@ const s = StyleSheet.create({
 
   // You Are Here
   yah: { alignItems: 'center' },
+  yahCenter: { alignItems: 'center', justifyContent: 'center' },
   yahRing: { position: 'absolute', width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(57,255,20,0.2)' },
   yahDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: SV.primaryContainer, borderWidth: 2.5, borderColor: '#09090E', shadowColor: '#39ff14', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 10 },
   yahLabel: { marginTop: 5, backgroundColor: '#09090E', borderWidth: 1, borderColor: 'rgba(57,255,20,0.4)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 10 },
