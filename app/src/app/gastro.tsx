@@ -172,11 +172,11 @@ const VENDORS: Vendor[] = [
   },
 ];
 
-type CartState = Record<string, number>;
+import { useCart } from '@/context/CartContext';
 
 export default function GastroScreen() {
   const { lang } = useLanguage();
-  const [cart, setCart] = useState<CartState>({});
+  const { items: cartItems, addToCart, removeFromCart, cartCount } = useCart();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -184,16 +184,18 @@ export default function GastroScreen() {
     return () => clearTimeout(t);
   }, []);
 
-  const add = (id: string) => setCart(c => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
-  const remove = (id: string) =>
-    setCart(c => {
-      const next = { ...c };
-      if ((next[id] ?? 0) <= 1) delete next[id];
-      else next[id]--;
-      return next;
+  const add = (item: MenuItem) => {
+    addToCart({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      image: item.image,
     });
+  };
 
-  const cartCount = Object.values(cart).reduce((a, b) => a + b, 0);
+  const remove = (id: string) => {
+    removeFromCart(id);
+  };
 
   return (
     <View style={styles.root}>
@@ -242,7 +244,7 @@ export default function GastroScreen() {
 
             {/* Menu item cards */}
             {vendor.items.map(item => {
-              const qty = cart[item.id] ?? 0;
+              const qty = cartItems.find(i => i.id === item.id)?.qty ?? 0;
               return (
                 <View key={item.id} style={styles.menuCard}>
                   <View style={styles.menuCardRow}>
@@ -265,7 +267,7 @@ export default function GastroScreen() {
                     {qty === 0 ? (
                       <TouchableOpacity
                         style={[styles.getBtn, { backgroundColor: vendor.accentColor }]}
-                        onPress={() => add(item.id)}
+                        onPress={() => add(item)}
                         hitSlop={6}>
                         <Text style={styles.getBtnText}>
                           {lang === 'hu' ? '+ Kérem' : '+ Get'}
@@ -282,7 +284,7 @@ export default function GastroScreen() {
                         <Text style={[styles.stepQty, { color: vendor.accentColor }]}>{qty}</Text>
                         <TouchableOpacity
                           style={[styles.stepBtn, { backgroundColor: vendor.accentColor }]}
-                          onPress={() => add(item.id)}
+                          onPress={() => add(item)}
                           hitSlop={6}>
                           <MaterialIcons name="add" size={14} color="#000" />
                         </TouchableOpacity>
@@ -299,7 +301,7 @@ export default function GastroScreen() {
 
       </ScrollView>
 
-      <CartFAB count={cartCount + 2} />
+      <CartFAB count={cartCount} />
     </View>
   );
 }

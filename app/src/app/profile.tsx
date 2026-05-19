@@ -28,7 +28,7 @@ export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<{ balance: number; points: number, ticket: string } | null>(null);
+  const [profile, setProfile] = useState<{ balance: number } | null>(null);
 
   // Check auth and fetch profile every time the screen is focused
   useFocusEffect(
@@ -47,10 +47,10 @@ export default function ProfileScreen() {
               return;
             }
 
-            // Fetch extra data from 'users' table
+            // Fetch extra data from 'profiles' table
             const { data, error } = await supabase
-              .from('users')
-              .select('balance, points, ticket')
+              .from('profiles')
+              .select('balance')
               .eq('id', currentSession.user.id)
               .single();
             
@@ -295,7 +295,7 @@ export default function ProfileScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <CartFAB count={2} />
+      <CartFAB />
     </View>
   );
 }

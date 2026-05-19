@@ -253,7 +253,7 @@ export default function LineupScreen() {
         <View style={{ height: 120 }} />
       </ScrollView>
 
-      <CartFAB count={2} />
+      <CartFAB />
     </View>
   );
 }

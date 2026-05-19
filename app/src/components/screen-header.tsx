@@ -5,6 +5,7 @@ import { Animated, Image, Platform, Pressable, StyleSheet, Text, View } from 're
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SV, neonShadow } from '@/constants/theme';
 import { useMenu } from '@/components/menu-drawer';
+import { useCart } from '@/context/CartContext';
 
 interface ScreenHeaderProps {
   /** True to show a ← back button instead of the hamburger menu */
@@ -80,7 +81,9 @@ export function ScreenHeader({ showBack, cartCount, rightIcon }: ScreenHeaderPro
 }
 
 /** Floating cart FAB — place as absolute child near the bottom of each screen */
-export function CartFAB({ count = 2 }: { count?: number }) {
+export function CartFAB({ count }: { count?: number }) {
+  const { cartCount } = useCart();
+  const displayCount = count !== undefined ? count : cartCount;
   const scale = useRef(new Animated.Value(1)).current;
 
   const pressIn = () =>
@@ -96,9 +99,9 @@ export function CartFAB({ count = 2 }: { count?: number }) {
           onPressOut={pressOut}
           style={styles.fabInner}>
           <MaterialIcons name="shopping-cart" size={26} color={SV.deepCharcoal} />
-          {count > 0 && (
+          {displayCount > 0 && (
             <View style={styles.fabBadge}>
-              <Text style={styles.fabBadgeText}>{count}</Text>
+              <Text style={styles.fabBadgeText}>{displayCount}</Text>
             </View>
           )}
         </Pressable>

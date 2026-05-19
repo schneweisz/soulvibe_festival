@@ -910,7 +910,7 @@ export default function MapScreen() {
         </>
       )}
 
-      <CartFAB count={2} />
+      <CartFAB />
     </GestureHandlerRootView>
   );
 }

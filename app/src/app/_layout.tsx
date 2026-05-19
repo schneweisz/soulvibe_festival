@@ -5,6 +5,7 @@ import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { MenuProvider } from '@/components/menu-drawer';
 import AppTabs from '@/components/app-tabs';
 import { LanguageProvider } from '@/context/LanguageContext';
+import { CartProvider } from '@/context/CartContext';
 
 const SoulVibeDarkTheme = {
   ...DarkTheme,
@@ -21,12 +22,14 @@ const SoulVibeDarkTheme = {
 export default function RootLayout() {
   return (
     <LanguageProvider>
-      <ThemeProvider value={SoulVibeDarkTheme}>
-        <MenuProvider>
-          <AnimatedSplashOverlay />
-          <AppTabs />
-        </MenuProvider>
-      </ThemeProvider>
+      <CartProvider>
+        <ThemeProvider value={SoulVibeDarkTheme}>
+          <MenuProvider>
+            <AnimatedSplashOverlay />
+            <AppTabs />
+          </MenuProvider>
+        </ThemeProvider>
+      </CartProvider>
     </LanguageProvider>
   );
 }

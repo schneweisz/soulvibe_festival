@@ -238,7 +238,7 @@ export default function HomeScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <CartFAB count={2} />
+      <CartFAB />
     </View>
   );
 }
