@@ -161,27 +161,27 @@ export default function ProfileScreen() {
             </Text>
             <MaterialIcons name="confirmation-number" size={20} color={SV.primaryContainer} />
           </View>
-          <View style={ticketStyles.ticketBox}>
-            <View style={ticketStyles.ticketGlow} />
-            <View style={ticketStyles.ticketHeader}>
+          <View style={styles.ticketBox}>
+            <View style={styles.ticketGlow} />
+            <View style={styles.ticketHeader}>
               <View>
-                <Text style={ticketStyles.ticketName}>
+                <Text style={styles.ticketName}>
                   {lang === 'hu' ? 'VIP HETVEGE' : 'VIP WEEKEND'}
                 </Text>
-                <Text style={ticketStyles.ticketId}>ID: SV26-8842-XQ</Text>
+                <Text style={styles.ticketId}>ID: SV26-8842-XQ</Text>
               </View>
-              <View style={ticketStyles.liveBadge}>
-                <View style={ticketStyles.liveDot} />
-                <Text style={ticketStyles.liveText}>LIVE</Text>
+              <View style={styles.liveBadge}>
+                <View style={styles.liveDot} />
+                <Text style={styles.liveText}>LIVE</Text>
               </View>
             </View>
-            <View style={ticketStyles.ticketActions}>
-              <TouchableOpacity style={ticketStyles.showQrBtn}>
-                <Text style={ticketStyles.showQrText}>
+            <View style={styles.ticketActions}>
+              <TouchableOpacity style={styles.showQrBtn}>
+                <Text style={styles.showQrText}>
                   {lang === 'hu' ? 'QR MEGMUTATASA' : 'SHOW QR'}
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity style={ticketStyles.shareBtn}>
+              <TouchableOpacity style={styles.shareBtn}>
                 <MaterialIcons name="share" size={18} color={SV.primaryContainer} />
               </TouchableOpacity>
             </View>
@@ -324,6 +324,23 @@ const styles = StyleSheet.create({
   langBtnLabel: { flex: 1, color: SV.onSurfaceVariant, fontSize: 13 },
   langBtnLabelActive: { color: SV.onSurface, fontWeight: '700' },
 
+  // Ticket styles (consolidated)
+  ticketBox: {
+    backgroundColor: SV.surfaceContainerHighest, borderRadius: 10, padding: 14,
+    borderWidth: 1, borderColor: SV.primaryContainer, overflow: 'hidden', ...neonShadow,
+  },
+  ticketGlow: { position: 'absolute', right: -20, top: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(57,255,20,0.08)' },
+  ticketHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
+  ticketName: { color: SV.primaryFixedDim, fontSize: 17, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4 },
+  ticketId: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(57,255,20,0.15)', borderWidth: 1, borderColor: 'rgba(57,255,20,0.5)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: SV.primaryContainer },
+  liveText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
+  ticketActions: { flexDirection: 'row', gap: 8 },
+  showQrBtn: { flex: 1, backgroundColor: SV.primaryContainer, paddingVertical: 8, borderRadius: 2, alignItems: 'center' },
+  showQrText: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
+  shareBtn: { width: 38, height: 38, borderWidth: 1, borderColor: SV.primaryContainer, borderRadius: 2, alignItems: 'center', justifyContent: 'center' },
+
   pulseLabel: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', textAlign: 'center', marginBottom: 4 },
   pulseRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, justifyContent: 'center', marginBottom: 10 },
   pulseValue: { color: SV.primaryContainer, fontSize: 40, fontWeight: '900', textShadowColor: 'rgba(57,255,20,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
@@ -370,22 +387,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     letterSpacing: 2,
   },
-});
-
-const ticketStyles = StyleSheet.create({
-  ticketBox: {
-    backgroundColor: SV.surfaceContainerHighest, borderRadius: 10, padding: 14,
-    borderWidth: 1, borderColor: SV.primaryContainer, overflow: 'hidden', ...neonShadow,
-  },
-  ticketGlow: { position: 'absolute', right: -20, top: -20, width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(57,255,20,0.08)' },
-  ticketHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
-  ticketName: { color: SV.primaryFixedDim, fontSize: 17, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4 },
-  ticketId: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11 },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(57,255,20,0.15)', borderWidth: 1, borderColor: 'rgba(57,255,20,0.5)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: SV.primaryContainer },
-  liveText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
-  ticketActions: { flexDirection: 'row', gap: 8 },
-  showQrBtn: { flex: 1, backgroundColor: SV.primaryContainer, paddingVertical: 8, borderRadius: 2, alignItems: 'center' },
-  showQrText: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
-  shareBtn: { width: 38, height: 38, borderWidth: 1, borderColor: SV.primaryContainer, borderRadius: 2, alignItems: 'center', justifyContent: 'center' },
 });
