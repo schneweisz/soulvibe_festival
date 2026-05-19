@@ -6,11 +6,21 @@ import { Pressable, View, StyleSheet, Text } from 'react-native';
 import { SV, MaxContentWidth, Spacing } from '@/constants/theme';
 
 const NAV_ITEMS = [
-  { name: 'home', href: '/' as const, label: 'HOME', icon: 'home' },
-  { name: 'lineup', href: '/lineup' as const, label: 'LINEUP', icon: 'event-note' },
-  { name: 'map', href: '/map' as const, label: 'MAP', icon: 'map' },
-  { name: 'gastro', href: '/gastro' as const, label: 'GASTRO', icon: 'fastfood' },
-  { name: 'info', href: '/info' as const, label: 'INFO', icon: 'info' },
+  { name: 'home',    href: '/'       as const, label: 'HOME',   icon: 'home'       },
+  { name: 'lineup',  href: '/lineup' as const, label: 'LINEUP', icon: 'event-note' },
+  { name: 'map',     href: '/map'    as const, label: 'MAP',     icon: 'map'        },
+  { name: 'gastro',  href: '/gastro' as const, label: 'GASTRO', icon: 'fastfood'   },
+  { name: 'info',    href: '/info'   as const, label: 'INFO',   icon: 'info'       },
+] as const;
+
+// Hidden triggers let expo-router/ui resolve navigation to these screens
+// even though they don't appear in the nav bar.
+const HIDDEN_HREFS = [
+  { name: 'profile', href: '/profile' as const },
+  { name: 'cart',    href: '/cart'    as const },
+  { name: 'wallet',  href: '/wallet'  as const },
+  { name: 'auth',    href: '/auth'    as const },
+  { name: 'explore', href: '/explore' as const },
 ] as const;
 
 export default function AppTabs() {
@@ -24,6 +34,9 @@ export default function AppTabs() {
             <TabTrigger key={item.name} name={item.name} href={item.href} asChild>
               <NavButton icon={item.icon} label={item.label} />
             </TabTrigger>
+          ))}
+          {HIDDEN_HREFS.map(item => (
+            <TabTrigger key={item.name} name={item.name} href={item.href} style={{ display: 'none' }} />
           ))}
         </WebNavBar>
       </TabList>
