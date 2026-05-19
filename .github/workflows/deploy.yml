@@ -15,7 +15,7 @@ jobs:
       - name: Node.js beállítása
         uses: actions/setup-node@v4
         with:
-          node-version: 20 # Frissítve 20-as verzióra
+          node-version: 20
 
       - name: Expo környezet beállítása
         uses: expo/expo-github-action@v8
@@ -25,11 +25,11 @@ jobs:
           packager: npm
 
       - name: Függőségek telepítése
-        working-directory: ./soulvibe-festival
+        working-directory: ./app
         run: npm install
 
       - name: Frissítés küldése az Expoba
-        working-directory: ./soulvibe-festival
+        working-directory: ./app
         env:
-          CI: 1 # Kényszerített CI mód
+          CI: 1
         run: eas update --auto --non-interactive
