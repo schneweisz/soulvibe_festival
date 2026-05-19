@@ -1,9 +1,9 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
+import { Stack } from 'expo-router';
 import React from 'react';
 
 import { AnimatedSplashOverlay } from '@/components/animated-icon';
 import { MenuProvider } from '@/components/menu-drawer';
-import AppTabs from '@/components/app-tabs';
 
 const SoulVibeDarkTheme = {
   ...DarkTheme,
@@ -22,7 +22,11 @@ export default function RootLayout() {
     <ThemeProvider value={SoulVibeDarkTheme}>
       <MenuProvider>
         <AnimatedSplashOverlay />
-        <AppTabs />
+        <Stack screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="index" />
+          <Stack.Screen name="auth" />
+          <Stack.Screen name="profile" />
+        </Stack>
       </MenuProvider>
     </ThemeProvider>
   );
