@@ -99,7 +99,7 @@ function CountdownCell({ value, label, highlight }: { value: number; label: stri
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
-export default function HomeScreen() {
+export function HomeScreen() {
   const time = useCountdown();
   const { lang } = useLanguage();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
@@ -118,7 +118,7 @@ export default function HomeScreen() {
             <View style={{ flex: 1 }} />
             <View style={styles.liveBadge}>
               <PulseDot />
-              <Text style={styles.liveBadgeText}>{t('SYS.INIT // JULY 18 2026', 'RENDSZER.INIT // 2026. JÚL. 18.')}</Text>
+              <Text style={styles.liveBadgeText}>{t('SYS.INIT // JULY 18 2026', 'SYS.INIT // 2026. JÚL. 18.')}</Text>
             </View>
             <GlitchText style={styles.heroTitle}>{t('THE PULSE\nAWAKENS', 'A PULZUS\nFELÉBRED')}</GlitchText>
             <View style={styles.countRow}>
@@ -192,12 +192,12 @@ export default function HomeScreen() {
           </AnimPressable>
         </View>
 
-        {/* System Log */}
+        {/* Notifications */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <MaterialIcons name="feed" size={18} color={SV.outline} />
-              <Text style={styles.sectionTitle}>{t('SYSTEM LOG', 'RENDSZERNAPLÓ')}</Text>
+              <Text style={styles.sectionTitle}>{t('NOTIFICATIONS', 'ÉRTESÍTÉSEK')}</Text>
             </View>
           </View>
 
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   heroTitle: { color: SV.primaryContainer, fontSize: 36, fontWeight: '900', letterSpacing: -1, textTransform: 'uppercase', textAlign: 'center', marginBottom: 20, textShadowColor: 'rgba(57,255,20,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 12 },
 
   countRow: { flexDirection: 'row', gap: 8, marginBottom: 24, width: '100%', justifyContent: 'center' },
-  countCell: { flex: 1, alignItems: 'center', backgroundColor: 'rgba(18,18,18,0.85)', borderRadius: 4, paddingVertical: 10, borderWidth: 1, borderColor: SV.outlineVariant },
+  countCell: { flex: 1, alignItems: 'center', backgroundColor: 'rgba(18,18,18,0.85)', borderRadius: 10, paddingVertical: 10, borderWidth: 1, borderColor: SV.outlineVariant },
   countCellHL: { borderColor: SV.primaryContainer },
   countValue: { color: SV.onSurface, fontSize: 26, fontWeight: '800', fontFamily: 'monospace' },
   countValueHL: { color: SV.primaryContainer },

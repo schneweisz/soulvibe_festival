@@ -26,4 +26,12 @@ export const supabase = createClient(supabaseUrl!, supabasePublishableKey!, {
     persistSession: true,
     detectSessionInUrl: true,
   },
+  // Disable realtime on web — avoids WebSocket init during SSR (Node.js 20
+  // has no native WebSocket) and is unnecessary for this mobile-first app.
+  realtime: {
+    transport: typeof WebSocket !== 'undefined' ? WebSocket : (class NoopWS {
+      constructor() {}
+      close() {}
+    } as any),
+  },
 });
