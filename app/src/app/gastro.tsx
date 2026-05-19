@@ -174,7 +174,7 @@ const VENDORS: Vendor[] = [
 
 type CartState = Record<string, number>;
 
-export default function GastroScreen() {
+export function GastroScreen() {
   const { lang } = useLanguage();
   const [cart, setCart] = useState<CartState>({});
   const [loading, setLoading] = useState(true);

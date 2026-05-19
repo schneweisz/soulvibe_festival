@@ -124,7 +124,7 @@ const STAGE_LABEL_HU: Record<string, string> = {
   grid: 'The Grid',
 };
 
-export default function LineupScreen() {
+export function LineupScreen() {
   const { lang } = useLanguage();
   const [day, setDay] = useState<DayIdx>(0);
   const [stage, setStage] = useState<StageFilter>('ALL');

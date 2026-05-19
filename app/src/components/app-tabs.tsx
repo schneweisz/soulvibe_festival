@@ -21,13 +21,6 @@ function TabIcon({ name, color, size, focused }: TabIconProps) {
   );
 }
 
-const HIDDEN: any = {
-  // href:null removes the tab item AND its flex slot from the tab bar entirely.
-  // tabBarButton:()=>null only hides the button but still reserves the flex slot,
-  // causing 5 visible tabs to cluster into 5/9 of the bar width (left side).
-  href: null,
-  tabBarStyle: { display: 'none' }, // hide the tab bar when on these screens
-};
 
 export default function AppTabs() {
   const { lang } = useLanguage();
@@ -104,11 +97,6 @@ export default function AppTabs() {
         }}
       />
 
-      <Tabs.Screen name="auth" options={HIDDEN} />
-      <Tabs.Screen name="profile" options={HIDDEN} />
-      <Tabs.Screen name="cart" options={HIDDEN} />
-      <Tabs.Screen name="wallet" options={HIDDEN} />
-      <Tabs.Screen name="explore" options={HIDDEN} />
     </Tabs>
   );
 }

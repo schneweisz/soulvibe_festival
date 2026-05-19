@@ -65,7 +65,7 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-export default function InfoScreen() {
+export function InfoScreen() {
   const { lang } = useLanguage();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
   const HOURS = HOURS_DATA.map(h => ({ day: lang === 'hu' ? h.hu : h.en, time: h.time }));

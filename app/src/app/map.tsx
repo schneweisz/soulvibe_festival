@@ -307,7 +307,7 @@ const TREES: Array<{ x: number; y: number; r: number }> = [
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
-export default function MapScreen() {
+export function MapScreen() {
   const insets = useSafeAreaInsets();
   const [filter, setFilter] = useState<FilterKey>('ALL');
   const [selected, setSelected] = useState<POI | null>(null);
