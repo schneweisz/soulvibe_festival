@@ -207,8 +207,8 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
 
   profileHero: {
-    alignItems: 'center', paddingVertical: 32, marginHorizontal: 20, marginTop: 20,
-    backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: SV.white10, borderRadius: 16, overflow: 'hidden',
+    alignItems: 'center', paddingVertical: 32, marginHorizontal: 16, marginTop: 20,
+    backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden',
   },
   heroGlass: { ...StyleSheet.absoluteFillObject, backgroundColor: SV.surfaceGlass },
   avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: SV.primaryContainer, marginBottom: 12, ...neonShadow },
@@ -220,8 +220,8 @@ const styles = StyleSheet.create({
   badgeSecondaryText: { color: SV.secondaryFixedDim, fontFamily: 'monospace', fontSize: 11 },
 
   card: {
-    marginHorizontal: 20, marginTop: 16,
-    backgroundColor: SV.deepCharcoal, borderTopWidth: 1, borderLeftWidth: 1, borderColor: SV.white10,
+    marginHorizontal: 16, marginTop: 14,
+    backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
     borderRadius: 14, padding: 16, overflow: 'hidden',
   },
   cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottomWidth: 1, borderBottomColor: SV.surfaceVariant, paddingBottom: 8 },

@@ -74,13 +74,13 @@ function AnimPressable({
   // Pressable with absoluteFill captures touches without disrupting layout or hiding children.
   return (
     <Animated.View style={[style, { transform: [{ scale }] }]}>
+      {children}
       <Pressable
         onPress={onPress}
         onPressIn={pressIn}
         onPressOut={pressOut}
         style={StyleSheet.absoluteFill}
       />
-      {children}
     </Animated.View>
   );
 }
@@ -152,7 +152,7 @@ export default function HomeScreen() {
 
           <AnimPressable style={styles.featuredCard} onPress={() => router.push('/lineup' as any)}>
             <ImageBackground
-              source={{ uri: 'https://lh3.googleusercontent.com/aida-public/AB6AXuC5Iw3yAj4fagXH7ijJhLWHMUCYgTmJmGN-ax2qNAKnBNdx-uHy5js6jlEYMQl4jnHyEtLRleMfDY3lp3HRnEUI7MLNTWNt9DVT2bCowdZDC8SDFq72uJs48Z7JU6Fr9MEbBloB6LcHm3GPZkYwPk3suTWNC09PpxrgCjNG0t04kq9KDqsW7pYH8Kf2ooWB05pLrdGk3Q364YhRPEZHK-P4fY6mDDVG9Z9txvssKhmV9jo7mQonbCjm3Q__nZBlANELP1aUTlsz7gcG' }}
+              source={{ uri: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?q=80&w=800&auto=format&fit=crop' }}
               style={styles.featuredBg}
               imageStyle={{ borderRadius: 12 }}>
               <View style={styles.featuredOverlay} />
@@ -174,7 +174,9 @@ export default function HomeScreen() {
           ].map(act => (
             <AnimPressable key={act.name} style={styles.upcomingCard} onPress={() => router.push('/lineup' as any)}>
               <View style={styles.upcomingAccent} />
-              <View style={styles.upcomingThumb} />
+              <View style={styles.upcomingThumb}>
+                <MaterialIcons name="music-note" size={22} color={SV.outlineVariant} />
+              </View>
               <View style={styles.upcomingInfo}>
                 <Text style={styles.upcomingTime}>{act.time}</Text>
                 <Text style={styles.upcomingArtist}>{act.name}</Text>
@@ -261,48 +263,48 @@ const styles = StyleSheet.create({
   countLabel: { color: SV.outline, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1.5 },
 
   heroActions: { flexDirection: 'row', gap: 14, width: '100%', maxWidth: 320 },
-  btnPrimary: { flex: 1, backgroundColor: SV.primaryContainer, paddingVertical: 13, borderRadius: 3, alignItems: 'center', ...neonShadow },
+  btnPrimary: { flex: 1, backgroundColor: SV.primaryContainer, paddingVertical: 14, borderRadius: 10, alignItems: 'center', ...neonShadow },
   btnPrimaryText: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase' },
-  btnOutline: { flex: 1, borderWidth: 1.5, borderColor: SV.primaryContainer, paddingVertical: 13, borderRadius: 3, alignItems: 'center' },
+  btnOutline: { flex: 1, borderWidth: 1.5, borderColor: SV.primaryContainer, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
   btnOutlineText: { color: SV.primaryContainer, fontWeight: '800', fontSize: 13, letterSpacing: 1.5, textTransform: 'uppercase' },
 
   // Sections
-  section: { paddingHorizontal: 20, paddingTop: 36 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 16, borderBottomWidth: 1, borderBottomColor: SV.outlineVariant, paddingBottom: 8 },
+  section: { paddingHorizontal: 16, paddingTop: 32 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)', paddingBottom: 10 },
   sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  sectionTitle: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 13, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
-  sectionLink: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1 },
+  sectionTitle: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, fontWeight: '700', letterSpacing: 2, textTransform: 'uppercase' },
+  sectionLink: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 11, letterSpacing: 0.5 },
 
-  featuredCard: { borderRadius: 12, overflow: 'hidden', marginBottom: 10, ...neonShadow },
-  featuredBg: { height: 250, justifyContent: 'flex-end' },
-  featuredOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(18,18,18,0.45)' },
-  liveNowBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(57,255,20,0.2)', borderWidth: 1, borderColor: SV.primaryContainer, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  featuredCard: { borderRadius: 14, overflow: 'hidden', marginBottom: 10 },
+  featuredBg: { height: 240, justifyContent: 'flex-end' },
+  featuredOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(10,10,10,0.5)' },
+  liveNowBadge: { position: 'absolute', top: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(57,255,20,0.18)', borderWidth: 1, borderColor: SV.primaryContainer, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   liveNowText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1.5 },
   featuredInfo: { padding: 16 },
   featuredStage: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1.5, marginBottom: 4 },
   featuredArtist: { color: SV.onSurface, fontSize: 22, fontWeight: '800', textTransform: 'uppercase', letterSpacing: -0.5 },
   featuredGenre: { color: SV.onSurfaceVariant, fontSize: 14, marginTop: 4 },
 
-  upcomingCard: { backgroundColor: SV.surfaceContainer, borderRadius: 8, borderTopWidth: 1, borderLeftWidth: 1, borderColor: SV.white10, flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, marginBottom: 8, overflow: 'hidden' },
-  upcomingAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: SV.outlineVariant },
-  upcomingThumb: { width: 52, height: 52, backgroundColor: SV.surfaceVariant, borderRadius: 4, borderWidth: 1, borderColor: SV.outlineVariant },
+  upcomingCard: { backgroundColor: SV.deepCharcoal, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, marginBottom: 8, overflow: 'hidden' },
+  upcomingAccent: { position: 'absolute', left: 0, top: 0, bottom: 0, width: 3, backgroundColor: SV.primaryContainer },
+  upcomingThumb: { width: 48, height: 48, backgroundColor: SV.surfaceContainerHigh, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
   upcomingInfo: { flex: 1 },
   upcomingTime: { color: SV.outline, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1 },
-  upcomingArtist: { color: SV.onSurface, fontSize: 15, fontWeight: '700', textTransform: 'uppercase' },
+  upcomingArtist: { color: SV.onSurface, fontSize: 14, fontWeight: '700', textTransform: 'uppercase' },
   upcomingStage: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, marginTop: 2 },
 
-  fullScheduleBtn: { backgroundColor: SV.surfaceContainer, borderRadius: 8, borderWidth: 1, borderColor: SV.outlineVariant, borderStyle: 'dashed', padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 },
+  fullScheduleBtn: { backgroundColor: SV.deepCharcoal, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 },
   fullScheduleText: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1 },
 
-  logCard: { backgroundColor: SV.surfaceContainerLow, borderTopWidth: 1, borderLeftWidth: 1, borderColor: SV.white10, borderRadius: 12, padding: 16 },
-  logCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  alertBadge: { backgroundColor: 'rgba(208,91,255,0.15)', borderWidth: 1, borderColor: 'rgba(208,91,255,0.3)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3 },
+  logCard: { backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 16, overflow: 'hidden' },
+  logCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  alertBadge: { backgroundColor: 'rgba(208,91,255,0.15)', borderWidth: 1, borderColor: 'rgba(208,91,255,0.3)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   alertBadgeText: { color: SV.secondaryFixedDim, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
-  infoBadge: { backgroundColor: SV.surfaceVariant, borderWidth: 1, borderColor: SV.outlineVariant, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 3 },
-  infoBadgeText: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
+  infoBadge: { backgroundColor: SV.surfaceContainerHigh, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  infoBadgeText: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
   logTime: { color: SV.outline, fontFamily: 'monospace', fontSize: 11 },
-  logTitle: { color: SV.onSurface, fontSize: 16, fontWeight: '700', marginBottom: 6 },
-  logBody: { color: SV.onSurfaceVariant, fontSize: 14, lineHeight: 20, marginBottom: 12 },
-  logBtn: { alignSelf: 'flex-start', borderWidth: 1, borderColor: SV.outlineVariant, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 3 },
+  logTitle: { color: SV.onSurface, fontSize: 15, fontWeight: '700', marginBottom: 6 },
+  logBody: { color: SV.onSurfaceVariant, fontSize: 14, lineHeight: 21, marginBottom: 14 },
+  logBtn: { alignSelf: 'flex-start', backgroundColor: SV.surfaceContainerHigh, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
   logBtnText: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1 },
 });

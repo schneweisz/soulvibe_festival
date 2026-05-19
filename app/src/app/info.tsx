@@ -150,8 +150,8 @@ export default function InfoScreen() {
           <View style={styles.partnersGrid}>
             {PARTNERS.map(p => (
               <TouchableOpacity key={p.name} style={styles.partnerCard} activeOpacity={0.75}>
-                <View style={styles.partnerIcon}>
-                  <MaterialIcons name={p.icon as any} size={28} color={SV.outline} />
+                <View style={[styles.partnerIcon, { backgroundColor: `${p.glowColor}22` }]}>
+                  <MaterialIcons name={p.icon as any} size={26} color={p.glowColor} />
                 </View>
                 <Text style={styles.partnerName}>{p.name}</Text>
                 <Text style={styles.partnerSub}>{p.sub}</Text>
@@ -169,70 +169,63 @@ export default function InfoScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: SV.background },
 
-  header: {
-    height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, backgroundColor: SV.surfaceGlass,
-    borderBottomWidth: 1, borderBottomColor: SV.white10, ...neonShadow,
-  },
-  headerTitle: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 17, fontWeight: '800', letterSpacing: -0.5, textTransform: 'uppercase' },
-
   scroll: { flex: 1 },
 
-  pageHeader: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20 },
+  pageHeader: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 20 },
   tagChip: {
-    alignSelf: 'flex-start', backgroundColor: SV.surfaceContainer, borderWidth: 1, borderColor: SV.outlineVariant,
+    alignSelf: 'flex-start', backgroundColor: SV.surfaceContainerHigh, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
     paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, marginBottom: 12,
   },
   tagChipText: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1 },
-  pageTitle: { color: SV.onSurface, fontSize: 32, fontWeight: '900', letterSpacing: -1, textTransform: 'uppercase', lineHeight: 36, marginBottom: 10 },
-  pageSubtitle: { color: SV.onSurfaceVariant, fontSize: 16, lineHeight: 24, maxWidth: 340 },
+  pageTitle: { color: SV.onSurface, fontSize: 28, fontWeight: '900', letterSpacing: -0.5, textTransform: 'uppercase', lineHeight: 34, marginBottom: 10 },
+  pageSubtitle: { color: SV.onSurfaceVariant, fontSize: 15, lineHeight: 22, maxWidth: 340 },
 
   card: {
-    marginHorizontal: 20, marginBottom: 16,
-    backgroundColor: SV.surfaceGlass, borderTopWidth: 1, borderLeftWidth: 1, borderColor: SV.white10,
-    borderRadius: 12, padding: 16,
+    marginHorizontal: 16, marginBottom: 14,
+    backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14, padding: 16,
   },
-  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 16 },
-  cardTitle: { color: SV.onSurface, fontWeight: '700', fontSize: 15, letterSpacing: 1, textTransform: 'uppercase' },
+  cardTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)', paddingBottom: 12 },
+  cardTitle: { color: SV.onSurface, fontFamily: 'monospace', fontWeight: '700', fontSize: 12, letterSpacing: 1.5, textTransform: 'uppercase' },
 
   hoursRow: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    borderBottomWidth: 1, borderBottomColor: SV.surfaceVariant, paddingVertical: 12,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)', paddingVertical: 13,
   },
   hoursDay: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1 },
-  hoursTime: { color: SV.onSurface, fontSize: 15 },
-  hoursNote: { backgroundColor: SV.surfaceContainerHigh, borderRadius: 8, borderWidth: 1, borderColor: SV.outlineVariant, padding: 12, marginTop: 14 },
+  hoursTime: { color: SV.onSurface, fontSize: 14, fontWeight: '600' },
+  hoursNote: { backgroundColor: SV.surfaceContainerHigh, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(57,255,20,0.15)', padding: 12, marginTop: 14 },
   hoursNoteLabel: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1.5, marginBottom: 4 },
-  hoursNoteText: { color: SV.onSurfaceVariant, fontSize: 13, lineHeight: 18 },
+  hoursNoteText: { color: SV.onSurfaceVariant, fontSize: 13, lineHeight: 19 },
 
-  contactRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
-  contactLabel: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1, marginBottom: 2 },
-  contactValue: { color: SV.onSurface, fontSize: 15 },
+  contactRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 14, marginBottom: 16 },
+  contactLabel: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1, marginBottom: 3 },
+  contactValue: { color: SV.onSurface, fontSize: 14, fontWeight: '600' },
 
   faqItem: {
-    borderWidth: 1, borderColor: SV.surfaceVariant, borderRadius: 8,
-    backgroundColor: SV.surfaceContainer, marginBottom: 8, overflow: 'hidden',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 10,
+    backgroundColor: SV.surfaceContainerLow, marginBottom: 8, overflow: 'hidden',
   },
-  faqItemOpen: { borderColor: SV.primaryContainer, ...neonShadow },
+  faqItemOpen: { borderColor: 'rgba(57,255,20,0.35)' },
   faqHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 14 },
-  faqQ: { color: SV.onSurface, fontSize: 14, fontWeight: '700', flex: 1, marginRight: 8 },
+  faqQ: { color: SV.onSurface, fontSize: 14, fontWeight: '600', flex: 1, marginRight: 8, lineHeight: 20 },
   faqQOpen: { color: SV.primaryFixedDim },
-  faqA: { color: SV.onSurfaceVariant, fontSize: 14, lineHeight: 20, paddingHorizontal: 14, paddingBottom: 14 },
+  faqA: { color: SV.onSurfaceVariant, fontSize: 13, lineHeight: 20, paddingHorizontal: 14, paddingBottom: 14 },
 
-  partnersSection: { paddingHorizontal: 20, paddingTop: 24 },
-  partnersTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: 1, borderBottomColor: SV.surfaceVariant, paddingBottom: 14, marginBottom: 12 },
-  partnersTitle: { color: SV.onSurface, fontSize: 22, fontWeight: '800', letterSpacing: -0.5, textTransform: 'uppercase' },
-  partnersSubtitle: { color: SV.onSurfaceVariant, fontSize: 14, lineHeight: 20, marginBottom: 20 },
+  partnersSection: { paddingHorizontal: 16, paddingTop: 24 },
+  partnersTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.06)', paddingBottom: 14, marginBottom: 14 },
+  partnersTitle: { color: SV.onSurface, fontSize: 20, fontWeight: '800', letterSpacing: -0.3, textTransform: 'uppercase' },
+  partnersSubtitle: { color: SV.onSurfaceVariant, fontSize: 13, lineHeight: 20, marginBottom: 16 },
   partnersGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   partnerCard: {
     width: '30%', aspectRatio: 1, flexGrow: 1,
-    backgroundColor: SV.surfaceGlass, borderTopWidth: 1, borderLeftWidth: 1, borderColor: SV.white10,
-    borderRadius: 12, alignItems: 'center', justifyContent: 'center', padding: 12,
+    backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14, alignItems: 'center', justifyContent: 'center', padding: 12,
   },
   partnerIcon: {
-    width: 56, height: 56, borderRadius: 28, backgroundColor: SV.surfaceContainerHigh,
+    width: 52, height: 52, borderRadius: 26,
     alignItems: 'center', justifyContent: 'center', marginBottom: 8,
   },
-  partnerName: { color: SV.onSurface, fontWeight: '800', fontSize: 13, letterSpacing: 1.5, textAlign: 'center' },
-  partnerSub: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1, textAlign: 'center' },
+  partnerName: { color: SV.onSurface, fontWeight: '700', fontSize: 12, letterSpacing: 1, textAlign: 'center' },
+  partnerSub: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, letterSpacing: 0.5, textAlign: 'center', marginTop: 2 },
 });

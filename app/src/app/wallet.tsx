@@ -30,9 +30,6 @@ export default function WalletScreen() {
 
   return (
     <View style={styles.root}>
-      {/* Grid background decoration */}
-      <View style={styles.gridBg} />
-
       <ScreenHeader showBack />
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -128,29 +125,16 @@ export default function WalletScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: SV.background },
-
-  gridBg: {
-    ...StyleSheet.absoluteFillObject,
-    opacity: 0.15,
-  },
-
-  header: {
-    height: 56, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, backgroundColor: SV.surfaceGlass,
-    borderBottomWidth: 1, borderBottomColor: SV.white10, ...neonShadow,
-  },
-  headerTitle: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 17, fontWeight: '800', letterSpacing: -0.5, textTransform: 'uppercase' },
-
   scroll: { flex: 1 },
 
-  titleBlock: { paddingHorizontal: 20, paddingTop: 24, paddingBottom: 8 },
-  pageTitle: { color: SV.onSurface, fontSize: 32, fontWeight: '900', letterSpacing: -1, textTransform: 'uppercase' },
-  pageSubtitle: { color: SV.onSurfaceVariant, fontSize: 17, lineHeight: 26, marginTop: 6 },
+  titleBlock: { paddingHorizontal: 16, paddingTop: 24, paddingBottom: 8 },
+  pageTitle: { color: SV.onSurface, fontSize: 28, fontWeight: '900', letterSpacing: -0.5, textTransform: 'uppercase' },
+  pageSubtitle: { color: SV.onSurfaceVariant, fontSize: 15, lineHeight: 22, marginTop: 6 },
 
   balanceCard: {
-    marginHorizontal: 20, marginTop: 20,
-    backgroundColor: SV.surfaceGlass, borderTopWidth: 1, borderLeftWidth: 1, borderColor: SV.white10,
-    borderRadius: 14, padding: 20, overflow: 'hidden',
+    marginHorizontal: 16, marginTop: 20,
+    backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(57,255,20,0.2)',
+    borderRadius: 16, padding: 20, overflow: 'hidden',
   },
   balanceGlow: {
     position: 'absolute', right: -30, top: -30, width: 140, height: 140, borderRadius: 70,
@@ -158,46 +142,46 @@ const styles = StyleSheet.create({
   },
   balanceHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   balanceLabel: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1.5 },
-  balanceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 12 },
+  balanceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 14 },
   balanceAmount: { color: SV.primaryContainer, fontSize: 40, fontWeight: '900', textShadowColor: 'rgba(57,255,20,0.5)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 10 },
   balanceCurrency: { color: SV.primaryFixedDim, fontSize: 20, fontWeight: '700' },
-  idBadge: { alignSelf: 'flex-start', backgroundColor: SV.surfaceContainerHigh, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: SV.outlineVariant },
+  idBadge: { alignSelf: 'flex-start', backgroundColor: SV.surfaceContainerHigh, paddingHorizontal: 12, paddingVertical: 4, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   idText: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1 },
 
-  section: { paddingHorizontal: 20, paddingTop: 24 },
-  sectionTitle: { color: SV.onSurface, fontWeight: '700', fontSize: 16, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 14 },
+  section: { paddingHorizontal: 16, paddingTop: 24 },
+  sectionTitle: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontWeight: '700', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 },
 
   amountGrid: { flexDirection: 'row', gap: 10 },
   amountCell: {
-    flex: 1, alignItems: 'center', paddingVertical: 16, borderRadius: 8,
-    borderWidth: 1, borderColor: SV.outlineVariant, backgroundColor: SV.surfaceContainerLow, position: 'relative',
+    flex: 1, alignItems: 'center', paddingVertical: 18, borderRadius: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: SV.deepCharcoal, position: 'relative',
   },
   amountCellActive: { borderColor: SV.primaryContainer, backgroundColor: SV.surfaceContainerHigh, ...neonShadow },
   activeDot: { position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: SV.primaryContainer, shadowColor: '#39ff14', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 1, shadowRadius: 4 },
-  amountValue: { color: SV.onSurface, fontSize: 18, fontWeight: '700' },
+  amountValue: { color: SV.onSurface, fontSize: 17, fontWeight: '700' },
   amountValueActive: { color: SV.primaryContainer },
-  amountCur: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, marginTop: 4 },
+  amountCur: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, marginTop: 4 },
   amountCurActive: { color: SV.primaryFixedDim },
 
-  inputLabel: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 8 },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 2, borderBottomColor: SV.outlineVariant, paddingBottom: 8 },
-  input: { flex: 1, color: SV.onSurface, fontSize: 18, paddingVertical: 4 },
+  inputLabel: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, letterSpacing: 1.5, textTransform: 'uppercase', marginBottom: 10 },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12 },
+  input: { flex: 1, color: SV.onSurface, fontSize: 18 },
   inputSuffix: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 13 },
 
   payMethodCard: {
-    marginHorizontal: 20, marginTop: 20,
-    backgroundColor: SV.surfaceGlass, borderTopWidth: 1, borderLeftWidth: 1, borderColor: SV.white10,
-    borderRadius: 10, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: 16, marginTop: 20,
+    backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
   },
   payMethodLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  payMethodIcon: { width: 40, height: 40, backgroundColor: SV.surfaceContainerHigh, borderRadius: 6, borderWidth: 1, borderColor: SV.outlineVariant, alignItems: 'center', justifyContent: 'center' },
-  payMethodName: { color: SV.onSurface, fontSize: 15 },
+  payMethodIcon: { width: 40, height: 40, backgroundColor: SV.surfaceContainerHigh, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
+  payMethodName: { color: SV.onSurface, fontSize: 14, fontWeight: '600' },
   payMethodSub: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, marginTop: 2 },
-  changeBtn: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 12, letterSpacing: 0.5, textTransform: 'uppercase' },
+  changeBtn: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 12, letterSpacing: 0.5 },
 
   topUpBtn: {
-    backgroundColor: SV.primaryContainer, borderRadius: 2, paddingVertical: 18,
+    backgroundColor: SV.primaryContainer, borderRadius: 10, paddingVertical: 18,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, ...neonShadow,
   },
-  topUpText: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 16, letterSpacing: 2, textTransform: 'uppercase' },
+  topUpText: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 15, letterSpacing: 2, textTransform: 'uppercase' },
 });
