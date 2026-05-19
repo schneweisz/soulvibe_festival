@@ -7,6 +7,7 @@ import { SV, neonShadow } from '@/constants/theme';
 import { ThemedView } from '../components/themed-view';
 import { ThemedText } from '../components/themed-text';
 import { ScreenHeader } from '@/components/screen-header';
+import * as Linking from 'expo-linking';
 
 /** AnimPressable import - since it's local in index.tsx, we'll recreate a simple version or use Pressable */
 import { Pressable } from 'react-native';
@@ -16,6 +17,8 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+
+  const redirectTo = Linking.createURL('/auth/callback');
 
   async function signInWithEmail() {
     setLoading(true);
@@ -37,6 +40,9 @@ export default function AuthScreen() {
     const { error, data: { session } } = await supabase.auth.signUp({
       email: email,
       password: password,
+      options: {
+        emailRedirectTo: redirectTo,
+      }
     });
 
     if (error) {
@@ -53,7 +59,7 @@ export default function AuthScreen() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: 'soulvibe-festival://auth/callback',
+        redirectTo: redirectTo,
       },
     });
 
