@@ -138,7 +138,7 @@ const VENDORS: Vendor[] = [
         name: 'Techno Water',
         desc: { en: 'Ultra-purified mineral water in a glowing bottle', hu: 'Ultra-tisztított ásványvíz világító üvegben' },
         price: 800,
-        image: 'https://images.unsplash.com/photo-1549465220-1a8b9238cd48?q=80&w=300&auto=format&fit=crop',
+        image: 'https://images.unsplash.com/photo-1523362628745-0c100150b504?q=80&w=300&auto=format&fit=crop',
       },
     ],
   },
