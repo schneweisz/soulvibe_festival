@@ -1,5 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as Location from 'expo-location';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -31,6 +32,22 @@ const INIT_TX = SW / 2 - 580;
 const INIT_TY = SH / 2 - 900;
 const MIN_SCALE = 0.26;
 const MAX_SCALE = 4.0;
+
+// ─── GPS ─────────────────────────────────────────────────────────────────────
+// Approximate GPS bounding box for the festival grounds at Zamárdi, Lake Balaton.
+// Adjust these bounds if you have more accurate coordinates.
+const GPS_BOUNDS = { north: 46.896, south: 46.874, west: 17.918, east: 17.965 };
+
+function gpsToCanvas(lat: number, lon: number) {
+  const x = ((lon - GPS_BOUNDS.west) / (GPS_BOUNDS.east - GPS_BOUNDS.west)) * MAP_W;
+  const y = ((GPS_BOUNDS.north - lat) / (GPS_BOUNDS.north - GPS_BOUNDS.south)) * MAP_H;
+  return {
+    x: Math.max(0, Math.min(MAP_W, x)),
+    y: Math.max(0, Math.min(MAP_H, y)),
+    inBounds: lon >= GPS_BOUNDS.west && lon <= GPS_BOUNDS.east
+           && lat >= GPS_BOUNDS.south && lat <= GPS_BOUNDS.north,
+  };
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -313,6 +330,21 @@ export function MapScreen() {
   const [selected, setSelected] = useState<POI | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
   const sheetY = useRef(new RNAnimated.Value(400)).current;
+  const [gpsPos, setGpsPos] = useState<{ x: number; y: number; inBounds: boolean } | null>(null);
+
+  // Request location permission and track position
+  useEffect(() => {
+    let sub: Location.LocationSubscription | null = null;
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') return;
+      sub = await Location.watchPositionAsync(
+        { accuracy: Location.Accuracy.Balanced, distanceInterval: 5, timeInterval: 5000 },
+        ({ coords }) => setGpsPos(gpsToCanvas(coords.latitude, coords.longitude))
+      );
+    })();
+    return () => { sub?.remove(); };
+  }, []);
 
   const openSheet = useCallback((poi: POI) => {
     const noSheet: POI['type'][] = ['wc', 'chill', 'vip', 'gate', 'camping', 'atm', 'water'];
@@ -353,9 +385,13 @@ export function MapScreen() {
   const zoomIn  = () => { const n = Math.min(MAX_SCALE, scale.value * 1.5); scale.value = withTiming(n, ZOOM_CFG); savedScale.value = n; };
   const zoomOut = () => { const n = Math.max(MIN_SCALE, scale.value / 1.5); scale.value = withTiming(n, ZOOM_CFG); savedScale.value = n; };
   const recenter = () => {
-    translateX.value = withTiming(INIT_TX, PAN_CFG); translateY.value = withTiming(INIT_TY, PAN_CFG);
-    scale.value = withTiming(1, PAN_CFG);
-    savedTX.value = INIT_TX; savedTY.value = INIT_TY; savedScale.value = 1;
+    // Pan to GPS position if available and inside festival bounds, else to map center
+    const target = (gpsPos && gpsPos.inBounds) ? gpsPos : { x: 580, y: 800 };
+    const tx = SW / 2 - target.x;
+    const ty = SH / 2 - target.y;
+    translateX.value = withTiming(tx, PAN_CFG); translateY.value = withTiming(ty, PAN_CFG);
+    scale.value = withTiming(1.4, PAN_CFG);
+    savedTX.value = tx; savedTY.value = ty; savedScale.value = 1.4;
   };
 
   // Navigate to a specific POI
@@ -640,9 +676,16 @@ export function MapScreen() {
             )}
 
             {/* ════ LAYER 7 — You Are Here ════ */}
-            <View style={[s.poi, { left:518, top:805 }]}>
-              <YouAreHere />
-            </View>
+            {(gpsPos && gpsPos.inBounds) ? (
+              <View style={[s.poi, { left: gpsPos.x - 12, top: gpsPos.y - 12 }]}>
+                <YouAreHere />
+              </View>
+            ) : (
+              // Fallback: approximate festival centre when GPS is unavailable or outside bounds
+              <View style={[s.poi, { left: 518, top: 805 }]}>
+                <YouAreHere />
+              </View>
+            )}
 
             {/* ════ LAYER 8 — POIs ════ */}
             {POIS.filter(poi => isVisible(poi, filter)).map(poi => {
