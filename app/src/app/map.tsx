@@ -37,7 +37,7 @@ type FilterKey = 'ALL' | 'STAGES' | 'FOOD' | 'SERVICES';
 interface POI {
   id: string;
   label: string;
-  type: 'stage' | 'gastro' | 'chill' | 'wc' | 'medical' | 'vip' | 'gate';
+  type: 'stage' | 'gastro' | 'chill' | 'wc' | 'medical' | 'vip' | 'gate' | 'camping';
   x: number;
   y: number;
   color: string;
@@ -49,20 +49,24 @@ interface POI {
 }
 
 const POIS: POI[] = [
-  // Stages (spread across the grounds)
+  // Stages
   { id: 'suburbia', label: 'SUBURBIA', type: 'stage', x: 580, y: 640, color: SV.primaryContainer, icon: 'speaker', size: 'large', desc: 'Main Stage · Rap & Trap', artist: 'AZAHRIAH', time: '22:30 - 00:00' },
   { id: 'grid', label: 'THE GRID', type: 'stage', x: 920, y: 500, color: SV.secondaryContainer, icon: 'graphic-eq', size: 'large', desc: 'Techno Stage · Industrial', artist: 'CHARLOTTE DE WITTE', time: '02:00 - 04:00' },
   { id: 'basement', label: 'THE BASEMENT', type: 'stage', x: 250, y: 820, color: SV.tertiaryContainer, icon: 'headphones', size: 'medium', desc: 'Underground Stage', artist: 'BETON.HOFI', time: '18:00 - 19:45' },
-  // Gastro
-  { id: 'gastro1', label: 'GASTRO HUB', type: 'gastro', x: 730, y: 800, color: '#F5A623', icon: 'fastfood', size: 'medium' },
-  { id: 'gastro2', label: 'LOOP BAR', type: 'gastro', x: 420, y: 1000, color: '#F5A623', icon: 'local-bar', size: 'small' },
+  // Gastro & bars
+  { id: 'gastro1', label: 'GASTRO HUB', type: 'gastro', x: 730, y: 800, color: '#F5A623', icon: 'fastfood', size: 'medium', desc: 'Smash burgers, wood-fired pizza & craft drinks — order in-app!' },
+  { id: 'gastro2', label: 'LOOP BAR', type: 'gastro', x: 420, y: 1000, color: '#F5A623', icon: 'local-bar', size: 'small', desc: 'Neon cocktails, shots & energy drinks. Skip the queue — order in-app!' },
+  { id: 'gastro3', label: 'VIP BAR', type: 'gastro', x: 970, y: 790, color: '#F5A623', icon: 'local-bar', size: 'small', desc: 'Exclusive cocktail lounge — reserved for VIP pass holders.' },
   // Services
   { id: 'chill', label: 'CHILL ZONE', type: 'chill', x: 380, y: 590, color: SV.onSurfaceVariant, icon: 'weekend', size: 'small' },
   { id: 'vip', label: 'VIP', type: 'vip', x: 1020, y: 700, color: '#FFD700', icon: 'star', size: 'small' },
-  { id: 'medical', label: 'MEDICAL', type: 'medical', x: 600, y: 490, color: '#FF4444', icon: 'local-hospital', size: 'small' },
+  { id: 'medical', label: 'MEDICAL', type: 'medical', x: 600, y: 490, color: '#FF4444', icon: 'local-hospital', size: 'small', desc: '24h first-aid & medical support. Always fully staffed — approach any crew member for help.' },
   { id: 'wc1', label: '', type: 'wc', x: 310, y: 660, color: SV.onSurfaceVariant, icon: 'wc', size: 'small' },
   { id: 'wc2', label: '', type: 'wc', x: 870, y: 960, color: SV.onSurfaceVariant, icon: 'wc', size: 'small' },
+  { id: 'wc3', label: '', type: 'wc', x: 490, y: 1060, color: SV.onSurfaceVariant, icon: 'wc', size: 'small' },
   { id: 'gate', label: 'ENTRANCE', type: 'gate', x: 600, y: 1180, color: SV.primaryFixedDim, icon: 'meeting-room', size: 'small' },
+  // Camping — right bottom corner
+  { id: 'camping', label: 'CAMPING', type: 'camping', x: 1090, y: 1120, color: '#7EC8A0', icon: 'cabin', size: 'small' },
 ];
 
 // Filter mapping
@@ -70,7 +74,7 @@ const isVisible = (poi: POI, filter: FilterKey) => {
   if (filter === 'ALL') return true;
   if (filter === 'STAGES') return poi.type === 'stage';
   if (filter === 'FOOD') return poi.type === 'gastro';
-  if (filter === 'SERVICES') return poi.type !== 'stage' && poi.type !== 'gastro';
+  if (filter === 'SERVICES') return poi.type === 'wc' || poi.type === 'medical' || poi.type === 'chill' || poi.type === 'vip' || poi.type === 'gate' || poi.type === 'camping';
   return true;
 };
 
@@ -135,7 +139,8 @@ export default function MapScreen() {
   const sheetY = useRef(new RNAnimated.Value(320)).current;
 
   const openSheet = (poi: POI) => {
-    if (poi.type !== 'stage') return;
+    // Only interactive types get a sheet
+    if (poi.type === 'wc' || poi.type === 'chill' || poi.type === 'vip' || poi.type === 'gate' || poi.type === 'camping') return;
     setSelected(poi);
     RNAnimated.spring(sheetY, { toValue: 0, useNativeDriver: true }).start();
   };
@@ -364,6 +369,21 @@ export default function MapScreen() {
             <View style={[s.road, roadStyle(600,1178,472,1235,22)]} />
             <View style={[s.road, roadStyle(600,1178,728,1235,22)]} />
 
+            {/* ── VIP Bar stub (off the Grid/VIP corridor) ── */}
+            <View style={[s.road, roadStyle(968,730,970,790,16)]} />
+
+            {/* ── WC3 spur (off Loop Bar access) ── */}
+            <View style={[s.road, roadStyle(422,1002,490,1060,16)]} />
+
+            {/* ── Camping access (south-east perimeter path) ── */}
+            {([
+              [910,758,980,900,18],
+              [980,900,1050,1020,18],
+              [1050,1020,1090,1120,18],
+            ] as [number,number,number,number,number][]).map(([x1,y1,x2,y2,w],i)=>(
+              <View key={`camp${i}`} style={[s.road, roadStyle(x1,y1,x2,y2,w)]} />
+            ))}
+
             {/* ── Festival perimeter ── */}
             <View style={s.perimeter} />
 
@@ -440,41 +460,104 @@ export default function MapScreen() {
               <View style={s.handleBar} />
             </TouchableOpacity>
 
-            <View style={s.sheetHead}>
-              <View>
-                <View style={s.liveBadge}>
-                  <PulseDot color={SV.primaryContainer} />
-                  <Text style={s.liveTxt}>LIVE NOW</Text>
+            {/* ── Stage sheet ── */}
+            {selected.type === 'stage' && (
+              <>
+                <View style={s.sheetHead}>
+                  <View>
+                    <View style={s.liveBadge}>
+                      <PulseDot color={SV.primaryContainer} />
+                      <Text style={s.liveTxt}>LIVE NOW</Text>
+                    </View>
+                    <Text style={s.stageName}>{selected.label}</Text>
+                    <Text style={s.stageDesc}>{selected.desc}</Text>
+                  </View>
+                  <TouchableOpacity style={s.dirBtn}>
+                    <MaterialIcons name="directions" size={20} color={SV.onSurfaceVariant} />
+                  </TouchableOpacity>
                 </View>
-                <Text style={s.stageName}>{selected.label}</Text>
-                <Text style={s.stageDesc}>{selected.desc}</Text>
-              </View>
-              <TouchableOpacity style={s.dirBtn}>
-                <MaterialIcons name="directions" size={20} color={SV.onSurfaceVariant} />
-              </TouchableOpacity>
-            </View>
+                <View style={s.nowPlaying}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.npLabel}>CURRENTLY PLAYING</Text>
+                    <Text style={s.npArtist}>{selected.artist}</Text>
+                    <Text style={s.npTime}>{selected.time}</Text>
+                  </View>
+                  <View style={s.eqIcon}>
+                    <MaterialIcons name="equalizer" size={20} color={SV.primaryContainer} />
+                  </View>
+                </View>
+                <View style={s.sheetActions}>
+                  <TouchableOpacity style={s.btnPrimary} onPress={() => { closeSheet(); router.push('/lineup'); }}>
+                    <MaterialIcons name="event" size={18} color={SV.deepCharcoal} />
+                    <Text style={s.btnPrimaryTxt}>SCHEDULE</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={s.btnOutline}>
+                    <MaterialIcons name="share" size={18} color={SV.primaryContainer} />
+                    <Text style={s.btnOutlineTxt}>SHARE</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
 
-            <View style={s.nowPlaying}>
-              <View style={{ flex: 1 }}>
-                <Text style={s.npLabel}>CURRENTLY PLAYING</Text>
-                <Text style={s.npArtist}>{selected.artist}</Text>
-                <Text style={s.npTime}>{selected.time}</Text>
-              </View>
-              <View style={s.eqIcon}>
-                <MaterialIcons name="equalizer" size={20} color={SV.primaryContainer} />
-              </View>
-            </View>
+            {/* ── Gastro / bar sheet ── */}
+            {selected.type === 'gastro' && (
+              <>
+                <View style={s.sheetHead}>
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={s.stageName}>{selected.label}</Text>
+                    <Text style={s.stageDesc}>{selected.desc}</Text>
+                  </View>
+                  <View style={[s.dirBtn, { backgroundColor: 'rgba(245,166,35,0.12)', borderColor: 'rgba(245,166,35,0.3)' }]}>
+                    <MaterialIcons name={selected.icon as any} size={20} color="#F5A623" />
+                  </View>
+                </View>
+                <View style={[s.nowPlaying, { borderColor: 'rgba(245,166,35,0.18)' }]}>
+                  <MaterialIcons name="access-time" size={16} color="#F5A623" />
+                  <View style={{ marginLeft: 10 }}>
+                    <Text style={[s.npLabel, { color: '#F5A623' }]}>OPEN HOURS</Text>
+                    <Text style={[s.npArtist, { fontSize: 14 }]}>Daily 14:00 – 06:00</Text>
+                  </View>
+                </View>
+                <View style={s.sheetActions}>
+                  <TouchableOpacity style={[s.btnPrimary, { backgroundColor: '#F5A623' }]} onPress={() => { closeSheet(); router.push('/gastro'); }}>
+                    <MaterialIcons name="fastfood" size={18} color="#000" />
+                    <Text style={s.btnPrimaryTxt}>ORDER IN-APP</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.btnOutline, { borderColor: '#F5A623' }]}>
+                    <MaterialIcons name="directions" size={18} color="#F5A623" />
+                    <Text style={[s.btnOutlineTxt, { color: '#F5A623' }]}>DIRECTIONS</Text>
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
 
-            <View style={s.sheetActions}>
-              <TouchableOpacity style={s.btnPrimary} onPress={() => { closeSheet(); router.push('/lineup'); }}>
-                <MaterialIcons name="event" size={18} color={SV.deepCharcoal} />
-                <Text style={s.btnPrimaryTxt}>SCHEDULE</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.btnOutline}>
-                <MaterialIcons name="share" size={18} color={SV.primaryContainer} />
-                <Text style={s.btnOutlineTxt}>SHARE</Text>
-              </TouchableOpacity>
-            </View>
+            {/* ── Medical sheet ── */}
+            {selected.type === 'medical' && (
+              <>
+                <View style={s.sheetHead}>
+                  <View style={{ flex: 1, marginRight: 12 }}>
+                    <Text style={[s.stageName, { color: '#FF6666' }]}>{selected.label}</Text>
+                    <Text style={s.stageDesc}>{selected.desc}</Text>
+                  </View>
+                  <View style={[s.dirBtn, { backgroundColor: 'rgba(255,68,68,0.12)', borderColor: 'rgba(255,68,68,0.3)' }]}>
+                    <MaterialIcons name="local-hospital" size={20} color="#FF4444" />
+                  </View>
+                </View>
+                <View style={[s.nowPlaying, { borderColor: 'rgba(255,68,68,0.2)' }]}>
+                  <View style={[s.eqIcon, { borderColor: '#FF4444', width: 36, height: 36 }]}>
+                    <MaterialIcons name="emergency" size={16} color="#FF4444" />
+                  </View>
+                  <View style={{ marginLeft: 12 }}>
+                    <Text style={[s.npLabel, { color: '#FF4444' }]}>OPEN 24 / 7</Text>
+                    <Text style={[s.npArtist, { fontSize: 14 }]}>Always fully staffed</Text>
+                  </View>
+                </View>
+                <TouchableOpacity style={[s.btnPrimary, { backgroundColor: '#FF4444' }, neonShadow, { shadowColor: '#FF4444' }]}>
+                  <MaterialIcons name="phone" size={18} color="#fff" />
+                  <Text style={[s.btnPrimaryTxt, { color: '#fff' }]}>CALL EMERGENCY LINE</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </RNAnimated.View>
         </>
       )}
