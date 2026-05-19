@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Image,
   ScrollView,
@@ -11,8 +11,7 @@ import {
 } from 'react-native';
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
-
-type Lang = 'hu' | 'en';
+import { useLanguage } from '@/context/LanguageContext';
 
 const MY_LINEUP = [
   { time: '22:00', day: 'FRI', artist: 'Charlotte de Witte', stage: 'THE GRID' },
@@ -21,7 +20,7 @@ const MY_LINEUP = [
 ];
 
 export default function ProfileScreen() {
-  const [lang, setLang] = useState<Lang>('hu');
+  const { lang, setLang } = useLanguage();
 
   return (
     <View style={styles.root}>

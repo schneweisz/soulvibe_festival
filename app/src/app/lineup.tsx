@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
+import { useLanguage } from '@/context/LanguageContext';
 
 type DayIdx = 0 | 1 | 2;
 type StageFilter = 'ALL' | 'SUBURBIA' | 'BASEMENT' | 'GRID';
@@ -90,17 +91,17 @@ const ARTISTS: ArtistEntry[] = [
   { day: 2, name: 'ZSOMAC (The Closing Set)', time: '04:00 - 06:00', stage: 'grid', favorite: false },
 ];
 
-const DAYS: { key: DayIdx; label: string; sub: string }[] = [
-  { key: 0, label: 'PÉNTEK', sub: 'JUL 18' },
-  { key: 1, label: 'SZOMBAT', sub: 'JUL 19' },
-  { key: 2, label: 'VASÁRNAP', sub: 'JUL 20' },
+const DAYS_DATA: { key: DayIdx; en: string; hu: string; sub: string }[] = [
+  { key: 0, en: 'FRIDAY', hu: 'PÉNTEK', sub: 'JUL 18' },
+  { key: 1, en: 'SATURDAY', hu: 'SZOMBAT', sub: 'JUL 19' },
+  { key: 2, en: 'SUNDAY', hu: 'VASÁRNAP', sub: 'JUL 20' },
 ];
 
-const STAGE_CHIPS: { key: StageFilter; label: string }[] = [
-  { key: 'ALL', label: 'MIND' },
-  { key: 'SUBURBIA', label: 'SubUrbia' },
-  { key: 'BASEMENT', label: 'The Basement' },
-  { key: 'GRID', label: 'The Grid' },
+const STAGE_CHIPS_DATA: { key: StageFilter; en: string; hu: string }[] = [
+  { key: 'ALL', en: 'ALL', hu: 'MIND' },
+  { key: 'SUBURBIA', en: 'SubUrbia', hu: 'SubUrbia' },
+  { key: 'BASEMENT', en: 'The Basement', hu: 'The Basement' },
+  { key: 'GRID', en: 'The Grid', hu: 'The Grid' },
 ];
 
 const STAGE_COLOR: Record<string, string> = {
@@ -109,15 +110,25 @@ const STAGE_COLOR: Record<string, string> = {
   grid: SV.secondaryContainer,
 };
 
-const STAGE_LABEL: Record<string, string> = {
+const STAGE_LABEL_EN: Record<string, string> = {
   suburbia: 'SubUrbia Stage',
+  basement: 'The Basement',
+  grid: 'The Grid',
+};
+const STAGE_LABEL_HU: Record<string, string> = {
+  suburbia: 'SubUrbia',
   basement: 'The Basement',
   grid: 'The Grid',
 };
 
 export default function LineupScreen() {
+  const { lang } = useLanguage();
   const [day, setDay] = useState<DayIdx>(0);
   const [stage, setStage] = useState<StageFilter>('ALL');
+
+  const DAYS = DAYS_DATA.map(d => ({ ...d, label: lang === 'hu' ? d.hu : d.en }));
+  const STAGE_CHIPS = STAGE_CHIPS_DATA.map(s => ({ ...s, label: lang === 'hu' ? s.hu : s.en }));
+  const STAGE_LABEL = lang === 'hu' ? STAGE_LABEL_HU : STAGE_LABEL_EN;
   const [favs, setFavs] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     ARTISTS.forEach(a => { if (a.favorite) init[a.name] = true; });

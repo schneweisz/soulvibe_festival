@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
+import { useLanguage } from '@/context/LanguageContext';
 
 // ─── Countdown ──────────────────────────────────────────────────────────────
 
@@ -99,6 +100,8 @@ function CountdownCell({ value, label, highlight }: { value: number; label: stri
 
 export default function HomeScreen() {
   const time = useCountdown();
+  const { lang } = useLanguage();
+  const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
 
   return (
     <View style={styles.root}>
@@ -114,21 +117,21 @@ export default function HomeScreen() {
             <View style={{ flex: 1 }} />
             <View style={styles.liveBadge}>
               <PulseDot />
-              <Text style={styles.liveBadgeText}>SYS.INIT // JULY 18 2026</Text>
+              <Text style={styles.liveBadgeText}>{t('SYS.INIT // JULY 18 2026', 'RENDSZER.INIT // 2026. JÚL. 18.')}</Text>
             </View>
-            <Text style={styles.heroTitle}>THE PULSE{'\n'}AWAKENS</Text>
+            <Text style={styles.heroTitle}>{t('THE PULSE\nAWAKENS', 'A PULZUS\nFELÉBRED')}</Text>
             <View style={styles.countRow}>
-              <CountdownCell value={time.days} label="DAYS" />
-              <CountdownCell value={time.hrs} label="HRS" />
-              <CountdownCell value={time.min} label="MIN" />
-              <CountdownCell value={time.sec} label="SEC" highlight />
+              <CountdownCell value={time.days} label={t('DAYS', 'NAP')} />
+              <CountdownCell value={time.hrs} label={t('HRS', 'ÓRA')} />
+              <CountdownCell value={time.min} label={t('MIN', 'PERC')} />
+              <CountdownCell value={time.sec} label={t('SEC', 'MP')} highlight />
             </View>
             <View style={styles.heroActions}>
               <AnimPressable style={styles.btnPrimary} onPress={() => router.push('/profile' as any)}>
-                <Text style={styles.btnPrimaryText}>MY TICKET</Text>
+                <Text style={styles.btnPrimaryText}>{t('MY TICKET', 'JEGYEM')}</Text>
               </AnimPressable>
               <AnimPressable style={styles.btnOutline} onPress={() => router.push('/lineup' as any)}>
-                <Text style={styles.btnOutlineText}>LINEUP</Text>
+                <Text style={styles.btnOutlineText}>{t('LINEUP', 'PROGRAM')}</Text>
               </AnimPressable>
             </View>
             <View style={{ height: 28 }} />
@@ -140,10 +143,10 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <MaterialIcons name="sensors" size={18} color={SV.primaryContainer} />
-              <Text style={styles.sectionTitle}>NEXT UP</Text>
+              <Text style={styles.sectionTitle}>{t('NEXT UP', 'KÖVETKEZŐ')}</Text>
             </View>
             <Pressable onPress={() => router.push('/lineup' as any)}>
-              <Text style={styles.sectionLink}>VIEW ALL</Text>
+              <Text style={styles.sectionLink}>{t('VIEW ALL', 'ÖSSZES')}</Text>
             </Pressable>
           </View>
 
@@ -155,10 +158,10 @@ export default function HomeScreen() {
               <View style={styles.featuredOverlay} />
               <View style={styles.liveNowBadge}>
                 <PulseDot />
-                <Text style={styles.liveNowText}>LIVE NOW</Text>
+                <Text style={styles.liveNowText}>{t('LIVE NOW', 'ÉLŐ ADÁS')}</Text>
               </View>
               <View style={styles.featuredInfo}>
-                <Text style={styles.featuredStage}>MAIN STAGE // THE FORGE</Text>
+                <Text style={styles.featuredStage}>{t('MAIN STAGE // THE FORGE', 'FŐSZÍNPAD // THE FORGE')}</Text>
                 <Text style={styles.featuredArtist}>KONTRAVØID</Text>
                 <Text style={styles.featuredGenre}>Industrial / Darkwave Set</Text>
               </View>
@@ -181,7 +184,7 @@ export default function HomeScreen() {
           ))}
 
           <AnimPressable style={styles.fullScheduleBtn} onPress={() => router.push('/lineup' as any)}>
-            <Text style={styles.fullScheduleText}>FULL SCHEDULE</Text>
+            <Text style={styles.fullScheduleText}>{t('FULL SCHEDULE', 'TELJES PROGRAM')}</Text>
             <MaterialIcons name="arrow-forward" size={16} color={SV.onSurfaceVariant} />
           </AnimPressable>
         </View>
@@ -191,13 +194,29 @@ export default function HomeScreen() {
           <View style={styles.sectionHeader}>
             <View style={styles.sectionTitleRow}>
               <MaterialIcons name="feed" size={18} color={SV.outline} />
-              <Text style={styles.sectionTitle}>SYSTEM LOG</Text>
+              <Text style={styles.sectionTitle}>{t('SYSTEM LOG', 'RENDSZERNAPLÓ')}</Text>
             </View>
           </View>
 
           {[
-            { badge: 'ALERT', badgeStyle: styles.alertBadge, badgeText: styles.alertBadgeText, time: '2 HOURS AGO', title: 'Lockers Running Low', body: 'Secure your gear. Standard lockers in Sector 4 are nearly at capacity.', cta: 'BOOK LOCKER' },
-            { badge: 'INFO', badgeStyle: styles.infoBadge, badgeText: styles.infoBadgeText, time: '1 DAY AGO', title: "New Merch Drop: 'GRID' Collection", body: 'Exclusive run of 200 heavy-weight organic cotton tees featuring the 2026 Grid design.', cta: 'PREVIEW DROP' },
+            {
+              badge: t('ALERT', 'FIGYELMEZTETÉS'),
+              badgeStyle: styles.alertBadge,
+              badgeText: styles.alertBadgeText,
+              time: t('2 HOURS AGO', '2 ÓRÁVAL EZELŐTT'),
+              title: t('Lockers Running Low', 'Szekrények fogyóban'),
+              body: t('Secure your gear. Standard lockers in Sector 4 are nearly at capacity.', 'Gondoskodj a felszerelésedről. A 4-es szektorban lévő standard szekrények szinte megteltek.'),
+              cta: t('BOOK LOCKER', 'SZEKRÉNY FOGLALÁS'),
+            },
+            {
+              badge: 'INFO',
+              badgeStyle: styles.infoBadge,
+              badgeText: styles.infoBadgeText,
+              time: t('1 DAY AGO', '1 NAPJA'),
+              title: t("New Merch Drop: 'GRID' Collection", "Új merch: 'GRID' Kollekció"),
+              body: t('Exclusive run of 200 heavy-weight organic cotton tees featuring the 2026 Grid design.', '200 darabos exkluzív, nehézsúlyú organikus pamut póló a 2026-os Grid dizájnnal.'),
+              cta: t('PREVIEW DROP', 'ELŐNÉZET'),
+            },
           ].map((item, i) => (
             <View key={item.title} style={[styles.logCard, i > 0 && { marginTop: 12 }]}>
               <View style={styles.logCardHeader}>

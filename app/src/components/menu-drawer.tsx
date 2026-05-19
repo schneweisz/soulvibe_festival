@@ -21,6 +21,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SV, neonShadow } from '@/constants/theme';
+import { useLanguage } from '@/context/LanguageContext';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 320);
 const DURATION_IN = 300;
@@ -36,18 +37,20 @@ export function useMenu() {
 
 // ─── Menu items ─────────────────────────────────────────────────────────────
 
-const NAV_ITEMS: { label: string; icon: string; href: string; active?: boolean }[] = [
-  { label: 'HOME', icon: 'home', href: '/' },
-  { label: 'LINEUP', icon: 'event-note', href: '/lineup' },
-  { label: 'MAP', icon: 'map', href: '/map' },
-  { label: 'GASTRO', icon: 'fastfood', href: '/gastro' },
-  { label: 'INFO', icon: 'info', href: '/info' },
+type NavItem = { en: string; hu: string; icon: string; href: string };
+
+const NAV_ITEMS: NavItem[] = [
+  { en: 'HOME', hu: 'FŐOLDAL', icon: 'home', href: '/' },
+  { en: 'LINEUP', hu: 'PROGRAM', icon: 'event-note', href: '/lineup' },
+  { en: 'MAP', hu: 'TÉRKÉP', icon: 'map', href: '/map' },
+  { en: 'GASTRO', hu: 'GASZTRO', icon: 'fastfood', href: '/gastro' },
+  { en: 'INFO', hu: 'INFO', icon: 'info', href: '/info' },
 ];
 
-const SECONDARY_ITEMS = [
-  { label: 'MY TICKET', icon: 'confirmation-number', href: '/profile' },
-  { label: 'WALLET', icon: 'account-balance-wallet', href: '/wallet' },
-  { label: 'CART', icon: 'shopping-cart', href: '/cart' },
+const SECONDARY_ITEMS: NavItem[] = [
+  { en: 'MY TICKET', hu: 'JEGYEM', icon: 'confirmation-number', href: '/profile' },
+  { en: 'WALLET', hu: 'PÉNZTÁRCA', icon: 'account-balance-wallet', href: '/wallet' },
+  { en: 'CART', hu: 'KOSÁR', icon: 'shopping-cart', href: '/cart' },
 ];
 
 // ─── Animated list item ──────────────────────────────────────────────────────
@@ -106,6 +109,8 @@ function MenuItem({
 function Drawer({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
+  const { lang } = useLanguage();
+  const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
 
@@ -177,7 +182,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.profileName}>RAVER_082</Text>
-            <Text style={styles.profileLevel}>PULSE LEVEL: HIGH</Text>
+            <Text style={styles.profileLevel}>{t('PULSE LEVEL: HIGH', 'PULZUS SZINT: MAGAS')}</Text>
           </View>
           <View style={styles.profileBadge}>
             <Text style={styles.profileBadgeText}>VIP</Text>
@@ -191,7 +196,9 @@ function Drawer({ onClose }: { onClose: () => void }) {
         {NAV_ITEMS.map((item, i) => (
           <MenuItem
             key={item.href}
-            {...item}
+            icon={item.icon}
+            label={lang === 'hu' ? item.hu : item.en}
+            href={item.href}
             active={pathname === item.href}
             delay={40 + i * 35}
             onPress={() => navigate(item.href)}
@@ -205,7 +212,9 @@ function Drawer({ onClose }: { onClose: () => void }) {
         {SECONDARY_ITEMS.map((item, i) => (
           <MenuItem
             key={item.href}
-            {...item}
+            icon={item.icon}
+            label={lang === 'hu' ? item.hu : item.en}
+            href={item.href}
             active={pathname === item.href}
             delay={220 + i * 35}
             onPress={() => navigate(item.href)}

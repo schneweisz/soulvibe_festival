@@ -3,6 +3,7 @@ import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { SV } from '@/constants/theme';
+import { useLanguage } from '@/context/LanguageContext';
 
 interface TabIconProps {
   name: string;
@@ -29,6 +30,9 @@ const HIDDEN: any = {
 };
 
 export default function AppTabs() {
+  const { lang } = useLanguage();
+  const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
+
   return (
     <Tabs
       screenOptions={{
@@ -57,7 +61,7 @@ export default function AppTabs() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'HOME',
+          title: t('HOME', 'FŐOLDAL'),
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon name="home" color={color} size={size} focused={focused} />
           ),
@@ -66,7 +70,7 @@ export default function AppTabs() {
       <Tabs.Screen
         name="lineup"
         options={{
-          title: 'LINEUP',
+          title: t('LINEUP', 'PROGRAM'),
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon name="event-note" color={color} size={size} focused={focused} />
           ),
@@ -75,7 +79,7 @@ export default function AppTabs() {
       <Tabs.Screen
         name="map"
         options={{
-          title: 'MAP',
+          title: t('MAP', 'TÉRKÉP'),
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon name="map" color={color} size={size} focused={focused} />
           ),
@@ -84,7 +88,7 @@ export default function AppTabs() {
       <Tabs.Screen
         name="gastro"
         options={{
-          title: 'GASTRO',
+          title: t('GASTRO', 'GASZTRO'),
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon name="fastfood" color={color} size={size} focused={focused} />
           ),

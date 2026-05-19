@@ -10,21 +10,34 @@ import {
 } from 'react-native';
 import { SV, neonShadow } from '@/constants/theme';
 import { ScreenHeader } from '@/components/screen-header';
+import { useLanguage } from '@/context/LanguageContext';
 
-const HOURS = [
-  { day: 'FRI_JUL_18', time: '18:00 - 06:00' },
-  { day: 'SAT_JUL_19', time: '15:00 - 08:00' },
-  { day: 'SUN_JUL_20', time: '12:00 - 23:59' },
+const HOURS_DATA = [
+  { en: 'FRI_JUL_18', hu: 'PÉN_JÚL_18', time: '18:00 - 06:00' },
+  { en: 'SAT_JUL_19', hu: 'SZO_JÚL_19', time: '15:00 - 08:00' },
+  { en: 'SUN_JUL_20', hu: 'V_JÚL_20', time: '12:00 - 23:59' },
 ];
 
-const FAQS = [
+const FAQS_DATA = [
   {
-    q: 'What is the prohibited items list?',
-    a: 'We employ a strict techno-minimalist approach to entry. Prohibited items include: professional camera equipment, illegal substances, weapons of any kind, outside food/beverage, and large backpacks. Hydration packs are permitted if empty upon entry.',
+    q: { en: 'What is the prohibited items list?', hu: 'Mi a tiltott tárgyak listája?' },
+    a: {
+      en: 'We employ a strict techno-minimalist approach to entry. Prohibited items include: professional camera equipment, illegal substances, weapons of any kind, outside food/beverage, and large backpacks. Hydration packs are permitted if empty upon entry.',
+      hu: 'Szigorú megközelítést alkalmazunk a beléptetésnél. Tiltott tárgyak: professzionális fényképezőfelszerelés, tiltott anyagok, bármilyen fegyver, külső étel/ital, nagy hátizsákok. Hidratáló táskák üres állapotban megengedettek.',
+    },
   },
-  { q: 'Are lockers available on site?', a: 'Yes — standard and large lockers are available in Sectors 2 and 4. Pre-book via the app or at the entrance.' },
-  { q: 'How does cashless payment work?', a: 'Load HUF onto your festival wristband via the Wallet section of this app. All vendors accept wristband payments only.' },
-  { q: 'Is there an age restriction?', a: 'SoulVibe Festival 2026 is 18+. Valid ID required at entry.' },
+  {
+    q: { en: 'Are lockers available on site?', hu: 'Elérhetők szekrények a helyszínen?' },
+    a: { en: 'Yes — standard and large lockers are available in Sectors 2 and 4. Pre-book via the app or at the entrance.', hu: 'Igen — standard és nagy szekrények a 2-es és 4-es Szektorban. Előre foglalható az alkalmazáson vagy a bejáratnál.' },
+  },
+  {
+    q: { en: 'How does cashless payment work?', hu: 'Hogyan működik a készpénzmentes fizetés?' },
+    a: { en: 'Load HUF onto your festival wristband via the Wallet section of this app. All vendors accept wristband payments only.', hu: 'Töltsd fel a karszalagodat HUF-ban az alkalmazás Pénztárca szekciójában. Minden árus csak karszalag-fizetést fogad el.' },
+  },
+  {
+    q: { en: 'Is there an age restriction?', hu: 'Van korhatár?' },
+    a: { en: 'SoulVibe Festival 2026 is 18+. Valid ID required at entry.', hu: 'A SoulVibe Fesztivál 2026 18+ esemény. Érvényes személyi igazolvány szükséges a belépéshez.' },
+  },
 ];
 
 const PARTNERS = [
@@ -53,6 +66,11 @@ function FaqItem({ q, a }: { q: string; a: string }) {
 }
 
 export default function InfoScreen() {
+  const { lang } = useLanguage();
+  const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
+  const HOURS = HOURS_DATA.map(h => ({ day: lang === 'hu' ? h.hu : h.en, time: h.time }));
+  const FAQS = FAQS_DATA.map(f => ({ q: f.q[lang], a: f.a[lang] }));
+
   return (
     <View style={styles.root}>
       <ScreenHeader />
@@ -61,11 +79,11 @@ export default function InfoScreen() {
         {/* Page header */}
         <View style={styles.pageHeader}>
           <View style={styles.tagChip}>
-            <Text style={styles.tagChipText}>DATA.CORE // INFO</Text>
+            <Text style={styles.tagChipText}>{t('DATA.CORE // INFO', 'ADAT.MAG // INFO')}</Text>
           </View>
-          <Text style={styles.pageTitle}>FESTIVAL{'\n'}INTELLIGENCE</Text>
+          <Text style={styles.pageTitle}>{t('FESTIVAL\nINTELLIGENCE', 'FESZTIVÁL\nINFORMÁCIÓ')}</Text>
           <Text style={styles.pageSubtitle}>
-            Essential logistics, operational hours, and the vital partners powering the pulse of SoulVibe 2026.
+            {t('Essential logistics, operational hours, and the vital partners powering the pulse of SoulVibe 2026.', 'Alapvető logisztika, nyitvatartási idők és a SoulVibe 2026 lüktetését biztosító kulcspartnerek.')}
           </Text>
         </View>
 
@@ -73,7 +91,7 @@ export default function InfoScreen() {
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <MaterialIcons name="schedule" size={20} color={SV.primaryContainer} />
-            <Text style={styles.cardTitle}>OPERATIONAL HOURS</Text>
+            <Text style={styles.cardTitle}>{t('OPERATIONAL HOURS', 'NYITVATARTÁS')}</Text>
           </View>
           {HOURS.map(h => (
             <View key={h.day} style={styles.hoursRow}>
@@ -82,9 +100,9 @@ export default function InfoScreen() {
             </View>
           ))}
           <View style={styles.hoursNote}>
-            <Text style={styles.hoursNoteLabel}>GATES OPEN</Text>
+            <Text style={styles.hoursNoteLabel}>{t('GATES OPEN', 'KAPUK NYITVA')}</Text>
             <Text style={styles.hoursNoteText}>
-              Box office closes 2 hours before event end time each night. No re-entry permitted after 02:00.
+              {t('Box office closes 2 hours before event end time each night. No re-entry permitted after 02:00.', 'A pénztár minden este 2 órával a rendezvény vége előtt zár. Visszalépés 02:00 után nem engedélyezett.')}
             </Text>
           </View>
         </View>
@@ -93,19 +111,19 @@ export default function InfoScreen() {
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <MaterialIcons name="radar" size={20} color={SV.primaryContainer} />
-            <Text style={styles.cardTitle}>CONTACT HQ</Text>
+            <Text style={styles.cardTitle}>{t('CONTACT HQ', 'KAPCSOLAT')}</Text>
           </View>
           <TouchableOpacity style={styles.contactRow} onPress={() => Linking.openURL('mailto:info@soulvibe2026.com')}>
             <MaterialIcons name="mail" size={18} color={SV.outline} />
             <View>
-              <Text style={styles.contactLabel}>GENERAL_INQUIRIES</Text>
+              <Text style={styles.contactLabel}>{t('GENERAL_INQUIRIES', 'ÁLTALÁNOS_MEGKERESÉSEK')}</Text>
               <Text style={styles.contactValue}>info@soulvibe2026.com</Text>
             </View>
           </TouchableOpacity>
           <TouchableOpacity style={styles.contactRow} onPress={() => Linking.openURL('tel:+18008423911')}>
             <MaterialIcons name="support-agent" size={18} color={SV.outline} />
             <View>
-              <Text style={styles.contactLabel}>EMERGENCY_SUPPORT</Text>
+              <Text style={styles.contactLabel}>{t('EMERGENCY_SUPPORT', 'VÉSZHELYZETI_TÁMOGATÁS')}</Text>
               <Text style={[styles.contactValue, { color: SV.primaryContainer }]}>+1 (800) VIBE-911</Text>
             </View>
           </TouchableOpacity>
@@ -115,7 +133,7 @@ export default function InfoScreen() {
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <MaterialIcons name="help" size={20} color={SV.primaryContainer} />
-            <Text style={styles.cardTitle}>FAQ_MATRIX</Text>
+            <Text style={styles.cardTitle}>{t('FAQ_MATRIX', 'GYIK_MÁTRIX')}</Text>
           </View>
           {FAQS.map(f => <FaqItem key={f.q} q={f.q} a={f.a} />)}
         </View>
@@ -124,10 +142,10 @@ export default function InfoScreen() {
         <View style={styles.partnersSection}>
           <View style={styles.partnersTitleRow}>
             <MaterialIcons name="handshake" size={22} color={SV.primaryContainer} />
-            <Text style={styles.partnersTitle}>OUR PARTNERS</Text>
+            <Text style={styles.partnersTitle}>{t('OUR PARTNERS', 'PARTNEREINK')}</Text>
           </View>
           <Text style={styles.partnersSubtitle}>
-            The structural integrity of SoulVibe is reinforced by our allied corporate entities. These partners power the grid, sustain the hydration networks, and amplify the signal.
+            {t('The structural integrity of SoulVibe is reinforced by our allied corporate entities. These partners power the grid, sustain the hydration networks, and amplify the signal.', 'A SoulVibe szerkezeti integritását szövetséges vállalati partnereink erősítik. Ők biztosítják az áramot, fenntartják a hidratációs hálózatot és felerősítik a jelet.')}
           </Text>
           <View style={styles.partnersGrid}>
             {PARTNERS.map(p => (

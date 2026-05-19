@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import {
@@ -16,12 +17,31 @@ interface CartItem {
   name: string;
   qty: number;
   price: number;
+  image: string;
 }
 
 const INITIAL_ITEMS: CartItem[] = [
-  { id: '1', name: '808 Smash Burger', qty: 1, price: 3500 },
-  { id: '2', name: 'Acid Lemonade', qty: 2, price: 1500 },
-  { id: '3', name: 'Techno Water', qty: 1, price: 800 },
+  { 
+    id: '1', 
+    name: '808 Smash Burger', 
+    qty: 1, 
+    price: 3500,
+    image: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=80&w=300&auto=format&fit=crop'
+  },
+  { 
+    id: '2', 
+    name: 'Acid Lemonade', 
+    qty: 2, 
+    price: 1500,
+    image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?q=80&w=300&auto=format&fit=crop'
+  },
+  { 
+    id: '3', 
+    name: 'Techno Water', 
+    qty: 1, 
+    price: 800,
+    image: 'https://images.unsplash.com/photo-1523362628745-0c100150b504?q=80&w=300&auto=format&fit=crop'
+  },
 ];
 
 const SERVICE_FEE = 200;
@@ -43,6 +63,12 @@ export default function CartScreen() {
         <View style={styles.itemsSection}>
           {items.map(item => (
             <View key={item.id} style={styles.cartItem}>
+              <Image
+                source={item.image}
+                style={styles.itemImage}
+                contentFit="cover"
+                transition={300}
+              />
               <View style={{ flex: 1 }}>
                 <Text style={styles.itemName}>{item.name}</Text>
                 <View style={styles.itemMeta}>
@@ -129,11 +155,15 @@ const styles = StyleSheet.create({
 
   itemsSection: { padding: 20, gap: 10 },
   cartItem: {
-    flexDirection: 'row', alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center', gap: 12,
     backgroundColor: SV.surfaceGlass, borderTopWidth: 1, borderLeftWidth: 1, borderColor: SV.white10,
-    borderRadius: 8, padding: 14, ...neonShadow,
+    borderRadius: 8, padding: 12, ...neonShadow,
   },
-  itemName: { color: SV.onSurface, fontSize: 16, fontWeight: '700', textTransform: 'uppercase', marginBottom: 6 },
+  itemImage: {
+    width: 50, height: 50, borderRadius: 6,
+    backgroundColor: SV.surfaceContainerHigh,
+  },
+  itemName: { color: SV.onSurface, fontSize: 16, fontWeight: '700', textTransform: 'uppercase', marginBottom: 4 },
   itemMeta: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   qtyBadge: { backgroundColor: SV.surfaceContainerHigh, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
   qtyText: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12 },
