@@ -99,7 +99,7 @@ function CountdownCell({ value, label, highlight }: { value: number; label: stri
 
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
-export function HomeScreen() {
+export default function HomeScreen() {
   const time = useCountdown();
   const { lang } = useLanguage();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
