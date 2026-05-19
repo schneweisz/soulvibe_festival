@@ -14,6 +14,7 @@ import {
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
 import { useLanguage } from '@/context/LanguageContext';
+import { GlitchText } from '@/components/glitch-text';
 
 // ─── Countdown ──────────────────────────────────────────────────────────────
 
@@ -119,7 +120,7 @@ export default function HomeScreen() {
               <PulseDot />
               <Text style={styles.liveBadgeText}>{t('SYS.INIT // JULY 18 2026', 'RENDSZER.INIT // 2026. JÚL. 18.')}</Text>
             </View>
-            <Text style={styles.heroTitle}>{t('THE PULSE\nAWAKENS', 'A PULZUS\nFELÉBRED')}</Text>
+            <GlitchText style={styles.heroTitle}>{t('THE PULSE\nAWAKENS', 'A PULZUS\nFELÉBRED')}</GlitchText>
             <View style={styles.countRow}>
               <CountdownCell value={time.days} label={t('DAYS', 'NAP')} />
               <CountdownCell value={time.hrs} label={t('HRS', 'ÓRA')} />

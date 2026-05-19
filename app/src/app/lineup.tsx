@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -10,6 +10,8 @@ import {
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
 import { useLanguage } from '@/context/LanguageContext';
+import { AudioBars } from '@/components/audio-bars';
+import { SkeletonLineupRow } from '@/components/skeleton';
 
 type DayIdx = 0 | 1 | 2;
 type StageFilter = 'ALL' | 'SUBURBIA' | 'BASEMENT' | 'GRID';
@@ -20,6 +22,7 @@ interface ArtistEntry {
   time: string;
   stage: 'suburbia' | 'basement' | 'grid';
   favorite: boolean;
+  live?: boolean;
 }
 
 const ARTISTS: ArtistEntry[] = [
@@ -42,7 +45,7 @@ const ARTISTS: ArtistEntry[] = [
   { day: 0, name: 'Shabaam', time: '20:00 - 22:00', stage: 'grid', favorite: false },
   { day: 0, name: 'SanFranciscoBeat', time: '22:00 - 00:00', stage: 'grid', favorite: false },
   { day: 0, name: 'SNTNS (Svetec & Nils)', time: '00:00 - 02:00', stage: 'grid', favorite: false },
-  { day: 0, name: 'KOBOSIL (DE)', time: '02:00 - 04:00', stage: 'grid', favorite: true },
+  { day: 0, name: 'KOBOSIL (DE)', time: '02:00 - 04:00', stage: 'grid', favorite: true, live: true },
   { day: 0, name: 'HotX', time: '04:00 - 06:00', stage: 'grid', favorite: false },
 
   // ── SATURDAY (Day 1) ────────────────────────────────────────────────────────
@@ -51,7 +54,7 @@ const ARTISTS: ArtistEntry[] = [
   { day: 1, name: 'Bruno x Spacc', time: '17:00 - 18:30', stage: 'suburbia', favorite: false },
   { day: 1, name: 'Manual', time: '18:45 - 20:15', stage: 'suburbia', favorite: false },
   { day: 1, name: 'Dzsúdló', time: '20:30 - 22:00', stage: 'suburbia', favorite: false },
-  { day: 1, name: 'AZAHRIAH', time: '22:30 - 00:00', stage: 'suburbia', favorite: true },
+  { day: 1, name: 'AZAHRIAH', time: '22:30 - 00:00', stage: 'suburbia', favorite: true, live: true },
   { day: 1, name: 'METRO BOOMIN (US) DJ Set', time: '00:00 - 01:15', stage: 'suburbia', favorite: true },
   { day: 1, name: 'FRED AGAIN.. (UK) DJ SET', time: '01:15 - 02:45', stage: 'suburbia', favorite: true },
 
@@ -65,7 +68,7 @@ const ARTISTS: ArtistEntry[] = [
   { day: 1, name: 'Bernathy (Live)', time: '20:00 - 22:00', stage: 'grid', favorite: false },
   { day: 1, name: 'Mateo & Spirit', time: '22:00 - 00:00', stage: 'grid', favorite: false },
   { day: 1, name: 'Sasha Carassi', time: '00:00 - 02:00', stage: 'grid', favorite: false },
-  { day: 1, name: 'CHARLOTTE DE WITTE (BE)', time: '02:00 - 04:00', stage: 'grid', favorite: true },
+  { day: 1, name: 'CHARLOTTE DE WITTE (BE)', time: '02:00 - 04:00', stage: 'grid', favorite: true, live: true },
   { day: 1, name: 'Sikztah', time: '04:00 - 06:00', stage: 'grid', favorite: false },
 
   // ── SUNDAY (Day 2) ──────────────────────────────────────────────────────────
@@ -74,7 +77,7 @@ const ARTISTS: ArtistEntry[] = [
   { day: 2, name: 'VALMAR', time: '17:00 - 18:30', stage: 'suburbia', favorite: false },
   { day: 2, name: 'Lil Frakk (Main Stage Set)', time: '18:45 - 20:15', stage: 'suburbia', favorite: false },
   { day: 2, name: 'BSW', time: '20:30 - 22:00', stage: 'suburbia', favorite: false },
-  { day: 2, name: 'TRAVIS SCOTT (US)', time: '22:30 - 00:00', stage: 'suburbia', favorite: true },
+  { day: 2, name: 'TRAVIS SCOTT (US)', time: '22:30 - 00:00', stage: 'suburbia', favorite: true, live: true },
   { day: 2, name: 'OBLATI x ONTHELOW All-Stars', time: '00:00 - 02:00', stage: 'suburbia', favorite: false },
 
   { day: 2, name: 'LIL VIBE', time: '14:30 - 16:00', stage: 'basement', favorite: false },
@@ -125,6 +128,12 @@ export default function LineupScreen() {
   const { lang } = useLanguage();
   const [day, setDay] = useState<DayIdx>(0);
   const [stage, setStage] = useState<StageFilter>('ALL');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   const DAYS = DAYS_DATA.map(d => ({ ...d, label: lang === 'hu' ? d.hu : d.en }));
   const STAGE_CHIPS = STAGE_CHIPS_DATA.map(s => ({ ...s, label: lang === 'hu' ? s.hu : s.en }));
@@ -191,58 +200,56 @@ export default function LineupScreen() {
         style={styles.list}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.listContent}>
-        {acts.map((act, i) => (
-          <View key={`${act.name}-${i}`} style={styles.row}>
-            <View
-              style={[styles.stagePill, { backgroundColor: STAGE_COLOR[act.stage] }]}
-            />
-            <View style={styles.rowBody}>
-              <View style={styles.rowTop}>
-                <Text
-                  style={[
-                    styles.artistName,
-                    favs[act.name] && styles.artistNameFav,
-                  ]}
-                  numberOfLines={1}>
-                  {act.name}
-                </Text>
-                <TouchableOpacity
-                  onPress={() => toggleFav(act.name)}
-                  hitSlop={10}
-                  style={styles.favBtn}>
-                  <MaterialIcons
-                    name={favs[act.name] ? 'favorite' : 'favorite-border'}
-                    size={18}
-                    color={
-                      favs[act.name] ? SV.primaryContainer : SV.surfaceVariant
-                    }
-                  />
-                </TouchableOpacity>
-              </View>
 
-              <View style={styles.rowMeta}>
-                <MaterialIcons
-                  name="schedule"
-                  size={11}
-                  color={SV.onSurfaceVariant}
-                />
-                <Text style={styles.timeText}>{act.time}</Text>
-                {stage === 'ALL' && (
-                  <>
-                    <View style={styles.dot} />
-                    <Text
-                      style={[
-                        styles.stageText,
-                        { color: STAGE_COLOR[act.stage] },
-                      ]}>
-                      {STAGE_LABEL[act.stage]}
-                    </Text>
-                  </>
-                )}
+        {loading ? (
+          // ── Skeleton placeholder ──────────────────────────────────────────
+          Array.from({ length: 7 }).map((_, i) => <SkeletonLineupRow key={i} />)
+        ) : (
+          // ── Real content ──────────────────────────────────────────────────
+          acts.map((act, i) => (
+            <View key={`${act.name}-${i}`} style={[styles.row, act.live && styles.rowLive]}>
+              <View style={[styles.stagePill, { backgroundColor: STAGE_COLOR[act.stage] }]} />
+              <View style={styles.rowBody}>
+                <View style={styles.rowTop}>
+                  <Text
+                    style={[styles.artistName, favs[act.name] && styles.artistNameFav]}
+                    numberOfLines={1}>
+                    {act.name}
+                  </Text>
+                  <TouchableOpacity onPress={() => toggleFav(act.name)} hitSlop={10} style={styles.favBtn}>
+                    <MaterialIcons
+                      name={favs[act.name] ? 'favorite' : 'favorite-border'}
+                      size={18}
+                      color={favs[act.name] ? SV.primaryContainer : SV.surfaceVariant}
+                    />
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.rowMeta}>
+                  {act.live ? (
+                    <>
+                      <AudioBars color={STAGE_COLOR[act.stage]} />
+                      <Text style={[styles.liveTag, { color: STAGE_COLOR[act.stage] }]}>LIVE</Text>
+                      <View style={styles.dot} />
+                    </>
+                  ) : (
+                    <MaterialIcons name="schedule" size={11} color={SV.onSurfaceVariant} />
+                  )}
+                  <Text style={styles.timeText}>{act.time}</Text>
+                  {stage === 'ALL' && (
+                    <>
+                      <View style={styles.dot} />
+                      <Text style={[styles.stageText, { color: STAGE_COLOR[act.stage] }]}>
+                        {STAGE_LABEL[act.stage]}
+                      </Text>
+                    </>
+                  )}
+                </View>
               </View>
             </View>
-          </View>
-        ))}
+          ))
+        )}
+
         <View style={{ height: 120 }} />
       </ScrollView>
 
@@ -334,6 +341,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.06)',
     marginBottom: 8,
     overflow: 'hidden',
+  },
+  rowLive: {
+    borderColor: 'rgba(57,255,20,0.22)',
+    backgroundColor: 'rgba(57,255,20,0.04)',
+  },
+  liveTag: {
+    fontFamily: 'monospace',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 1.5,
   },
   stagePill: {
     width: 3,

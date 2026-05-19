@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, Link } from 'expo-router';
 import React, { useRef } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SV, neonShadow } from '@/constants/theme';
 import { useMenu } from '@/components/menu-drawer';
@@ -62,7 +62,11 @@ export function ScreenHeader({ showBack, cartCount, rightIcon }: ScreenHeaderPro
         </PressableIcon>
       )}
 
-      <Text style={styles.title}>SOULVIBE 2026</Text>
+      <Image
+        source={require('../../assets/images/soulvibe2026.png')}
+        style={styles.logo}
+        resizeMode="contain"
+      />
 
       {rightIcon ?? (
         <Link href="/profile" asChild>
@@ -119,16 +123,9 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 12,
   },
-  title: {
-    color: SV.primaryFixedDim,
-    fontFamily: 'monospace',
-    fontSize: 25,
-    fontWeight: '800',
-    letterSpacing: 2,
-    textTransform: 'uppercase',
-    textShadowColor: 'rgba(42,229,0,0.3)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 6,
+  logo: {
+    height: 32,
+    width: 160,
   },
   iconBtn: {
     width: 44,

@@ -1,6 +1,6 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -11,6 +11,7 @@ import {
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
 import { useLanguage } from '@/context/LanguageContext';
+import { SkeletonGastroSection } from '@/components/skeleton';
 
 type L10n = { en: string; hu: string };
 
@@ -176,6 +177,12 @@ type CartState = Record<string, number>;
 export default function GastroScreen() {
   const { lang } = useLanguage();
   const [cart, setCart] = useState<CartState>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   const add = (id: string) => setCart(c => ({ ...c, [id]: (c[id] ?? 0) + 1 }));
   const remove = (id: string) =>
@@ -206,7 +213,14 @@ export default function GastroScreen() {
         </View>
 
         {/* Vendor sections */}
-        {VENDORS.map(vendor => (
+        {loading ? (
+          <>
+            <SkeletonGastroSection />
+            <SkeletonGastroSection />
+          </>
+        ) : null}
+
+        {!loading && VENDORS.map(vendor => (
           <View key={vendor.id} style={styles.vendorSection}>
             {/* Vendor header */}
             <View style={styles.vendorHeader}>
@@ -282,6 +296,7 @@ export default function GastroScreen() {
         ))}
 
         <View style={{ height: 120 }} />
+
       </ScrollView>
 
       <CartFAB count={cartCount + 2} />
