@@ -14,6 +14,7 @@ const NAV_ITEMS = [
 ] as const;
 
 const HIDDEN_ITEMS = [
+  { name: 'auth', href: '/auth' as const },
   { name: 'profile', href: '/profile' as const },
   { name: 'cart', href: '/cart' as const },
   { name: 'wallet', href: '/wallet' as const },
