@@ -18,7 +18,7 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { ThemedView } from '../components/themed-view';
-
+import { useDatabase } from '../context/DatabaseContext';
 import { getRank } from '../utils/rank';
 
 const MY_LINEUP = [
@@ -29,10 +29,8 @@ const MY_LINEUP = [
 
 export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
-  const { session, profile, loading: authLoading, signOut, refreshProfile } = useAuth();
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [transactions, setTransactions] = useState<{ id: string; type: 'credit' | 'debit'; label: string; amount: number; created_at: string }[]>([]);
-  const [tickets, setTickets] = useState<{ id: string; ticket_id: string; type: string; name: string; is_used: boolean }[]>([]);
+  const { session, loading: authLoading, signOut } = useAuth();
+  const { profile, tickets, transactions, loading: dbLoading, refreshAll } = useDatabase();
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
@@ -47,56 +45,11 @@ export default function ProfileScreen() {
     }
   }, [profile]);
 
-  // Fetch data (remains here as it's specific to this screen)
+  // Refresh data on focus
   useFocusEffect(
     useCallback(() => {
-      let isMounted = true;
-
-      async function loadData() {
-        if (!session) return;
-
-        try {
-          // 1. Fetch transactions
-          const { data: txData } = await supabase
-            .from('transactions')
-            .select('id, type, label, amount, created_at')
-            .eq('user_id', session.user.id)
-            .order('created_at', { ascending: false })
-            .limit(5);
-
-          // 2. Fetch tickets
-          const { data: ticketData } = await supabase
-            .from('tickets')
-            .select('id, ticket_id, type, name, is_used')
-            .eq('profile_id', session.user.id)
-            .order('created_at', { ascending: false });
-
-          if (isMounted) {
-            if (txData && txData.length > 0) {
-              setTransactions(txData as any);
-            } else {
-              // Fallback mock transactions
-              setTransactions([
-                { id: 'm1', type: 'credit', label: 'Top Up',    amount: 10000, created_at: new Date(Date.now() - 3_600_000).toISOString() },
-                { id: 'm2', type: 'debit',  label: 'Gastro Hub', amount: 2900,  created_at: new Date(Date.now() - 7_200_000).toISOString() },
-              ]);
-            }
-
-            if (ticketData) {
-              setTickets(ticketData);
-            }
-          }
-        } catch (e) {
-          console.error('Profile data loading failed', e);
-        }
-      }
-
-      loadData();
-
-      return () => {
-        isMounted = false;
-      };
-    }, [session])
+      refreshAll();
+    }, [refreshAll])
   );
 
   async function handleSignOut() {
@@ -120,7 +73,7 @@ export default function ProfileScreen() {
     if (error) {
       Alert.alert('Error', 'Could not save username. Try again.');
     } else {
-      await refreshProfile();
+      await refreshAll();
       setEditingUsername(false);
     }
   }
@@ -137,7 +90,7 @@ export default function ProfileScreen() {
 
   const displayName = profile?.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? 'RAVER';
 
-  if (authLoading || (session && profileLoading)) {
+  if (authLoading || (session && dbLoading && !profile)) {
     return (
       <ThemedView style={styles.center}>
         <ActivityIndicator size="large" color={SV.primaryContainer} />

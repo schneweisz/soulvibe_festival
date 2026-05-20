@@ -13,10 +13,11 @@ import {
   Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SV, neonShadow } from '@/constants/theme';
-import { ScreenHeader } from '@/components/screen-header';
-import { useLanguage } from '@/context/LanguageContext';
-import { useAuth } from '@/context/AuthContext';
+import { SV, neonShadow } from '../constants/theme';
+import { ScreenHeader } from '../components/screen-header';
+import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
+import { useDatabase } from '../context/DatabaseContext';
 import { supabase } from '../utils/supabase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -124,15 +125,12 @@ function SuccessOverlay({ ticket, onClose }: { ticket: TicketOption; onClose: ()
   );
 }
 
-function generateTicketId() {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-  const r = (len: number) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-  return `SV26-${r(4)}-${r(4)}`;
-}
+// ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function TicketShopScreen() {
   const { lang } = useLanguage();
-  const { session, profile, hasTicket, refreshProfile } = useAuth();
+  const { profile, refreshProfile } = useDatabase();
+  const { session } = useAuth();
   const [selectedType, setSelectedType] = useState<TicketType>('BASE');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [purchasedTicket, setPurchasedTicket] = useState<TicketOption | null>(null);
@@ -145,14 +143,6 @@ export default function TicketShopScreen() {
   const handlePurchase = async (option: TicketOption) => {
     if (!session) {
       router.push('/auth');
-      return;
-    }
-
-    if (hasTicket) {
-      Alert.alert(
-        t('ALREADY OWNED', 'MÁR VAN JEGYED'),
-        t('You already have an active pass. Multiple tickets are not allowed.', 'Már rendelkezel aktív bérlettel. Több jegy vásárlása nem engedélyezett.')
-      );
       return;
     }
 
@@ -171,49 +161,23 @@ export default function TicketShopScreen() {
     setIsPurchasing(true);
 
     try {
-      const ticketId = generateTicketId();
-      const userId = session.user.id;
-      
-      // 1. Create the ticket entry in the new DB table
-      const { error: ticketErr } = await supabase
-        .from('tickets')
-        .insert([{
-          ticket_id: ticketId,
-          type: `${option.type}_${option.duration.replace('-', '')}`,
-          name: `${option.type} ${option.duration} PASS`,
-          description: option.perks.join(', '),
-          price: option.price,
-          profile_id: userId,
-          valid_from: new Date().toISOString(),
-          valid_until: option.duration === '1-DAY' 
-            ? new Date('2026-07-19T06:00:00Z').toISOString() 
-            : new Date('2026-07-21T06:00:00Z').toISOString(),
-        }]);
-
-      if (ticketErr) {
-        console.error('Ticket DB insert failed:', ticketErr);
-        throw new Error(ticketErr.message);
-      }
-
-      // 2. Deduct balance from profile
       const newBalance = balance - option.price;
       const { error: updateErr } = await supabase
         .from('profiles')
         .update({ balance: newBalance })
-        .eq('id', userId);
+        .eq('id', session.user.id);
 
       if (updateErr) throw updateErr;
 
-      // 3. Record transaction for history
       await supabase.from('transactions').insert([{
-        user_id: userId,
+        user_id: session.user.id,
         amount: option.price,
         type: 'debit',
         label: `Ticket: ${option.type} ${option.duration}`,
       }]);
 
       await refreshProfile();
-      setPurchasedTicket({ ...option, glow: ticketId }); // Reuse glow for ID in overlay
+      setPurchasedTicket(option);
     } catch (err: any) {
       Alert.alert('Error', err.message);
     } finally {

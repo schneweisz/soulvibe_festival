@@ -12,9 +12,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SV, neonShadow } from '@/constants/theme';
-import { ScreenHeader } from '@/components/screen-header';
-import { useAuth } from '@/context/AuthContext';
+import { SV, neonShadow } from '../constants/theme';
+import { ScreenHeader } from '../components/screen-header';
+import { useAuth } from '../context/AuthContext';
+import { useDatabase } from '../context/DatabaseContext';
 import { supabase } from '../utils/supabase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -170,9 +171,8 @@ function SuccessOverlay({ amount, newBalance, dbError, onClose }: {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function WalletScreen() {
-  const { session, profile, loading, refreshProfile } = useAuth();
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [txLoading,   setTxLoading]   = useState(true);
+  const { session } = useAuth();
+  const { profile, transactions, loading, refreshAll } = useDatabase();
   
   const [selected,    setSelected]    = useState<number>(10000);
   const [custom,      setCustom]      = useState('');
@@ -189,41 +189,15 @@ export default function WalletScreen() {
     return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
   };
 
-  // ── Load transactions from DB on mount ─────────────────────────
+  // Refresh data on focus
   useFocusEffect(
     useCallback(() => {
-      let isMounted = true;
-
-      (async () => {
-        if (!session) {
-          router.replace('/auth');
-          return;
-        }
-
-        setTxLoading(true);
-
-        // 1. Fetch Transactions
-        const { data: txData, error: txError } = await supabase
-          .from('transactions')
-          .select('*')
-          .eq('user_id', session.user.id)
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        if (!isMounted) return;
-
-        if (txError) {
-          console.error('Failed to fetch transactions:', txError);
-        } else if (txData) {
-          setTransactions(txData);
-        }
-        setTxLoading(false);
-      })();
-
-      return () => {
-        isMounted = false;
-      };
-    }, [session])
+      if (!session) {
+        router.replace('/auth');
+        return;
+      }
+      refreshAll();
+    }, [session, refreshAll])
   );
 
   const finalAmount = custom ? (parseInt(custom, 10) || 0) : selected;
@@ -273,8 +247,6 @@ export default function WalletScreen() {
 
       if (txErr) {
         console.error('Transaction insert failed:', txErr.message);
-      } else if (newTx) {
-        setTransactions(prev => [newTx, ...prev]);
       }
 
       // 4. Log Pulse Points
@@ -287,7 +259,7 @@ export default function WalletScreen() {
         }]);
       
       // 5. Refresh context profile
-      await refreshProfile();
+      await refreshAll();
     }
 
     setPhase('success');
@@ -435,7 +407,7 @@ export default function WalletScreen() {
         {/* ── Transaction history ── */}
         <View style={s.section}>
           <Text style={s.sectionTitle}>RECENT TRANSACTIONS</Text>
-          {txLoading ? (
+          {loading ? (
             <ActivityIndicator color={SV.primaryContainer} style={{ marginTop: 20 }} />
           ) : transactions.length === 0 ? (
             <Text style={{ color: SV.outline, fontFamily: 'monospace', fontSize: 12, textAlign: 'center', marginTop: 20 }}>

@@ -7,6 +7,7 @@ import AppTabs from '@/components/app-tabs';
 import { LanguageProvider } from '@/context/LanguageContext';
 import { CartProvider } from '@/context/CartContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { DatabaseProvider } from '@/context/DatabaseContext';
 
 const SoulVibeDarkTheme = {
   ...DarkTheme,
@@ -23,16 +24,18 @@ const SoulVibeDarkTheme = {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <LanguageProvider>
-        <CartProvider>
-          <ThemeProvider value={SoulVibeDarkTheme}>
-            <MenuProvider>
-              <AnimatedSplashOverlay />
-              <AppTabs />
-            </MenuProvider>
-          </ThemeProvider>
-        </CartProvider>
-      </LanguageProvider>
+      <DatabaseProvider>
+        <LanguageProvider>
+          <CartProvider>
+            <ThemeProvider value={SoulVibeDarkTheme}>
+              <MenuProvider>
+                <AnimatedSplashOverlay />
+                <AppTabs />
+              </MenuProvider>
+            </ThemeProvider>
+          </CartProvider>
+        </LanguageProvider>
+      </DatabaseProvider>
     </AuthProvider>
   );
 }
