@@ -21,94 +21,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchData = async (userId: string) => {
-    try {
-      // 1. Fetch Profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('username, points, balance')
-        .eq('id', userId)
-        .single();
-
-      if (!profileError && profileData) {
-        setProfile(profileData);
-      } else {
-        // No row yet — new user. Generate a one-time random position inside the
-        // festival grounds (Zamárdi, Lake Balaton) and persist it permanently.
-        const lat = 46.874 + Math.random() * (46.896 - 46.874);
-        const lon = 17.918 + Math.random() * (17.965 - 17.918);
-
-        // INSERT (not upsert) so we never overwrite an existing position.
-        // Ignore conflicts: if the row already exists we just fetch it below.
-        await supabase.from('profiles').insert({
-          id: userId,
-          balance: 0,
-          points: 0,
-          position: { lat, lon },
-        });
-
-        const { data: created } = await supabase
-          .from('profiles')
-          .select('username, points, balance')
-          .eq('id', userId)
-          .single();
-        setProfile(created ?? null);
-      }
-
-      // 2. Fetch Ticket Status
-      const { data: ticketData, error: ticketError } = await supabase
-        .from('tickets')
-        .select('id')
-        .eq('profile_id', userId)
-        .limit(1);
-
-      if (!ticketError && ticketData && ticketData.length > 0) {
-        setHasTicket(true);
-      } else {
-        setHasTicket(false);
-      }
-    } catch (e) {
-      console.error('Error fetching auth data:', e);
-      setProfile(null);
-      setHasTicket(false);
-    }
-  };
-
-  const refreshProfile = async () => {
-    if (user) {
-      await fetchData(user.id);
-    }
-  };
-
   useEffect(() => {
-    // Check for initial session
+    // 1. Check for initial session immediately
     supabase.auth.getSession().then(({ data: { session } }) => {
-    // Resolve the initial session once — this is the source of truth for loading=false
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
-      if (session?.user) await fetchData(session.user.id);
-      setLoading(false);          // ← only here, never in onAuthStateChange
     });
 
-    // React to real auth events (sign-in, sign-out, token refresh)
-    // INITIAL_SESSION is redundant with getSession above — skip it to avoid
-    // a brief session=null flash that causes spurious redirects.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'INITIAL_SESSION') return;
+    // 2. Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchData(session.user.id);
-      } else {
-        setProfile(null);
-        setHasTicket(false);
-      }
-      // Do NOT call setLoading(false) here — keeps loading true until getSession resolves
+      setLoading(false);
     });
 
-    return () => { subscription.unsubscribe(); };
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const signOut = async () => {
