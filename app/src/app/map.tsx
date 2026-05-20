@@ -344,17 +344,30 @@ export default function MapScreen() {
   const [legendOpen, setLegendOpen] = useState(false);
   const sheetY = useRef(new RNAnimated.Value(400)).current;
   const [gpsPos, setGpsPos] = useState<{ x: number; y: number; inBounds: boolean } | null>(null);
+  const [dbPos,  setDbPos]  = useState<{ x: number; y: number } | null>(null);
   const [friendMarkers, setFriendMarkers] = useState<{ username: string; x: number; y: number }[]>([]);
 
-  // Fetch friend positions from DB
+  // Fetch own DB position + friend positions
   useEffect(() => {
     (async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
+
+      // Own profile: position + friends list
       const { data: myProfile } = await supabase
-        .from('profiles').select('friends').eq('id', session.user.id).single();
+        .from('profiles')
+        .select('position, friends')
+        .eq('id', session.user.id)
+        .single();
+
+      if (myProfile?.position?.lat != null && myProfile.position?.lon != null) {
+        const c = gpsToCanvas(myProfile.position.lat, myProfile.position.lon);
+        setDbPos({ x: c.x, y: c.y });
+      }
+
       const ids: string[] = myProfile?.friends ?? [];
       if (ids.length === 0) return;
+
       const { data: friendData } = await supabase
         .from('profiles').select('id, username, position').in('id', ids);
       const markers = (friendData ?? [])
@@ -420,8 +433,8 @@ export default function MapScreen() {
   const zoomIn  = () => { const n = Math.min(MAX_SCALE, scale.value * 1.5); scale.value = withTiming(n, ZOOM_CFG); savedScale.value = n; };
   const zoomOut = () => { const n = Math.max(MIN_SCALE, scale.value / 1.5); scale.value = withTiming(n, ZOOM_CFG); savedScale.value = n; };
   const recenter = () => {
-    // Pan to GPS position if available and inside festival bounds, else to map center
-    const target = (gpsPos && gpsPos.inBounds) ? gpsPos : { x: 580, y: 800 };
+    // Pan to: live GPS → DB position → map centre
+    const target = (gpsPos && gpsPos.inBounds) ? gpsPos : (dbPos ?? { x: 580, y: 800 });
     const tx = SW / 2 - target.x;
     const ty = SH / 2 - target.y;
     translateX.value = withTiming(tx, PAN_CFG); translateY.value = withTiming(ty, PAN_CFG);
@@ -710,17 +723,17 @@ export default function MapScreen() {
               ))
             )}
 
-            {/* ════ LAYER 7 — You Are Here ════ */}
-            {(gpsPos && gpsPos.inBounds) ? (
-              <View style={[s.poi, { left: gpsPos.x - 12, top: gpsPos.y - 12 }]}>
-                <YouAreHere />
-              </View>
-            ) : (
-              // Fallback: approximate festival centre when GPS is unavailable or outside bounds
-              <View style={[s.poi, { left: 518, top: 805 }]}>
-                <YouAreHere />
-              </View>
-            )}
+            {/* ════ LAYER 7 — You Are Here ════
+                Priority: live device GPS (if at festival) → DB position (set at registration) */}
+            {(() => {
+              const pos = (gpsPos && gpsPos.inBounds) ? gpsPos : dbPos;
+              if (!pos) return null;
+              return (
+                <View style={[s.poi, { left: pos.x - 12, top: pos.y - 12 }]}>
+                  <YouAreHere />
+                </View>
+              );
+            })()}
 
             {/* ════ LAYER 7b — Friend markers ════ */}
             {friendMarkers.map(f => (
