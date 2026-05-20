@@ -529,7 +529,7 @@ export default function ProfileScreen() {
         </View>
 
         {/* Friend Requests (New Section) */}
-        {pendingRequests.length > 0 && (
+        {pendingRequests && pendingRequests.length > 0 && (
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
               <Text style={styles.cardTitle}>{lang === 'hu' ? 'BARÁTKÉRÉSEK' : 'FRIEND REQUESTS'}</Text>

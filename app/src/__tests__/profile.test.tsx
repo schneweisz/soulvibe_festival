@@ -74,6 +74,7 @@ describe('ProfileScreen', () => {
       transactions: [],
       favourites: [],
       friends: [],
+      pendingRequests: [],
       loading: false,
       refreshAll: mockRefreshAll,
       refreshFriends: jest.fn(),
