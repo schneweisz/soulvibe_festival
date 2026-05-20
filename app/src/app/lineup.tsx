@@ -722,13 +722,6 @@ export default function LineupScreen() {
     label: lang === "hu" ? s.hu : s.en,
   }));
   const STAGE_LABEL = lang === "hu" ? STAGE_LABEL_HU : STAGE_LABEL_EN;
-  const [favs, setFavs] = useState<Record<string, boolean>>(() => {
-    const init: Record<string, boolean> = {};
-    ARTISTS.forEach((a) => {
-      if (a.favorite) init[a.name] = true;
-    });
-    return init;
-  });
 
   // FAVOURITES mode: show all favs across all days; otherwise filter by day+stage
   const acts = stage === 'FAVOURITES'
@@ -738,6 +731,9 @@ export default function LineupScreen() {
         if (stage !== "ALL" && a.stage.toUpperCase() !== stage) return false;
         return true;
       });
+
+  const toggleExpand = (name: string) =>
+    setExpandedArtist(prev => (prev === name ? null : name));
 
   const toggleFav = async (act: ArtistEntry) => {
     const next = !favs[act.id];
@@ -850,22 +846,22 @@ export default function LineupScreen() {
                       <Text
                         style={[
                           styles.artistName,
-                          favs[act.name] && styles.artistNameFav,
+                          favs[act.id] && styles.artistNameFav,
                         ]}
                         numberOfLines={1}
                       >
                         {act.name}
                       </Text>
                       <TouchableOpacity
-                        onPress={() => toggleFav(act.name)}
+                        onPress={() => toggleFav(act)}
                         hitSlop={10}
                         style={styles.favBtn}
                       >
                         <MaterialIcons
-                          name={favs[act.name] ? "favorite" : "favorite-border"}
+                          name={favs[act.id] ? "favorite" : "favorite-border"}
                           size={18}
                           color={
-                            favs[act.name]
+                            favs[act.id]
                               ? SV.primaryContainer
                               : SV.surfaceVariant
                           }
