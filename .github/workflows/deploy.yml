@@ -91,6 +91,12 @@ jobs:
         working-directory: ./app
         run: npm install --legacy-peer-deps
 
+      - name: CLI jogosultságok javítása
+        working-directory: ./app
+        run: |
+          find node_modules -type d -name bin | xargs -I{} find {} -type f | xargs chmod +x 2>/dev/null || true
+          find node_modules/react-native/sdks -type f | xargs chmod +x 2>/dev/null || true
+
       - name: Build indítása preview környezetben (APK)
         working-directory: ./app
         run: eas build --platform android --profile preview --non-interactive --no-wait
