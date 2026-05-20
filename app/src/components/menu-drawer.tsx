@@ -25,6 +25,7 @@ import { SV, neonShadow } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { supabase } from '../utils/supabase';
 import type { Session } from '@supabase/supabase-js';
+import { getRank } from '../utils/rank';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 320);
 const DURATION_IN = 300;
@@ -117,14 +118,26 @@ function Drawer({ onClose }: { onClose: () => void }) {
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
   const [session, setSession] = useState<Session | null>(null);
+  const [profileData, setProfileData] = useState<{ username: string | null; points: number } | null>(null);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(async ({ data }) => {
+      const s = data.session;
+      setSession(s);
+      if (!s) return;
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('username, points')
+        .eq('id', s.user.id)
+        .single();
+      if (profile) setProfileData({ username: profile.username, points: profile.points || 0 });
+    });
   }, []);
 
-  const username = session?.user?.email
-    ? session.user.email.split('@')[0].toUpperCase()
-    : t('GUEST', 'VENDÉG');
+  const rank = getRank(profileData?.points || 0);
+  const username = profileData?.username
+    ?? (session?.user?.email ? session.user.email.split('@')[0].toUpperCase() : null)
+    ?? t('GUEST', 'VENDÉG');
   const avatarUri = session?.user?.email
     ? `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(session.user.email)}`
     : null;
@@ -209,7 +222,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
           <View style={{ flex: 1 }}>
             <Text style={styles.profileName} numberOfLines={1}>{username}</Text>
             <Text style={styles.profileLevel}>
-              {session ? t('PULSE LEVEL: HIGH', 'PULZUS SZINT: MAGAS') : t('TAP TO SIGN IN', 'BEJELENTKEZÉS')}
+              {session ? `PULSE LEVEL: ${rank.name}` : t('TAP TO SIGN IN', 'BEJELENTKEZÉS')}
             </Text>
           </View>
           {session && (

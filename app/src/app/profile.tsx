@@ -19,6 +19,8 @@ import { supabase } from '../utils/supabase';
 import { Session } from '@supabase/supabase-js';
 import { ThemedView } from '../components/themed-view';
 
+import { getRank } from '../utils/rank';
+
 const MY_LINEUP = [
   { time: '22:00', day: 'FRI', artist: 'Charlotte de Witte', stage: 'THE GRID' },
   { time: '01:30', day: 'SAT', artist: 'Amelie Lens', stage: 'THE GRID' },
@@ -34,14 +36,6 @@ export default function ProfileScreen() {
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
   const inputRef = useRef<TextInput>(null);
-
-  // Helper to determine rank based on PULSE_POINTS_PLAN.md
-  const getRank = (pts: number) => {
-    if (pts >= 3500) return { level: 4, name: 'THE SOURCE', next: null };
-    if (pts >= 1500) return { level: 3, name: 'RESONANCE', next: 3500 };
-    if (pts >= 500)  return { level: 2, name: 'FREQUENCY', next: 1500 };
-    return { level: 1, name: 'STATIC', next: 500 };
-  };
 
   const rank = getRank(profile?.points || 0);
   const progressPercent = rank.next ? ((profile?.points || 0) / rank.next) * 100 : 100;
@@ -194,7 +188,7 @@ export default function ProfileScreen() {
           )}
           <View style={styles.badgeRow}>
             <View style={styles.badgePrimary}>
-              <Text style={styles.badgePrimaryText}>PULSE LEVEL: HIGH</Text>
+              <Text style={styles.badgePrimaryText}>PULSE LEVEL: {rank.name}</Text>
             </View>
             <View style={styles.badgeSecondary}>
               <MaterialIcons name="check-circle" size={12} color={SV.secondaryFixedDim} />

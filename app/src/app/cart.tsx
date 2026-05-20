@@ -1,7 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -28,21 +28,34 @@ export default function CartScreen() {
   const subtotal = items.reduce((acc, i) => acc + i.price * i.qty, 0);
   const total = items.length > 0 ? subtotal + SERVICE_FEE : 0;
 
-  // Fetch user balance
-  useEffect(() => {
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setUserId(session.user.id);
-        const { data } = await supabase
-          .from('profiles')
-          .select('balance')
-          .eq('id', session.user.id)
-          .single();
-        if (data) setBalance(data.balance);
-      }
-    })();
-  }, []);
+  // Fetch user balance on focus
+  useFocusEffect(
+    useCallback(() => {
+      let isMounted = true;
+
+      (async () => {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!isMounted) return;
+
+        if (session) {
+          setUserId(session.user.id);
+          const { data } = await supabase
+            .from('profiles')
+            .select('balance')
+            .eq('id', session.user.id)
+            .single();
+          
+          if (isMounted && data) {
+            setBalance(data.balance);
+          }
+        }
+      })();
+
+      return () => {
+        isMounted = false;
+      };
+    }, [])
+  );
 
   const handlePayment = async () => {
     if (!userId || balance === null) return;
