@@ -66,7 +66,7 @@ describe('WalletScreen', () => {
 
   test('renders balance correctly', () => {
     const { getByText } = render(<WalletScreen />);
-    expect(getByText('5000')).toBeTruthy();
+    expect(getByText(/5[.,]000|5000/)).toBeTruthy();
   });
 
   test('top up button triggers supabase logic', async () => {

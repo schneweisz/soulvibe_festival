@@ -85,8 +85,8 @@ describe('ProfileScreen', () => {
     const { getByText } = render(<ProfileScreen />);
     
     expect(getByText('TESTUSER')).toBeTruthy();
-    // Balance is rendered as 5000 (toLocaleString doesn't always add commas in test env)
-    expect(getByText('5000')).toBeTruthy(); 
+    // Use regex to match 5000 with or without locale separators
+    expect(getByText(/5[.,]000|5000/)).toBeTruthy(); 
     expect(getByText('100')).toBeTruthy(); // Points
   });
 
