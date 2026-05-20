@@ -17,7 +17,7 @@ import { SV, neonShadow } from '../constants/theme';
 import { CartFAB, ScreenHeader } from '../components/screen-header';
 import { useLanguage } from '../context/LanguageContext';
 import { GlitchText } from '../components/glitch-text';
-
+import { useAuth } from '../context/AuthContext';
 // ─── Notifications setup ─────────────────────────────────────────────────────
 
 Notifications.setNotificationHandler({
@@ -117,6 +117,7 @@ function CountdownCell({ value, label, highlight }: { value: number; label: stri
 export default function HomeScreen() {
   const time = useCountdown();
   const { lang } = useLanguage();
+  const { user, session } = useAuth();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
 
   // ── Push notification for venue change ───────────────────────────────────

@@ -41,7 +41,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (profile) {
-      setUsernameInput(profile.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? '');
+      setUsernameInput(profile.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? '');
     }
   }, [profile]);
 
@@ -52,17 +52,10 @@ export default function ProfileScreen() {
     }, [refreshAll])
   );
 
-  // Handle redirection to auth if not logged in
-  useEffect(() => {
-    if (!authLoading && !session) {
-      router.replace('/auth');
-    }
-  }, [authLoading, session]);
-
   async function handleSignOut() {
     try {
       await signOut();
-      router.replace('/auth');
+      router.push('/auth');
     } catch (error: any) {
       Alert.alert('Error signing out', error.message);
     }
@@ -91,11 +84,11 @@ export default function ProfileScreen() {
   }
 
   function cancelEditing() {
-    setUsernameInput(profile?.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? '');
+    setUsernameInput(profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? '');
     setEditingUsername(false);
   }
 
-  const displayName = profile?.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? 'RAVER';
+  const displayName = profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? 'RAVER';
 
   if (authLoading || (session && dbLoading && !profile)) {
     return (
@@ -106,8 +99,14 @@ export default function ProfileScreen() {
     );
   }
 
-  if (!session) {
-    return null;
+  if (!session && !authLoading) {
+    return (
+      <ThemedView style={styles.center}>
+        <TouchableOpacity style={styles.authBtn} onPress={() => router.push('/auth')}>
+          <Text style={styles.authBtnText}>AUTHENTICATION REQUIRED</Text>
+        </TouchableOpacity>
+      </ThemedView>
+    );
   }
 
   return (
@@ -119,7 +118,7 @@ export default function ProfileScreen() {
         <View style={styles.profileHero}>
           <View style={styles.heroGlass} />
           <Image
-            source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}` }}
+            source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session?.user?.email ?? 'raver'}` }}
             style={styles.avatar}
           />
           {editingUsername ? (

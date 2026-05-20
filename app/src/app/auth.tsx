@@ -35,7 +35,7 @@ export default function AuthScreen() {
     if (error) {
       Alert.alert('Login Error', error.message);
     } else {
-      router.replace('/profile');
+      router.push('/profile');
     }
     setLoading(false);
   }
