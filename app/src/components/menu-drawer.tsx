@@ -21,9 +21,9 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SV, neonShadow } from '@/constants/theme';
-import { useLanguage } from '@/context/LanguageContext';
-import { useAuth } from '@/context/AuthContext';
+import { SV, neonShadow } from '../constants/theme';
+import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { getRank } from '../utils/rank';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 320);
@@ -191,7 +191,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
         </View>
 
         {/* Profile card */}
-        <Pressable style={styles.profileCard} onPress={() => navigate('/auth')}>
+        <Pressable style={styles.profileCard} onPress={() => navigate('/profile')}>
           <View style={styles.profileAvatar}>
             {avatarUri ? (
               <Image

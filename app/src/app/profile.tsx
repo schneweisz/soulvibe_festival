@@ -12,10 +12,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SV, neonShadow } from '@/constants/theme';
-import { CartFAB, ScreenHeader } from '@/components/screen-header';
-import { useLanguage } from '@/context/LanguageContext';
-import { useAuth } from '@/context/AuthContext';
+import { SV, neonShadow } from '../constants/theme';
+import { CartFAB, ScreenHeader } from '../components/screen-header';
+import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { ThemedView } from '../components/themed-view';
 
