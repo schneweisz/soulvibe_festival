@@ -13,11 +13,11 @@ import {
   Text,
   View,
 } from 'react-native';
-import { SV, neonShadow } from '@/constants/theme';
-import { CartFAB, ScreenHeader } from '@/components/screen-header';
-import { useLanguage } from '@/context/LanguageContext';
-import { GlitchText } from '@/components/glitch-text';
-
+import { SV, neonShadow } from '../constants/theme';
+import { CartFAB, ScreenHeader } from '../components/screen-header';
+import { useLanguage } from '../context/LanguageContext';
+import { GlitchText } from '../components/glitch-text';
+import { useAuth } from '../context/AuthContext';
 // ─── Notifications setup ─────────────────────────────────────────────────────
 
 Notifications.setNotificationHandler({
@@ -117,6 +117,7 @@ function CountdownCell({ value, label, highlight }: { value: number; label: stri
 export default function HomeScreen() {
   const time = useCountdown();
   const { lang } = useLanguage();
+  const { user, session } = useAuth();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
 
   // ── Push notification for venue change ───────────────────────────────────
@@ -163,7 +164,14 @@ export default function HomeScreen() {
               <CountdownCell value={time.sec} label={t('SEC', 'MP')} highlight />
             </View>
             <View style={styles.heroActions}>
-              <AnimPressable style={styles.btnPrimary} onPress={() => router.push('/profile' as any)}>
+              <AnimPressable 
+                style={styles.btnPrimary} 
+                onPress={() => {
+                  const hasTicket = false; // We don't have direct access to tickets here easily without more hooks, but we can check session
+                  if (!session) router.push('/auth');
+                  else router.push('/profile');
+                }}
+              >
                 <Text style={styles.btnPrimaryText}>{t('MY TICKET', 'JEGYEM')}</Text>
               </AnimPressable>
               <AnimPressable style={styles.btnOutline} onPress={() => router.push('/lineup' as any)}>

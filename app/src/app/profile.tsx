@@ -18,16 +18,14 @@ import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { ThemedView } from '../components/themed-view';
-
+import { useDatabase } from '../context/DatabaseContext';
 import { getRank } from '../utils/rank';
 
 
 export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
-  const { session, profile, loading: authLoading, signOut, refreshProfile } = useAuth();
-  const [profileLoading, setProfileLoading] = useState(false);
-  const [transactions, setTransactions] = useState<{ id: string; type: 'credit' | 'debit'; label: string; amount: number; created_at: string }[]>([]);
-  const [tickets, setTickets] = useState<{ id: string; ticket_id: string; type: string; name: string; is_used: boolean }[]>([]);
+  const { session, loading: authLoading, signOut } = useAuth();
+  const { profile, tickets, transactions, loading: dbLoading, refreshAll } = useDatabase();
   const [topFavs, setTopFavs] = useState<{ artist_name: string }[]>([]);
   const [friends, setFriends] = useState<{ id: string; username: string | null }[]>([]);
   const [friendInput, setFriendInput] = useState('');
@@ -43,11 +41,11 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (profile) {
-      setUsernameInput(profile.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? '');
+      setUsernameInput(profile.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? '');
     }
   }, [profile]);
 
-  // Fetch data (remains here as it's specific to this screen)
+  // Refresh data on focus
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
@@ -122,7 +120,7 @@ export default function ProfileScreen() {
   async function handleSignOut() {
     try {
       await signOut();
-      router.replace('/auth');
+      router.push('/auth');
     } catch (error: any) {
       Alert.alert('Error signing out', error.message);
     }
@@ -140,7 +138,7 @@ export default function ProfileScreen() {
     if (error) {
       Alert.alert('Error', 'Could not save username. Try again.');
     } else {
-      await refreshProfile();
+      await refreshAll();
       setEditingUsername(false);
     }
   }
@@ -151,11 +149,11 @@ export default function ProfileScreen() {
   }
 
   function cancelEditing() {
-    setUsernameInput(profile?.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? '');
+    setUsernameInput(profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? '');
     setEditingUsername(false);
   }
 
-  const displayName = profile?.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? 'RAVER';
+  const displayName = profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? 'RAVER';
 
   async function addFriend() {
     const name = friendInput.trim().toUpperCase();
@@ -235,6 +233,16 @@ export default function ProfileScreen() {
     );
   }
 
+  if (!session && !authLoading) {
+    return (
+      <ThemedView style={styles.center}>
+        <TouchableOpacity style={styles.authBtn} onPress={() => router.push('/auth')}>
+          <Text style={styles.authBtnText}>AUTHENTICATION REQUIRED</Text>
+        </TouchableOpacity>
+      </ThemedView>
+    );
+  }
+
   return (
     <View style={styles.root}>
       <ScreenHeader showBack />
@@ -244,7 +252,7 @@ export default function ProfileScreen() {
         <View style={styles.profileHero}>
           <View style={styles.heroGlass} />
           <Image
-            source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}` }}
+            source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session?.user?.email ?? 'raver'}` }}
             style={styles.avatar}
           />
           {editingUsername ? (

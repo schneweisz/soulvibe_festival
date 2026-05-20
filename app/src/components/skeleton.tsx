@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { SV } from '@/constants/theme';
+import { SV } from '../constants/theme';
 
 // ─── Base pulse box ───────────────────────────────────────────────────────────
 

@@ -2,8 +2,8 @@ import { Tabs } from 'expo-router';
 import React from 'react';
 import { Platform, StyleSheet, View } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { SV } from '@/constants/theme';
-import { useLanguage } from '@/context/LanguageContext';
+import { SV } from '../constants/theme';
+import { useLanguage } from '../context/LanguageContext';
 
 interface TabIconProps {
   name: string;

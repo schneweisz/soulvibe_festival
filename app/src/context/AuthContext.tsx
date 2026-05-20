@@ -5,28 +5,20 @@ import { supabase } from '../utils/supabase';
 type AuthContextType = {
   session: Session | null;
   user: User | null;
-  profile: { username: string | null; points: number; balance: number } | null;
-  hasTicket: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
-  refreshProfile: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
-  profile: null,
-  hasTicket: false,
   loading: true,
   signOut: async () => {},
-  refreshProfile: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<{ username: string | null; points: number; balance: number } | null>(null);
-  const [hasTicket, setHasTicket] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const fetchData = async (userId: string) => {
@@ -89,10 +81,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
+    // Check for initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
     // Resolve the initial session once — this is the source of truth for loading=false
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
+      setLoading(false);
       if (session?.user) await fetchData(session.user.id);
       setLoading(false);          // ← only here, never in onAuthStateChange
     });
@@ -121,7 +116,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, hasTicket, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, loading, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -8,10 +8,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SV, neonShadow } from '@/constants/theme';
-import { CartFAB, ScreenHeader } from '@/components/screen-header';
-import { useLanguage } from '@/context/LanguageContext';
-import { SkeletonGastroSection } from '@/components/skeleton';
+import { SV, neonShadow } from '../constants/theme';
+import { CartFAB, ScreenHeader } from '../components/screen-header';
+import { useLanguage } from '../context/LanguageContext';
+import { SkeletonGastroSection } from '../components/skeleton';
+import { useCart } from '../context/CartContext';
 
 type L10n = { en: string; hu: string };
 
@@ -171,8 +172,6 @@ const VENDORS: Vendor[] = [
     ],
   },
 ];
-
-import { useCart } from '@/context/CartContext';
 
 export default function GastroScreen() {
   const { lang } = useLanguage();

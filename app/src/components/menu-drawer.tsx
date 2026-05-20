@@ -24,6 +24,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SV, neonShadow } from '../constants/theme';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
+import { useDatabase } from '../context/DatabaseContext';
 import { getRank } from '../utils/rank';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 320);
@@ -113,11 +114,13 @@ function Drawer({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const { lang } = useLanguage();
-  const { session, profile, hasTicket } = useAuth();
+  const { session } = useAuth();
+  const { profile, tickets } = useDatabase();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
 
+  const hasTicket = tickets.length > 0;
   const rank = getRank(profile?.points || 0);
   const username = profile?.username
     ?? (session?.user?.email ? session.user.email.split('@')[0].toUpperCase() : null)
@@ -127,7 +130,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
     : null;
 
   // Dynamically calculate the ticket href
-  const ticketHref = hasTicket ? '/profile' : '/ticket_shop';
+  const ticketHref = session ? (hasTicket ? '/profile' : '/ticket_shop') : '/auth';
   
   const secondaryItems: NavItem[] = [
     { en: 'MY TICKET', hu: 'JEGYEM', icon: 'confirmation-number', href: ticketHref },
@@ -200,7 +203,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
         </View>
 
         {/* Profile card */}
-        <Pressable style={styles.profileCard} onPress={() => navigate('/profile')}>
+        <Pressable style={styles.profileCard} onPress={() => navigate(session ? '/profile' : '/auth')}>
           <View style={styles.profileAvatar}>
             {avatarUri ? (
               <Image
@@ -448,3 +451,4 @@ const styles = StyleSheet.create({
     backgroundColor: SV.outline,
   },
 });
+
