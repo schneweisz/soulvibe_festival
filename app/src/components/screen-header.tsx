@@ -86,6 +86,8 @@ export function CartFAB({ count }: { count?: number }) {
   const displayCount = count !== undefined ? count : cartCount;
   const scale = useRef(new Animated.Value(1)).current;
 
+  if (displayCount === 0) return null;
+
   const pressIn = () =>
     Animated.spring(scale, { toValue: 0.9, useNativeDriver: true, speed: 50 }).start();
   const pressOut = () =>

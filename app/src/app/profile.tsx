@@ -19,6 +19,8 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { ThemedView } from '../components/themed-view';
 
+import { getRank } from '../utils/rank';
+
 const MY_LINEUP = [
   { time: '22:00', day: 'FRI', artist: 'Charlotte de Witte', stage: 'THE GRID' },
   { time: '01:30', day: 'SAT', artist: 'Amelie Lens', stage: 'THE GRID' },
@@ -30,18 +32,11 @@ export default function ProfileScreen() {
   const { session, user, loading: authLoading, signOut } = useAuth();
   const [profileLoading, setProfileLoading] = useState(true);
   const [profile, setProfile] = useState<{ balance: number; points: number; username: string | null } | null>(null);
+  const [transactions, setTransactions] = useState<{ id: string; type: 'credit' | 'debit'; label: string; amount: number; created_at: string }[]>([]);
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
   const inputRef = useRef<TextInput>(null);
-
-  // Helper to determine rank based on PULSE_POINTS_PLAN.md
-  const getRank = (pts: number) => {
-    if (pts >= 3500) return { level: 4, name: 'THE SOURCE', next: null };
-    if (pts >= 1500) return { level: 3, name: 'RESONANCE', next: 3500 };
-    if (pts >= 500)  return { level: 2, name: 'FREQUENCY', next: 1500 };
-    return { level: 1, name: 'STATIC', next: 500 };
-  };
 
   const rank = getRank(profile?.points || 0);
   const progressPercent = rank.next ? ((profile?.points || 0) / rank.next) * 100 : 100;
@@ -70,6 +65,29 @@ export default function ProfileScreen() {
               setUsernameInput(data.username ?? session.user.email?.split('@')[0].toUpperCase() ?? '');
             } else {
               setUsernameInput(session.user.email?.split('@')[0].toUpperCase() ?? '');
+            }
+
+            // Fetch last 5 transactions (falls back to mock data if table doesn't exist)
+            const { data: txData } = await supabase
+              .from('transactions')
+              .select('id, type, label, amount, created_at')
+              .eq('user_id', currentSession.user.id)
+              .order('created_at', { ascending: false })
+              .limit(5);
+
+            if (isMounted) {
+              if (txData && txData.length > 0) {
+                setTransactions(txData as any);
+              } else {
+                // Fallback mock data for demo
+                setTransactions([
+                  { id: 'm1', type: 'credit', label: 'Top Up',    amount: 10000, created_at: new Date(Date.now() - 3_600_000).toISOString() },
+                  { id: 'm2', type: 'debit',  label: 'Gastro Hub', amount: 2900,  created_at: new Date(Date.now() - 7_200_000).toISOString() },
+                  { id: 'm3', type: 'debit',  label: 'Loop Bar',   amount: 1500,  created_at: new Date(Date.now() - 10_800_000).toISOString() },
+                  { id: 'm4', type: 'credit', label: 'Top Up',    amount: 20000, created_at: new Date(Date.now() - 86_400_000).toISOString() },
+                  { id: 'm5', type: 'debit',  label: 'Beach Bar',  amount: 800,   created_at: new Date(Date.now() - 90_000_000).toISOString() },
+                ]);
+              }
             }
             setProfileLoading(false);
           }
@@ -180,7 +198,7 @@ export default function ProfileScreen() {
           )}
           <View style={styles.badgeRow}>
             <View style={styles.badgePrimary}>
-              <Text style={styles.badgePrimaryText}>PULSE LEVEL: HIGH</Text>
+              <Text style={styles.badgePrimaryText}>PULSE LEVEL: {rank.name}</Text>
             </View>
             <View style={styles.badgeSecondary}>
               <MaterialIcons name="check-circle" size={12} color={SV.secondaryFixedDim} />
@@ -306,6 +324,36 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Recent Transactions */}
+        {transactions.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitle}>
+                {lang === 'hu' ? 'LEGUTÓBBI TRANZAKCIÓK' : 'RECENT TRANSACTIONS'}
+              </Text>
+              <MaterialIcons name="receipt-long" size={20} color={SV.onSurfaceVariant} />
+            </View>
+            {transactions.map((tx, i) => {
+              const d = new Date(tx.created_at);
+              const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+              const isToday = new Date().toDateString() === d.toDateString();
+              const dateStr = isToday ? lang === 'hu' ? 'MA' : 'TODAY' : d.toLocaleDateString(lang === 'hu' ? 'hu-HU' : 'en-GB', { day: 'numeric', month: 'short' });
+              return (
+                <View key={tx.id} style={[styles.txRow, i === transactions.length - 1 && { borderBottomWidth: 0 }]}>
+                  <View style={[styles.txDot, { backgroundColor: tx.type === 'credit' ? SV.primaryContainer : SV.secondaryContainer }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.txLabel}>{tx.label}</Text>
+                    <Text style={styles.txTime}>{timeStr} · {dateStr}</Text>
+                  </View>
+                  <Text style={[styles.txAmount, tx.type === 'credit' ? styles.txCredit : styles.txDebit]}>
+                    {tx.type === 'credit' ? '+' : '-'}{tx.amount.toLocaleString()} Ft
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* My Lineup */}
         <View style={styles.card}>
@@ -443,6 +491,13 @@ const styles = StyleSheet.create({
   walletCurrency: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 14, fontWeight: '700' },
   topUpBtn: { backgroundColor: 'rgba(57,255,20,0.15)', borderWidth: 1, borderColor: SV.primaryContainer, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   topUpText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1 },
+  txRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  txDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  txLabel: { color: SV.onSurface, fontSize: 14, fontWeight: '600' },
+  txTime: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, marginTop: 2 },
+  txAmount: { fontFamily: 'monospace', fontSize: 13, fontWeight: '700' },
+  txCredit: { color: SV.primaryContainer },
+  txDebit: { color: SV.secondaryContainer },
 
   setRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: SV.surfaceContainerLow, borderRadius: 8, borderWidth: 1, borderColor: 'transparent', padding: 10, marginBottom: 8 },
   setTime: { width: 52, paddingRight: 12, borderRightWidth: 1, borderRightColor: SV.surfaceVariant },
