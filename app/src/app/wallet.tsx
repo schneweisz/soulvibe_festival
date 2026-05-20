@@ -170,7 +170,7 @@ function SuccessOverlay({ amount, newBalance, dbError, onClose }: {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function WalletScreen() {
-  const { session, profile, refreshProfile } = useAuth();
+  const { session, profile, loading, refreshProfile } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [txLoading,   setTxLoading]   = useState(true);
   
@@ -319,7 +319,7 @@ export default function WalletScreen() {
             <MaterialIcons name="account-balance-wallet" size={20} color={SV.primaryFixedDim} />
           </View>
           <View style={s.balanceRow}>
-            {balance === null ? (
+            {profile === null ? (
               <ActivityIndicator color={SV.primaryContainer} size="large" />
             ) : (
               <>
@@ -328,11 +328,6 @@ export default function WalletScreen() {
               </>
             )}
           </View>
-          {balanceErr ? (
-            <Text style={{ color: '#FF6B6B', fontFamily: 'monospace', fontSize: 10, marginTop: 4 }}>
-              Could not load balance
-            </Text>
-          ) : null}
           <View style={s.idBadge}>
             <MaterialIcons name="nfc" size={12} color={SV.onSurfaceVariant} />
             <Text style={s.idText}>WRISTBAND · RAVER_082</Text>

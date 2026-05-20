@@ -21,9 +21,9 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SV, neonShadow } from '@/constants/theme';
-import { useLanguage } from '@/context/LanguageContext';
-import { useAuth } from '@/context/AuthContext';
+import { SV, neonShadow } from '../constants/theme';
+import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { getRank } from '../utils/rank';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 320);
@@ -113,7 +113,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const { lang } = useLanguage();
-  const { session, profile } = useAuth();
+  const { session, profile, hasTicket } = useAuth();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -125,6 +125,15 @@ function Drawer({ onClose }: { onClose: () => void }) {
   const avatarUri = session?.user?.email
     ? `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(session.user.email)}`
     : null;
+
+  // Dynamically calculate the ticket href
+  const ticketHref = hasTicket ? '/profile' : '/ticket_shop';
+  
+  const secondaryItems: NavItem[] = [
+    { en: 'MY TICKET', hu: 'JEGYEM', icon: 'confirmation-number', href: ticketHref },
+    { en: 'WALLET', hu: 'PÉNZTÁRCA', icon: 'account-balance-wallet', href: '/wallet' },
+    { en: 'CART', hu: 'KOSÁR', icon: 'shopping-cart', href: '/cart' },
+  ];
 
   useEffect(() => {
     Animated.parallel([
@@ -191,7 +200,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
         </View>
 
         {/* Profile card */}
-        <Pressable style={styles.profileCard} onPress={() => navigate('/auth')}>
+        <Pressable style={styles.profileCard} onPress={() => navigate('/profile')}>
           <View style={styles.profileAvatar}>
             {avatarUri ? (
               <Image
@@ -236,7 +245,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
         <View style={styles.divider} />
 
         {/* Secondary nav */}
-        {SECONDARY_ITEMS.map((item, i) => (
+        {secondaryItems.map((item, i) => (
           <MenuItem
             key={item.href}
             icon={item.icon}

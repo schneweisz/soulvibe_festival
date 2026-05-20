@@ -12,10 +12,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SV, neonShadow } from '@/constants/theme';
-import { CartFAB, ScreenHeader } from '@/components/screen-header';
-import { useLanguage } from '@/context/LanguageContext';
-import { useAuth } from '@/context/AuthContext';
+import { SV, neonShadow } from '../constants/theme';
+import { CartFAB, ScreenHeader } from '../components/screen-header';
+import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { ThemedView } from '../components/themed-view';
 
@@ -27,6 +27,7 @@ export default function ProfileScreen() {
   const { session, profile, loading: authLoading, signOut, refreshProfile } = useAuth();
   const [profileLoading, setProfileLoading] = useState(false);
   const [transactions, setTransactions] = useState<{ id: string; type: 'credit' | 'debit'; label: string; amount: number; created_at: string }[]>([]);
+  const [tickets, setTickets] = useState<{ id: string; ticket_id: string; type: string; name: string; is_used: boolean }[]>([]);
   const [topFavs, setTopFavs] = useState<{ artist_name: string }[]>([]);
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
@@ -42,16 +43,16 @@ export default function ProfileScreen() {
     }
   }, [profile]);
 
-  // Fetch transactions (remains here as it's specific to this screen)
+  // Fetch data (remains here as it's specific to this screen)
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
 
-      async function loadTransactions() {
+      async function loadData() {
         if (!session) return;
 
         try {
-          // Fetch last 5 transactions (falls back to mock data if table doesn't exist)
+          // 1. Fetch transactions
           const { data: txData } = await supabase
             .from('transactions')
             .select('id, type, label, amount, created_at')
@@ -59,18 +60,26 @@ export default function ProfileScreen() {
             .order('created_at', { ascending: false })
             .limit(5);
 
+          // 2. Fetch tickets
+          const { data: ticketData } = await supabase
+            .from('tickets')
+            .select('id, ticket_id, type, name, is_used')
+            .eq('profile_id', session.user.id)
+            .order('created_at', { ascending: false });
+
           if (isMounted) {
             if (txData && txData.length > 0) {
               setTransactions(txData as any);
             } else {
-              // Fallback mock data for demo
+              // Fallback mock transactions
               setTransactions([
                 { id: 'm1', type: 'credit', label: 'Top Up',    amount: 10000, created_at: new Date(Date.now() - 3_600_000).toISOString() },
                 { id: 'm2', type: 'debit',  label: 'Gastro Hub', amount: 2900,  created_at: new Date(Date.now() - 7_200_000).toISOString() },
-                { id: 'm3', type: 'debit',  label: 'Loop Bar',   amount: 1500,  created_at: new Date(Date.now() - 10_800_000).toISOString() },
-                { id: 'm4', type: 'credit', label: 'Top Up',    amount: 20000, created_at: new Date(Date.now() - 86_400_000).toISOString() },
-                { id: 'm5', type: 'debit',  label: 'Beach Bar',  amount: 800,   created_at: new Date(Date.now() - 90_000_000).toISOString() },
               ]);
+            }
+
+            if (ticketData) {
+              setTickets(ticketData);
             }
           }
           // Fetch top 3 favourites
@@ -82,11 +91,11 @@ export default function ProfileScreen() {
           if (isMounted && favsData) setTopFavs(favsData);
 
         } catch (e) {
-          console.error('Transactions loading failed', e);
+          console.error('Profile data loading failed', e);
         }
       }
 
-      loadTransactions();
+      loadData();
 
       return () => {
         isMounted = false;
@@ -246,23 +255,58 @@ export default function ProfileScreen() {
             </Text>
             <MaterialIcons name="confirmation-number" size={20} color={SV.primaryContainer} />
           </View>
-          <View style={styles.ticketBox}>
-            <View style={styles.ticketGlow} />
-            <View style={styles.ticketHeader}>
-              <View>
-                <Text style={styles.ticketName}>
-                  {lang === 'hu' ? 'NINCS AKTÍV JEGY' : 'NO ACTIVE TICKET'}
-                </Text>
+          
+          {tickets.length > 0 ? (
+            tickets.map((ticket, idx) => {
+              if (idx > 0) return null; // Show only the latest for now in this section
+              const ticketName = ticket.name.toUpperCase();
+              const themeColor = ticketName.includes('VIP') ? SV.secondaryContainer : ticketName.includes('PLUTO') ? SV.tertiaryContainer : SV.primaryContainer;
+              const themeFixed = ticketName.includes('VIP') ? SV.secondaryFixedDim : ticketName.includes('PLUTO') ? SV.tertiaryFixedDim : SV.primaryFixedDim;
+              
+              return (
+                <View key={ticket.id} style={[styles.ticketBox, { borderColor: themeColor }]}>
+                  <View style={styles.ticketGlow} />
+                  <View style={styles.ticketHeader}>
+                    <View>
+                      <Text style={[styles.ticketName, { color: themeFixed }]}>
+                        {ticketName}
+                      </Text>
+                      <Text style={styles.ticketId}>ID: {ticket.ticket_id}</Text>
+                    </View>
+                    <View style={styles.liveBadge}>
+                      <View style={styles.liveDot} />
+                      <Text style={styles.liveText}>{ticket.is_used ? 'USED' : 'VALID'}</Text>
+                    </View>
+                  </View>
+                  <View style={styles.ticketActions}>
+                    <TouchableOpacity style={[styles.showQrBtn, { backgroundColor: themeColor }]}>
+                      <Text style={styles.showQrText}>
+                        {lang === 'hu' ? 'QR MEGMUTATASA' : 'SHOW QR'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })
+          ) : (
+            <View style={styles.ticketBox}>
+              <View style={styles.ticketGlow} />
+              <View style={styles.ticketHeader}>
+                <View>
+                  <Text style={styles.ticketName}>
+                    {lang === 'hu' ? 'NINCS AKTÍV JEGY' : 'NO ACTIVE TICKET'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.ticketActions}>
+                <TouchableOpacity style={styles.showQrBtn} onPress={() => router.push('/ticket_shop')}>
+                  <Text style={styles.showQrText}>
+                    {lang === 'hu' ? 'VÁSÁRLÁS' : 'BUY TICKET'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </View>
-            <View style={styles.ticketActions}>
-              <TouchableOpacity style={styles.showQrBtn}>
-                <Text style={styles.showQrText}>
-                  {lang === 'hu' ? 'QR MEGMUTATASA' : 'SHOW QR'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+          )}
         </View>
 
         {/* Pulse Points */}
