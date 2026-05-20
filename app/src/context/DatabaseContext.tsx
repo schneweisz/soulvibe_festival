@@ -6,6 +6,7 @@ export interface Profile {
   username: string | null;
   points: number;
   balance: number;
+  friends: string[] | null;
 }
 
 export interface Ticket {
@@ -26,15 +27,28 @@ export interface Transaction {
   created_at: string;
 }
 
+export interface Favourite {
+  artist_name: string;
+}
+
+export interface Friend {
+  id: string;
+  username: string | null;
+}
+
 type DatabaseContextType = {
   profile: Profile | null;
   tickets: Ticket[];
   transactions: Transaction[];
+  favourites: Favourite[];
+  friends: Friend[];
   loading: boolean;
   refreshAll: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   refreshTickets: () => Promise<void>;
   refreshTransactions: () => Promise<void>;
+  refreshFavourites: () => Promise<void>;
+  refreshFriends: () => Promise<void>;
 };
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -44,18 +58,21 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
   const [profile, setProfile] = useState<Profile | null>(null);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [favourites, setFavourites] = useState<Favourite[]>([]);
+  const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('username, points, balance')
+      .select('username, points, balance, friends')
       .eq('id', userId)
       .single();
 
     if (!error && data) {
       setProfile(data);
     }
+    return data;
   }, []);
 
   const fetchTickets = useCallback(async (userId: string) => {
@@ -83,16 +100,52 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
 
+  const fetchFavourites = useCallback(async (userId: string) => {
+    const { data, error } = await supabase
+      .from('favourites')
+      .select('artist_name')
+      .eq('user_id', userId);
+
+    if (!error && data) {
+      setFavourites(data);
+    }
+  }, []);
+
+  const fetchFriends = useCallback(async (friendIds: string[]) => {
+    if (!friendIds || friendIds.length === 0) {
+      setFriends([]);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', friendIds);
+
+    if (!error && data) {
+      setFriends(data);
+    }
+  }, []);
+
   const refreshAll = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    await Promise.all([
-      fetchProfile(user.id),
+    const profileData = await fetchProfile(user.id);
+    const promises: Promise<any>[] = [
       fetchTickets(user.id),
-      fetchTransactions(user.id)
-    ]);
+      fetchTransactions(user.id),
+      fetchFavourites(user.id)
+    ];
+    
+    if (profileData?.friends) {
+      promises.push(fetchFriends(profileData.friends));
+    } else {
+      setFriends([]);
+    }
+
+    await Promise.all(promises);
     setLoading(false);
-  }, [user, fetchProfile, fetchTickets, fetchTransactions]);
+  }, [user, fetchProfile, fetchTickets, fetchTransactions, fetchFavourites, fetchFriends]);
 
   const refreshProfile = useCallback(async () => {
     if (user) await fetchProfile(user.id);
@@ -106,6 +159,14 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
     if (user) await fetchTransactions(user.id);
   }, [user, fetchTransactions]);
 
+  const refreshFavourites = useCallback(async () => {
+    if (user) await fetchFavourites(user.id);
+  }, [user, fetchFavourites]);
+
+  const refreshFriends = useCallback(async () => {
+    if (profile?.friends) await fetchFriends(profile.friends);
+  }, [profile, fetchFriends]);
+
   useEffect(() => {
     if (session?.user) {
       refreshAll();
@@ -113,6 +174,8 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       setProfile(null);
       setTickets([]);
       setTransactions([]);
+      setFavourites([]);
+      setFriends([]);
     }
   }, [session, refreshAll]);
 
@@ -121,11 +184,15 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       profile,
       tickets,
       transactions,
+      favourites,
+      friends,
       loading,
       refreshAll,
       refreshProfile,
       refreshTickets,
-      refreshTransactions
+      refreshTransactions,
+      refreshFavourites,
+      refreshFriends
     }}>
       {children}
     </DatabaseContext.Provider>

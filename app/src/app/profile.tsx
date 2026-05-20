@@ -21,13 +21,21 @@ import { ThemedView } from '../components/themed-view';
 import { useDatabase } from '../context/DatabaseContext';
 import { getRank } from '../utils/rank';
 
-
 export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
   const { session, loading: authLoading, signOut } = useAuth();
-  const { profile, tickets, transactions, loading: dbLoading, refreshAll } = useDatabase();
-  const [topFavs, setTopFavs] = useState<{ artist_name: string }[]>([]);
-  const [friends, setFriends] = useState<{ id: string; username: string | null }[]>([]);
+  const { 
+    profile, 
+    tickets, 
+    transactions, 
+    favourites, 
+    friends, 
+    loading: dbLoading, 
+    refreshAll,
+    refreshFriends,
+    refreshProfile
+  } = useDatabase();
+
   const [friendInput, setFriendInput] = useState('');
   const [addingFriend, setAddingFriend] = useState(false);
   const [friendError, setFriendError] = useState<string | null>(null);
@@ -45,76 +53,11 @@ export default function ProfileScreen() {
     }
   }, [profile]);
 
-  // Refresh data on focus
+  // Refresh all data when the screen comes into focus
   useFocusEffect(
     useCallback(() => {
-      let isMounted = true;
-
-      async function loadData() {
-        if (!session) return;
-
-        try {
-          // 1. Fetch transactions
-          const { data: txData } = await supabase
-            .from('transactions')
-            .select('id, type, label, amount, created_at')
-            .eq('user_id', session.user.id)
-            .order('created_at', { ascending: false })
-            .limit(5);
-
-          // 2. Fetch tickets
-          const { data: ticketData } = await supabase
-            .from('tickets')
-            .select('id, ticket_id, type, name, is_used')
-            .eq('profile_id', session.user.id)
-            .order('created_at', { ascending: false });
-
-          if (isMounted) {
-            if (txData && txData.length > 0) {
-              setTransactions(txData as any);
-            } else {
-              // Fallback mock transactions
-              setTransactions([
-                { id: 'm1', type: 'credit', label: 'Top Up',    amount: 10000, created_at: new Date(Date.now() - 3_600_000).toISOString() },
-                { id: 'm2', type: 'debit',  label: 'Gastro Hub', amount: 2900,  created_at: new Date(Date.now() - 7_200_000).toISOString() },
-              ]);
-            }
-
-            if (ticketData) {
-              setTickets(ticketData);
-            }
-          }
-          // Fetch top 3 favourites
-          const { data: favsData } = await supabase
-            .from('favourites')
-            .select('artist_name')
-            .eq('user_id', session.user.id)
-            .limit(3);
-          if (isMounted && favsData) setTopFavs(favsData);
-
-          // Load friends list
-          const { data: myProfile } = await supabase
-            .from('profiles').select('friends').eq('id', session.user.id).single();
-          const friendIds: string[] = myProfile?.friends ?? [];
-          if (friendIds.length > 0) {
-            const { data: friendData } = await supabase
-              .from('profiles').select('id, username').in('id', friendIds);
-            if (isMounted && friendData) setFriends(friendData);
-          } else if (isMounted) {
-            setFriends([]);
-          }
-
-        } catch (e) {
-          console.error('Profile data loading failed', e);
-        }
-      }
-
-      loadData();
-
-      return () => {
-        isMounted = false;
-      };
-    }, [session])
+      refreshAll();
+    }, [refreshAll])
   );
 
   async function handleSignOut() {
@@ -138,7 +81,7 @@ export default function ProfileScreen() {
     if (error) {
       Alert.alert('Error', 'Could not save username. Try again.');
     } else {
-      await refreshAll();
+      await refreshProfile();
       setEditingUsername(false);
     }
   }
@@ -153,16 +96,12 @@ export default function ProfileScreen() {
     setEditingUsername(false);
   }
 
-  const displayName = profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? 'RAVER';
-
   async function addFriend() {
     const name = friendInput.trim().toUpperCase();
     if (!name || !session) return;
     setAddingFriend(true);
     setFriendError(null);
     try {
-      // maybeSingle() returns null data (no error) when 0 rows match,
-      // avoiding the PGRST116 "no rows" error from .single().
       const { data: found, error: findErr } = await supabase
         .from('profiles')
         .select('id, username')
@@ -170,7 +109,6 @@ export default function ProfileScreen() {
         .maybeSingle();
 
       if (findErr) {
-        console.error('[addFriend] lookup error:', findErr.code, findErr.message);
         setFriendError(`${findErr.message} (${findErr.code})`);
         return;
       }
@@ -187,22 +125,18 @@ export default function ProfileScreen() {
         return;
       }
 
-      // Bidirectional: adds each user to the other's friends list.
-      // Uses a SECURITY DEFINER function so it can write to both rows.
       const { error: rpcErr } = await supabase.rpc('add_friend_bidirectional', {
         friend_id:    found.id,
         requester_id: session.user.id,
       });
 
       if (rpcErr) {
-        console.error('[addFriend] rpc error:', rpcErr.code, rpcErr.message);
         setFriendError(`${rpcErr.message} (${rpcErr.code})`);
       } else {
-        setFriends(prev => [...prev, { id: found.id, username: found.username }]);
+        await refreshFriends();
         setFriendInput('');
       }
     } catch (e: any) {
-      console.error('[addFriend] exception:', e);
       setFriendError(e?.message ?? 'Unknown error');
     } finally {
       setAddingFriend(false);
@@ -210,35 +144,21 @@ export default function ProfileScreen() {
   }
 
   async function removeFriend(friendId: string) {
-    const newIds = friends.filter(f => f.id !== friendId).map(f => f.id);
-    await supabase.from('profiles').update({ friends: newIds }).eq('id', session.user.id);
-    setFriends(prev => prev.filter(f => f.id !== friendId));
+    if (!profile?.friends || !session) return;
+    const newIds = profile.friends.filter(id => id !== friendId);
+    const { error } = await supabase.from('profiles').update({ friends: newIds }).eq('id', session.user.id);
+    if (!error) {
+      await refreshFriends();
+    }
   }
 
-  // Redirect to auth only after auth has fully loaded and session is confirmed absent.
-  // Debounced so a brief null session during token refresh doesn't trigger a redirect.
-  useEffect(() => {
-    if (authLoading) return;
-    if (session) return;
-    const t = setTimeout(() => router.replace('/auth'), 500);
-    return () => clearTimeout(t);
-  }, [authLoading, session]);
+  const displayName = profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? 'RAVER';
 
   if (authLoading || !session) {
     return (
       <ThemedView style={styles.center}>
         <ActivityIndicator size="large" color={SV.primaryContainer} />
         <Text style={styles.loadingText}>SCANNING BIOMETRICS...</Text>
-      </ThemedView>
-    );
-  }
-
-  if (!session && !authLoading) {
-    return (
-      <ThemedView style={styles.center}>
-        <TouchableOpacity style={styles.authBtn} onPress={() => router.push('/auth')}>
-          <Text style={styles.authBtnText}>AUTHENTICATION REQUIRED</Text>
-        </TouchableOpacity>
       </ThemedView>
     );
   }
@@ -347,7 +267,7 @@ export default function ProfileScreen() {
           
           {tickets.length > 0 ? (
             tickets.map((ticket, idx) => {
-              if (idx > 0) return null; // Show only the latest for now in this section
+              if (idx > 0) return null;
               const ticketName = ticket.name.toUpperCase();
               const themeColor = ticketName.includes('VIP') ? SV.secondaryContainer : ticketName.includes('PLUTO') ? SV.tertiaryContainer : SV.primaryContainer;
               const themeFixed = ticketName.includes('VIP') ? SV.secondaryFixedDim : ticketName.includes('PLUTO') ? SV.tertiaryFixedDim : SV.primaryFixedDim;
@@ -456,13 +376,13 @@ export default function ProfileScreen() {
               </Text>
               <MaterialIcons name="receipt-long" size={20} color={SV.onSurfaceVariant} />
             </View>
-            {transactions.map((tx, i) => {
+            {transactions.slice(0, 5).map((tx, i) => {
               const d = new Date(tx.created_at);
               const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
               const isToday = new Date().toDateString() === d.toDateString();
               const dateStr = isToday ? lang === 'hu' ? 'MA' : 'TODAY' : d.toLocaleDateString(lang === 'hu' ? 'hu-HU' : 'en-GB', { day: 'numeric', month: 'short' });
               return (
-                <View key={tx.id} style={[styles.txRow, i === transactions.length - 1 && { borderBottomWidth: 0 }]}>
+                <View key={tx.id} style={[styles.txRow, i === 4 && { borderBottomWidth: 0 }]}>
                   <View style={[styles.txDot, { backgroundColor: tx.type === 'credit' ? SV.primaryContainer : SV.secondaryContainer }]} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.txLabel}>{tx.label}</Text>
@@ -485,12 +405,12 @@ export default function ProfileScreen() {
             </Text>
             <MaterialIcons name="favorite" size={20} color="#FF6B9D" />
           </View>
-          {topFavs.length === 0 ? (
+          {favourites.length === 0 ? (
             <Text style={{ color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, marginBottom: 12 }}>
               {lang === 'hu' ? 'Még nincs kedvenc előadód. Nyomj a ♡ ikonra a programban.' : 'No favourites yet. Tap ♡ next to any artist in Lineup.'}
             </Text>
           ) : (
-            topFavs.map(f => (
+            favourites.slice(0, 3).map(f => (
               <View key={f.artist_name} style={styles.favRow}>
                 <MaterialIcons name="favorite" size={14} color="#FF6B9D" />
                 <Text style={styles.favArtist}>{f.artist_name}</Text>
@@ -515,7 +435,6 @@ export default function ProfileScreen() {
             <MaterialIcons name="people" size={20} color={SV.tertiaryContainer} />
           </View>
 
-          {/* Add friend input */}
           <View style={styles.friendInputRow}>
             <TextInput
               style={styles.friendInput}
@@ -538,7 +457,6 @@ export default function ProfileScreen() {
             <Text style={styles.friendError}>{friendError}</Text>
           ) : null}
 
-          {/* Friends list */}
           {friends.length === 0 ? (
             <Text style={styles.friendEmpty}>
               {lang === 'hu'
@@ -592,9 +510,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: SV.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: SV.background },
   loadingText: { color: SV.primaryContainer, fontFamily: 'monospace', marginTop: 20, letterSpacing: 2 },
-
   scroll: { flex: 1 },
-
   profileHero: {
     alignItems: 'center', paddingVertical: 32, marginHorizontal: 16, marginTop: 20,
     backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 16, overflow: 'hidden',
@@ -618,7 +534,6 @@ const styles = StyleSheet.create({
   badgePrimaryText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 11, letterSpacing: 0.5 },
   badgeSecondary: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: SV.surfaceContainerHigh, borderWidth: 1, borderColor: 'rgba(236,177,255,0.3)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgeSecondaryText: { color: SV.secondaryFixedDim, fontFamily: 'monospace', fontSize: 11 },
-
   card: {
     marginHorizontal: 16, marginTop: 14,
     backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
@@ -626,8 +541,6 @@ const styles = StyleSheet.create({
   },
   cardTitleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, borderBottomWidth: 1, borderBottomColor: SV.surfaceVariant, paddingBottom: 8 },
   cardTitle: { color: SV.onSurface, fontWeight: '700', fontSize: 14, letterSpacing: 1.5, textTransform: 'uppercase' },
-
-  // Language selector
   langRow: { flexDirection: 'row', gap: 10 },
   langBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
@@ -638,8 +551,6 @@ const styles = StyleSheet.create({
   langBtnFlag: { width: 24, height: 18, marginRight: 8, borderRadius: 2 },
   langBtnLabel: { flex: 1, color: SV.onSurfaceVariant, fontSize: 13 },
   langBtnLabelActive: { color: SV.onSurface, fontWeight: '700' },
-
-  // Ticket styles (consolidated)
   ticketBox: {
     backgroundColor: SV.surfaceContainerHighest, borderRadius: 10, padding: 14,
     borderWidth: 1, borderColor: SV.primaryContainer, overflow: 'hidden', ...neonShadow,
@@ -654,17 +565,14 @@ const styles = StyleSheet.create({
   ticketActions: { flexDirection: 'row', gap: 8 },
   showQrBtn: { flex: 1, backgroundColor: SV.primaryContainer, paddingVertical: 8, borderRadius: 2, alignItems: 'center' },
   showQrText: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
-  shareBtn: { width: 38, height: 38, borderWidth: 1, borderColor: SV.primaryContainer, borderRadius: 2, alignItems: 'center', justifyContent: 'center' },
-
   pulseLabel: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, letterSpacing: 2, textTransform: 'uppercase', textAlign: 'center', marginBottom: 4 },
   pulseRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6, justifyContent: 'center', marginBottom: 10 },
   pulseValue: { color: SV.primaryContainer, fontSize: 40, fontWeight: '900', textShadowColor: 'rgba(57,255,20,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
   pulsePts: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 14, fontWeight: '700' },
   progressBar: { height: 8, backgroundColor: SV.surfaceVariant, borderRadius: 4, overflow: 'hidden', marginBottom: 6 },
-  progressFill: { width: '75%', height: '100%', backgroundColor: SV.primaryContainer, ...neonShadow },
+  progressFill: { height: '100%', backgroundColor: SV.primaryContainer, ...neonShadow },
   progressLabels: { flexDirection: 'row', justifyContent: 'space-between' },
   progressLabel: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, letterSpacing: 0.5 },
-
   walletRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 },
   walletAmountRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
   walletAmount: { color: SV.primaryContainer, fontSize: 36, fontWeight: '900', textShadowColor: 'rgba(57,255,20,0.6)', textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 8 },
@@ -691,21 +599,8 @@ const styles = StyleSheet.create({
   txAmount: { fontFamily: 'monospace', fontSize: 13, fontWeight: '700' },
   txCredit: { color: SV.primaryContainer },
   txDebit: { color: SV.secondaryContainer },
-
-  setRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: SV.surfaceContainerLow, borderRadius: 8, borderWidth: 1, borderColor: 'transparent', padding: 10, marginBottom: 8 },
-  setTime: { width: 52, paddingRight: 12, borderRightWidth: 1, borderRightColor: SV.surfaceVariant },
-  setTimeText: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 13, letterSpacing: 0.5 },
-  setDay: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, marginTop: 2 },
-  setInfo: { flex: 1 },
-  setArtist: { color: SV.onSurface, fontSize: 15, fontWeight: '700', textTransform: 'uppercase' },
-  setStageRow: { flexDirection: 'row', alignItems: 'center', gap: 2, marginTop: 3 },
-  setStage: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11 },
-  viewScheduleBtn: { marginTop: 8, paddingVertical: 10, borderWidth: 1, borderColor: SV.surfaceVariant, borderRadius: 4, alignItems: 'center' },
-  viewScheduleText: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1, textTransform: 'uppercase' },
-
   logoutBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 8 },
   logoutText: { color: SV.error, fontFamily: 'monospace', fontSize: 13, fontWeight: '700', letterSpacing: 1 },
-
   authBtn: {
     backgroundColor: 'rgba(57,255,20,0.1)',
     borderWidth: 1,
