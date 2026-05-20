@@ -62,6 +62,7 @@ type DatabaseContextType = {
   refreshTransactions: () => Promise<void>;
   refreshFavourites: () => Promise<void>;
   refreshFriends: () => Promise<void>;
+  updateUsername: (newUsername: string) => Promise<boolean>;
   sendFriendRequest: (username: string) => Promise<{ success: boolean; error?: string }>;
   acceptFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   rejectFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
@@ -373,7 +374,7 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       refreshTransactions,
       refreshFavourites,
       refreshFriends,
-      updateUsername,,
+      updateUsername,
       sendFriendRequest,
       acceptFriendRequest,
       rejectFriendRequest,
