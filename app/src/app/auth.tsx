@@ -23,51 +23,36 @@ export default function AuthScreen() {
     }
   }, [session]);
 
-  const redirectTo = Linking.createURL('/auth/callback');
-
   async function signInWithEmail() {
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
-    });
-
-    if (error) {
-      Alert.alert('Login Error', error.message);
-    } else {
-      router.push('/profile');
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) Alert.alert('Login Error', error.message);
+    // navigation handled by the session useEffect above
     setLoading(false);
   }
 
   async function signUpWithEmail() {
     setLoading(true);
-    const { error, data: { session } } = await supabase.auth.signUp({
-      email: email,
-      password: password,
-      options: {
-        emailRedirectTo: redirectTo,
-      }
-    });
-
+    // No emailRedirectTo — avoids the 422 from an un-whitelisted localhost URL.
+    // If email confirmation is disabled in Supabase the session is returned
+    // immediately; if it's enabled the user gets the default confirmation email.
+    const { error, data } = await supabase.auth.signUp({ email, password });
     if (error) {
       Alert.alert('Sign Up Error', error.message);
-    } else {
-      if (!session) Alert.alert('Check your email for the confirmation link!');
-      else router.replace('/profile');
+    } else if (!data.session) {
+      Alert.alert('Almost there!', 'Check your email and click the confirmation link, then come back to log in.');
     }
+    // If session is returned, the useEffect above handles navigation
     setLoading(false);
   }
 
   async function signInWithGoogle() {
     setLoading(true);
+    const redirectTo = Linking.createURL('/auth/callback');
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        redirectTo: redirectTo,
-      },
+      options: { redirectTo },
     });
-
     if (error) Alert.alert('Google Login Error', error.message);
     setLoading(false);
   }
