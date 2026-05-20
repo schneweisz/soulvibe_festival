@@ -2,6 +2,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from "react";
 import {
+  Dimensions,
   ScrollView,
   StyleSheet,
   Text,
@@ -677,6 +678,310 @@ const STAGE_LABEL_HU: Record<string, string> = {
   grid: "The Grid",
 };
 
+// ─── Timeline helpers ─────────────────────────────────────────────────────────
+
+const DAY_SHORT  = ['FRI', 'SAT', 'SUN'];
+const PX_PER_MIN = 1.6;   // pixels per minute of festival time
+const TIME_COL_W = 52;    // left column: timestamps
+const RAIL_COL_W = 22;    // centre column: green line + dots
+const LINE_W     = 2;
+const DOT_D      = 10;
+const TOP_PAD    = 20;    // space above the first act
+
+function getStartTime(time: string) { return time.split(' - ')[0]; }
+
+/** Minutes from midnight, with 0–6 AM treated as next-day (e.g. 02:00 → 26 h). */
+function parseStartMin(time: string) {
+  const [h, m] = getStartTime(time).split(':').map(Number);
+  return (h < 7 ? h + 24 : h) * 60 + m;
+}
+
+function getEndMin(time: string) {
+  const parts = time.split(' - ');
+  if (parts.length < 2) return parseStartMin(time) + 90;
+  const [h, m] = parts[1].split(':').map(Number);
+  return (h < 7 ? h + 24 : h) * 60 + m;
+}
+
+/**
+ * Assigns each act to a column (0, 1, …) so overlapping acts end up
+ * in adjacent columns and can be rendered side-by-side.
+ */
+function assignColumns(dayActs: ArtistEntry[]): Map<string, number> {
+  const sorted = [...dayActs].sort((a, b) => parseStartMin(a.time) - parseStartMin(b.time));
+  const cols: { endMin: number }[] = [];
+  const result = new Map<string, number>();
+  for (const act of sorted) {
+    const start = parseStartMin(act.time);
+    let col = cols.findIndex(c => c.endMin <= start);
+    if (col === -1) { col = cols.length; cols.push({ endMin: 0 }); }
+    cols[col].endMin = getEndMin(act.time);
+    result.set(act.id, col);
+  }
+  return result;
+}
+
+// buildGroups is kept for the "exactly same start time" grouping used elsewhere,
+// but the proportional timeline no longer needs it.
+type TimeGroup = { day: DayIdx; startTime: string; startMin: number; acts: ArtistEntry[] };
+
+// ─── Timeline card (absolute-positioned, height driven by parent) ─────────────
+
+function TimelineCard({ act, favs, onFav, stageName }: {
+  act: ArtistEntry; favs: Record<string, boolean>;
+  onFav: (a: ArtistEntry) => void; stageName: string;
+}) {
+  const color = STAGE_COLOR[act.stage];
+  return (
+    <View style={[tl.card, act.live && { borderColor: `${color}50` }]}>
+      <View style={[tl.cardAccent, { backgroundColor: color }]} />
+      <View style={tl.cardInner}>
+        <View style={tl.cardHeader}>
+          {act.live ? (
+            <View style={tl.livePill}>
+              <AudioBars color={color} />
+              <Text style={[tl.liveLabel, { color }]}>LIVE</Text>
+            </View>
+          ) : (
+            <Text style={tl.endTimeLabel}>
+              {'→ ' + (act.time.split(' - ')[1] ?? '')}
+            </Text>
+          )}
+          <TouchableOpacity onPress={() => onFav(act)} hitSlop={10}>
+            <MaterialIcons
+              name={favs[act.id] ? 'favorite' : 'favorite-border'}
+              size={15}
+              color={favs[act.id] ? '#FF6B9D' : SV.surfaceVariant}
+            />
+          </TouchableOpacity>
+        </View>
+        <Text style={[tl.cardName, act.live && { color }]}>{act.name}</Text>
+        <View style={tl.cardMeta}>
+          <View style={[tl.stageDot, { backgroundColor: color }]} />
+          <Text style={tl.cardStageName} numberOfLines={1}>{stageName}</Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ─── Proportional favourites timeline ────────────────────────────────────────
+//
+// Each act is placed at a vertical position proportional to its start time
+// relative to the earliest favourite. Overlapping acts are assigned side-by-side
+// columns via a greedy sweep-line algorithm so their time offsets are visible.
+
+function FavTimeline({ acts, favs, onFav, stageLabel, lang }: {
+  acts: ArtistEntry[]; favs: Record<string, boolean>;
+  onFav: (a: ArtistEntry) => void;
+  stageLabel: Record<string, string>; lang: string;
+}) {
+  const { width: SW } = Dimensions.get('window');
+
+  if (acts.length === 0) {
+    return (
+      <View style={tl.empty}>
+        <MaterialIcons name="favorite-border" size={44} color={SV.surfaceVariant} />
+        <Text style={tl.emptyTitle}>{lang === 'hu' ? 'Még nincs kedvenc' : 'No favourites yet'}</Text>
+        <Text style={tl.emptySub}>{lang === 'hu' ? 'Nyomj a ♡ ikonra bármelyik előadónál.' : 'Tap ♡ next to any artist in the list.'}</Text>
+      </View>
+    );
+  }
+
+  // ── Group by day so different days don't interfere with each other ──────────
+  const dayMap = new Map<DayIdx, ArtistEntry[]>();
+  for (const act of acts) {
+    if (!dayMap.has(act.day)) dayMap.set(act.day, []);
+    dayMap.get(act.day)!.push(act);
+  }
+  const days = ([0, 1, 2] as DayIdx[]).filter(d => dayMap.has(d));
+
+  const RIGHT_PAD = 14;
+  const CARD_GAP  = 6;
+
+  return (
+    <ScrollView style={tl.scroll} showsVerticalScrollIndicator={false}>
+      {days.map(day => {
+        const dayActs = dayMap.get(day)!;
+
+        // Column assignment (greedy, within this day)
+        const colMap   = assignColumns(dayActs);
+        const numCols  = Math.max(1, Math.max(...[...colMap.values()]) + 1);
+        const cardsW   = SW - TIME_COL_W - RAIL_COL_W - RIGHT_PAD;
+        const colW     = (cardsW - CARD_GAP * (numCols - 1)) / numCols;
+
+        // Time bounds for this day
+        const firstMin = Math.min(...dayActs.map(a => parseStartMin(a.time)));
+        const lastEnd  = Math.max(...dayActs.map(a => getEndMin(a.time)));
+        const totalH   = (lastEnd - firstMin) * PX_PER_MIN + TOP_PAD + 32;
+
+        // Live act → NOW line
+        const liveAct = dayActs.find(a => a.live);
+        const nowY    = liveAct
+          ? (parseStartMin(liveAct.time) - firstMin) * PX_PER_MIN + TOP_PAD
+          : null;
+
+        // Deduplicate time labels (same minute = same y position)
+        const shownMins = new Set<number>();
+
+        return (
+          <View key={day}>
+            {/* Day header */}
+            <View style={tl.dayHeader}>
+              <View style={tl.dayHeaderLine} />
+              <Text style={tl.dayHeaderText}>{DAY_SHORT[day]} · {['JUL 18', 'JUL 19', 'JUL 20'][day]}</Text>
+              <View style={tl.dayHeaderLine} />
+            </View>
+
+            {/* Proportional canvas for this day */}
+            <View style={{ height: totalH, marginRight: RIGHT_PAD }}>
+
+              {/* Continuous green rail line */}
+              <View style={[tl.railLine, {
+                left: TIME_COL_W + (RAIL_COL_W - LINE_W) / 2,
+                top: TOP_PAD,
+                height: (lastEnd - firstMin) * PX_PER_MIN,
+              }]} />
+
+              {/* NOW red line */}
+              {nowY != null && (
+                <View style={[tl.nowLine, { top: nowY }]}>
+                  <View style={tl.nowLineDot} />
+                  <View style={tl.nowLineBar} />
+                  <Text style={tl.nowLineText}>NOW</Text>
+                </View>
+              )}
+
+              {/* Acts */}
+              {dayActs.map(act => {
+                const startMin = parseStartMin(act.time);
+                const endMin   = getEndMin(act.time);
+                const top      = (startMin - firstMin) * PX_PER_MIN + TOP_PAD;
+                const cardH    = Math.max(72, (endMin - startMin) * PX_PER_MIN);
+                const col      = colMap.get(act.id) ?? 0;
+                const cardLeft = TIME_COL_W + RAIL_COL_W + col * (colW + CARD_GAP);
+
+                const showLabel = !shownMins.has(startMin);
+                if (showLabel) shownMins.add(startMin);
+
+                return (
+                  <React.Fragment key={act.id}>
+                    {/* Timestamp label */}
+                    {showLabel && (
+                      <View style={[tl.timeLabel, { top: top - 2 }]}>
+                        <Text style={tl.slotTime}>{getStartTime(act.time)}</Text>
+                        <Text style={tl.slotDay}>{DAY_SHORT[act.day]}</Text>
+                      </View>
+                    )}
+
+                    {/* Rail dot */}
+                    {showLabel && (
+                      <View style={[tl.railDot, {
+                        top: top + 7,
+                        left: TIME_COL_W + (RAIL_COL_W - DOT_D) / 2,
+                        ...(act.live && { shadowOpacity: 1, shadowRadius: 10 }),
+                      }]} />
+                    )}
+
+                    {/* Card */}
+                    <View style={{
+                      position: 'absolute', top, left: cardLeft,
+                      width: colW, height: cardH,
+                    }}>
+                      <TimelineCard
+                        act={act} favs={favs} onFav={onFav}
+                        stageName={stageLabel[act.stage]}
+                      />
+                    </View>
+                  </React.Fragment>
+                );
+              })}
+
+            </View>
+          </View>
+        );
+      })}
+      <View style={{ height: 120 }} />
+    </ScrollView>
+  );
+}
+
+// ─── Timeline styles ──────────────────────────────────────────────────────────
+
+const tl = StyleSheet.create({
+  scroll: { flex: 1 },
+
+  // Empty state
+  empty:      { alignItems: 'center', paddingVertical: 60, gap: 12, paddingHorizontal: 32 },
+  emptyTitle: { color: SV.onSurfaceVariant, fontSize: 16, fontWeight: '700' },
+  emptySub:   { color: SV.outline, fontFamily: 'monospace', fontSize: 12, textAlign: 'center' },
+
+  // Day header
+  dayHeader:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 14, marginTop: 16, marginBottom: 4 },
+  dayHeaderLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.08)' },
+  dayHeaderText: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, fontWeight: '700', letterSpacing: 2 },
+
+  // Green rail line (absolute, full-height strip)
+  railLine: {
+    position: 'absolute', width: LINE_W,
+    backgroundColor: SV.primaryContainer, opacity: 0.45,
+  },
+
+  // Dot on rail
+  railDot: {
+    position: 'absolute',
+    width: DOT_D, height: DOT_D, borderRadius: DOT_D / 2,
+    backgroundColor: SV.primaryContainer,
+    borderWidth: 2, borderColor: '#07070c',
+    shadowColor: '#39ff14', shadowOpacity: 0.7, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+    zIndex: 2,
+  },
+
+  // Timestamp label (absolute)
+  timeLabel: {
+    position: 'absolute', width: TIME_COL_W,
+    alignItems: 'flex-end', paddingRight: 8,
+  },
+  slotTime: { color: SV.onSurface, fontFamily: 'monospace', fontSize: 12, fontWeight: '800' },
+  slotDay:  { color: SV.outline, fontFamily: 'monospace', fontSize: 8, letterSpacing: 1.2 },
+
+  // NOW line
+  nowLine: {
+    position: 'absolute', left: TIME_COL_W,
+    flexDirection: 'row', alignItems: 'center', zIndex: 10,
+  },
+  nowLineDot: {
+    width: 14, height: 14, borderRadius: 7,
+    backgroundColor: '#FF4444', marginLeft: (RAIL_COL_W - 14) / 2,
+    shadowColor: '#FF4444', shadowOpacity: 0.9, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  nowLineBar: { flex: 1, height: 2, backgroundColor: '#FF4444', opacity: 0.7, marginLeft: 4 },
+  nowLineText: {
+    color: '#FF4444', fontFamily: 'monospace', fontSize: 9, fontWeight: '900',
+    letterSpacing: 2, marginLeft: 6,
+  },
+
+  // Card
+  card: {
+    flex: 1, backgroundColor: '#0e0e18', borderRadius: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', overflow: 'hidden',
+  },
+  cardAccent:    { height: 2.5 },
+  cardInner:     { flex: 1, padding: 9 },
+  cardHeader:    { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  livePill:      { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(57,255,20,0.08)', paddingHorizontal: 6, paddingVertical: 3, borderRadius: 7 },
+  liveLabel:     { fontFamily: 'monospace', fontSize: 8, fontWeight: '900', letterSpacing: 1.5 },
+  endTimeLabel:  { color: SV.outline, fontFamily: 'monospace', fontSize: 8, letterSpacing: 0.5 },
+  cardName:      { color: SV.onSurface, fontSize: 12, fontWeight: '700', lineHeight: 16, flex: 1 },
+  cardMeta:      { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4 },
+  stageDot:      { width: 5, height: 5, borderRadius: 2.5 },
+  cardStageName: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 8, letterSpacing: 0.4, flex: 1 },
+});
+
+// ─── Screen ───────────────────────────────────────────────────────────────────
+
 export default function LineupScreen() {
   const { lang } = useLanguage();
   const { filter: filterParam } = useLocalSearchParams<{ filter?: string }>();
@@ -685,8 +990,9 @@ export default function LineupScreen() {
   const [stage,   setStage]   = useState<StageFilter>("ALL");
   const [loading, setLoading] = useState(true);
   const [expandedArtist, setExpandedArtist] = useState<string | null>(null);
-  const [favs,    setFavs]    = useState<Record<string, boolean>>({});
-  const [userId,  setUserId]  = useState<string | null>(null);
+  const [favs,           setFavs]          = useState<Record<string, boolean>>({});
+  const [userId,         setUserId]         = useState<string | null>(null);
+  const [favStageFilter, setFavStageFilter] = useState<'ALL'|'SUBURBIA'|'BASEMENT'|'GRID'>('ALL');
 
   // Activate Favourites filter if navigated with ?filter=favourites
   useEffect(() => {
@@ -723,9 +1029,12 @@ export default function LineupScreen() {
   }));
   const STAGE_LABEL = lang === "hu" ? STAGE_LABEL_HU : STAGE_LABEL_EN;
 
-  // FAVOURITES mode: show all favs across all days; otherwise filter by day+stage
+  // FAVOURITES mode: all favs across all days, optionally filtered by stage
+  const favActs = ARTISTS.filter(a => favs[a.id])
+    .filter(a => favStageFilter === 'ALL' || a.stage.toUpperCase() === favStageFilter);
+
   const acts = stage === 'FAVOURITES'
-    ? ARTISTS.filter(a => favs[a.id])
+    ? favActs
     : ARTISTS.filter((a) => {
         if (a.day !== day) return false;
         if (stage !== "ALL" && a.stage.toUpperCase() !== stage) return false;
@@ -757,74 +1066,96 @@ export default function LineupScreen() {
     }
   };
 
+  const favCount = Object.values(favs).filter(Boolean).length;
+  const isFavMode = stage === 'FAVOURITES';
+
   return (
     <View style={styles.root}>
       <ScreenHeader />
 
-      {/* Day tabs */}
-      <View style={styles.dayBar}>
-        {DAYS.map((d) => (
-          <TouchableOpacity
-            key={d.key}
-            style={[styles.dayTab, d.key === day && styles.dayTabActive]}
-            onPress={() => setDay(d.key)}
-            activeOpacity={0.75}
-          >
-            <Text
-              style={[styles.dayLabel, d.key === day && styles.dayLabelActive]}
-            >
-              {d.label}
-            </Text>
-            <Text style={[styles.daySub, d.key === day && styles.daySubActive]}>
-              {d.sub}
-            </Text>
-            {d.key === day && <View style={styles.dayIndicator} />}
-          </TouchableOpacity>
-        ))}
-      </View>
+      {/* ── Accessible Favourites button ── */}
+      <TouchableOpacity
+        style={[styles.favsBtn, isFavMode && styles.favsBtnActive]}
+        onPress={() => setStage(s => s === 'FAVOURITES' ? 'ALL' : 'FAVOURITES')}
+        activeOpacity={0.8}>
+        <MaterialIcons name="favorite" size={16} color={isFavMode ? '#09090E' : '#FF6B9D'} />
+        <Text style={[styles.favsBtnText, isFavMode && styles.favsBtnTextActive]}>
+          {lang === 'hu' ? 'KEDVENCEIM' : 'MY FAVOURITES'}
+        </Text>
+        {favCount > 0 && (
+          <View style={[styles.favsBadge, isFavMode && styles.favsBadgeActive]}>
+            <Text style={[styles.favsBadgeText, isFavMode && { color: '#FF6B9D' }]}>{favCount}</Text>
+          </View>
+        )}
+        {isFavMode && (
+          <MaterialIcons name="close" size={14} color="#09090E" style={{ marginLeft: 'auto' }} />
+        )}
+      </TouchableOpacity>
 
-      {/* Stage filter chips */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.chipScroll}
-        contentContainerStyle={styles.chipContent}
-      >
-        {STAGE_CHIPS.map((s) => (
-          <TouchableOpacity
-            key={s.key}
-            style={[styles.chip, s.key === stage && styles.chipActive, s.key === 'FAVOURITES' && styles.chipFav, s.key === 'FAVOURITES' && s.key === stage && styles.chipFavActive]}
-            onPress={() => setStage(s.key)}
-            activeOpacity={0.75}
-          >
-            {s.icon ? (
-              <MaterialIcons name={s.icon as any} size={12} color={s.key === stage ? '#fff' : '#FF6B9D'} />
-            ) : null}
-            <Text
-              style={[
-                styles.chipText,
-                s.key === stage && styles.chipTextActive,
-              ]}
-            >
-              {s.label}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      {/* ── Favourites timeline ── */}
+      {isFavMode && (
+        <>
+          {/* Stage filter chips inside favourites */}
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}
+            style={styles.chipScroll} contentContainerStyle={styles.chipContent}>
+            {(['ALL', 'SUBURBIA', 'BASEMENT', 'GRID'] as const).map(s => (
+              <TouchableOpacity key={s}
+                style={[styles.chip, favStageFilter === s && styles.chipActive]}
+                onPress={() => setFavStageFilter(s)} activeOpacity={0.75}>
+                {s !== 'ALL' && (
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: STAGE_COLOR[s.toLowerCase()] }} />
+                )}
+                <Text style={[styles.chipText, favStageFilter === s && styles.chipTextActive]}>
+                  {s === 'ALL' ? (lang === 'hu' ? 'MIND' : 'ALL') :
+                   s === 'SUBURBIA' ? 'SubUrbia' :
+                   s === 'BASEMENT' ? 'Basement' : 'The Grid'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <FavTimeline
+            acts={acts}
+            favs={favs}
+            onFav={toggleFav}
+            stageLabel={STAGE_LABEL}
+            lang={lang}
+          />
+        </>
+      )}
 
-      {/* Artist list */}
-      <ScrollView
-        style={styles.list}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.listContent}
-      >
-        {loading
-          ? // ── Skeleton placeholder ──────────────────────────────────────────
-            Array.from({ length: 7 }).map((_, i) => (
-              <SkeletonLineupRow key={i} />
-            ))
-          : // ── Real content ──────────────────────────────────────────────────
-            acts.map((act, i) => {
+      {/* ── Normal list (day tabs + stage chips + rows) ── */}
+      {!isFavMode && <>
+        <View style={styles.dayBar}>
+          {DAYS.map((d) => (
+            <TouchableOpacity
+              key={d.key}
+              style={[styles.dayTab, d.key === day && styles.dayTabActive]}
+              onPress={() => setDay(d.key)}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.dayLabel, d.key === day && styles.dayLabelActive]}>{d.label}</Text>
+              <Text style={[styles.daySub, d.key === day && styles.daySubActive]}>{d.sub}</Text>
+              {d.key === day && <View style={styles.dayIndicator} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        <ScrollView horizontal showsHorizontalScrollIndicator={false}
+          style={styles.chipScroll} contentContainerStyle={styles.chipContent}>
+          {STAGE_CHIPS.filter(s => s.key !== 'FAVOURITES').map((s) => (
+            <TouchableOpacity key={s.key}
+              style={[styles.chip, s.key === stage && styles.chipActive]}
+              onPress={() => setStage(s.key)} activeOpacity={0.75}>
+              <Text style={[styles.chipText, s.key === stage && styles.chipTextActive]}>{s.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        <ScrollView style={styles.list} showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}>
+          {loading
+            ? Array.from({ length: 7 }).map((_, i) => <SkeletonLineupRow key={i} />)
+            : acts.map((act, i) => {
               const isExpanded = expandedArtist === act.name;
               return (
                 <View
@@ -891,18 +1222,11 @@ export default function LineupScreen() {
                         />
                       )}
                       <Text style={styles.timeText}>{act.time}</Text>
-                      {(stage === "ALL" || stage === 'FAVOURITES') && (
+                      {stage === "ALL" && (
                         <>
                           <View style={styles.dot} />
-                          <Text
-                            style={[
-                              styles.stageText,
-                              { color: STAGE_COLOR[act.stage] },
-                            ]}
-                          >
-                            {stage === 'FAVOURITES'
-                          ? `${DAYS_DATA[act.day].en.slice(0, 3)} · ${STAGE_LABEL[act.stage]}`
-                          : STAGE_LABEL[act.stage]}
+                          <Text style={[styles.stageText, { color: STAGE_COLOR[act.stage] }]}>
+                            {STAGE_LABEL[act.stage]}
                           </Text>
                         </>
                       )}
@@ -945,8 +1269,9 @@ export default function LineupScreen() {
               );
             })}
 
-        <View style={{ height: 120 }} />
-      </ScrollView>
+          <View style={{ height: 120 }} />
+        </ScrollView>
+      </>}
 
       <CartFAB />
     </View>
@@ -955,6 +1280,21 @@ export default function LineupScreen() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#07070c" },
+
+  // ── Favourites access button ──────────────────────────────────────────────
+  favsBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: 14, marginVertical: 10,
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 12,
+    backgroundColor: 'rgba(255,107,157,0.1)',
+    borderWidth: 1.5, borderColor: 'rgba(255,107,157,0.35)',
+  },
+  favsBtnActive: { backgroundColor: '#FF6B9D', borderColor: '#FF6B9D' },
+  favsBtnText:       { color: '#FF6B9D', fontFamily: 'monospace', fontSize: 13, fontWeight: '800', letterSpacing: 1, flex: 1 },
+  favsBtnTextActive: { color: '#09090E' },
+  favsBadge:         { backgroundColor: 'rgba(255,107,157,0.25)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  favsBadgeActive:   { backgroundColor: 'rgba(0,0,0,0.15)' },
+  favsBadgeText:     { color: '#FF6B9D', fontFamily: 'monospace', fontSize: 11, fontWeight: '800' },
 
   // ── Day bar ────────────────────────────────────────────────────────────────
   dayBar: {
