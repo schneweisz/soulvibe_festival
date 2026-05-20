@@ -6,5 +6,6 @@ module.exports = {
   ],
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    '^expo-haptics$': '<rootDir>/src/__mocks__/expo-haptics.ts',
   },
 };
