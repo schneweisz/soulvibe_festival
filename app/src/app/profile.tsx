@@ -1,10 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   Alert,
@@ -28,7 +29,11 @@ export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<{ balance: number, points: number } | null>(null);
+  const [profile, setProfile] = useState<{ balance: number; points: number; username: string | null } | null>(null);
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [savingUsername, setSavingUsername] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   // Helper to determine rank based on PULSE_POINTS_PLAN.md
   const getRank = (pts: number) => {
@@ -61,13 +66,16 @@ export default function ProfileScreen() {
             // Fetch extra data from 'profiles' table
             const { data, error } = await supabase
               .from('profiles')
-              .select('balance, points')
+              .select('balance, points, username')
               .eq('id', currentSession.user.id)
               .single();
-            
+
             if (isMounted) {
               if (!error && data) {
                 setProfile(data);
+                setUsernameInput(data.username ?? currentSession.user.email?.split('@')[0].toUpperCase() ?? '');
+              } else {
+                setUsernameInput(currentSession.user.email?.split('@')[0].toUpperCase() ?? '');
               }
               setLoading(false);
             }
@@ -95,6 +103,35 @@ export default function ProfileScreen() {
       router.replace('/auth');
     }
   }
+
+  async function saveUsername() {
+    const trimmed = usernameInput.trim();
+    if (!trimmed || !session) return;
+    setSavingUsername(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ username: trimmed })
+      .eq('id', session.user.id);
+    setSavingUsername(false);
+    if (error) {
+      Alert.alert('Error', 'Could not save username. Try again.');
+    } else {
+      setProfile(p => p ? { ...p, username: trimmed } : p);
+      setEditingUsername(false);
+    }
+  }
+
+  function startEditing() {
+    setEditingUsername(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }
+
+  function cancelEditing() {
+    setUsernameInput(profile?.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? '');
+    setEditingUsername(false);
+  }
+
+  const displayName = profile?.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? 'RAVER';
 
   if (loading) {
     return (
@@ -127,7 +164,34 @@ export default function ProfileScreen() {
             source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}` }}
             style={styles.avatar}
           />
-          <Text style={styles.username}>{session.user.email?.split('@')[0].toUpperCase()}</Text>
+          {editingUsername ? (
+            <View style={styles.usernameEditRow}>
+              <TextInput
+                ref={inputRef}
+                style={styles.usernameInput}
+                value={usernameInput}
+                onChangeText={setUsernameInput}
+                autoCapitalize="characters"
+                maxLength={20}
+                returnKeyType="done"
+                onSubmitEditing={saveUsername}
+                placeholderTextColor={SV.surfaceVariant}
+              />
+              <TouchableOpacity style={styles.usernameAction} onPress={saveUsername} disabled={savingUsername}>
+                {savingUsername
+                  ? <ActivityIndicator size="small" color={SV.primaryContainer} />
+                  : <MaterialIcons name="check" size={20} color={SV.primaryContainer} />}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.usernameAction} onPress={cancelEditing}>
+                <MaterialIcons name="close" size={20} color={SV.onSurfaceVariant} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.usernameRow} onPress={startEditing} activeOpacity={0.7}>
+              <Text style={styles.username}>{displayName}</Text>
+              <MaterialIcons name="edit" size={16} color={SV.onSurfaceVariant} style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
+          )}
           <View style={styles.badgeRow}>
             <View style={styles.badgePrimary}>
               <Text style={styles.badgePrimaryText}>PULSE LEVEL: HIGH</Text>
@@ -194,7 +258,7 @@ export default function ProfileScreen() {
             <View style={styles.ticketHeader}>
               <View>
                 <Text style={styles.ticketName}>
-                  {profile?.ticket?.toUpperCase() || (lang === 'hu' ? 'NINCS AKTÍV JEGY' : 'NO ACTIVE TICKET')}
+                  {lang === 'hu' ? 'NINCS AKTÍV JEGY' : 'NO ACTIVE TICKET'}
                 </Text>
               </View>
               <View style={styles.liveBadge}>
@@ -330,7 +394,18 @@ const styles = StyleSheet.create({
   },
   heroGlass: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(57,255,20,0.03)' },
   avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: SV.primaryContainer, marginBottom: 12, ...neonShadow },
-  username: { color: SV.primaryFixedDim, fontSize: 22, fontWeight: '900', letterSpacing: -0.5, textTransform: 'uppercase', marginBottom: 10 },
+  username: { color: SV.primaryFixedDim, fontSize: 22, fontWeight: '900', letterSpacing: -0.5, textTransform: 'uppercase' },
+  usernameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  usernameEditRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10,
+    backgroundColor: SV.surfaceContainerHigh, borderRadius: 10, borderWidth: 1,
+    borderColor: SV.primaryContainer, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  usernameInput: {
+    color: SV.primaryFixedDim, fontSize: 18, fontWeight: '800', letterSpacing: 0.5,
+    textTransform: 'uppercase', flex: 1, minWidth: 80,
+  },
+  usernameAction: { padding: 4 },
   badgeRow: { flexDirection: 'row', gap: 8 },
   badgePrimary: { backgroundColor: SV.surfaceContainerHigh, borderWidth: 1, borderColor: 'rgba(57,255,20,0.3)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgePrimaryText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 11, letterSpacing: 0.5 },
