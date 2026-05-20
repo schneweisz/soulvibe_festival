@@ -299,7 +299,7 @@ export default function ProfileScreen() {
               <View style={styles.ticketHeader}>
                 <View>
                   <Text style={styles.ticketName}>
-                    {lang === 'hu' ? 'NINCS AKTÍV JEGY' : 'NO ACTIVE TICKET'}
+                    {lang === 'hu' ? 'NEM ÉSZLELHETŐ JEGY' : 'NO PASS DETECTED'}
                   </Text>
                 </View>
               </View>
@@ -403,7 +403,7 @@ export default function ProfileScreen() {
           </View>
           {favourites.length === 0 ? (
             <Text style={{ color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, marginBottom: 12 }}>
-              {lang === 'hu' ? 'Még nincs kedvenc előadód. Nyomj a ♡ ikonra a programban.' : 'No favourites yet. Tap ♡ next to any artist in Lineup.'}
+              {lang === 'hu' ? 'FREKVENCIÁD NINCS BEHANGOLVA. NYOMJ ♡-T A PROGRAMBAN.' : 'FREQUENCY UNTUNED. TAP ♡ IN LINEUP TO SYNC WITH THE GRID.'}
             </Text>
           ) : (
             favourites.slice(0, 3).map(f => (
@@ -456,8 +456,8 @@ export default function ProfileScreen() {
           {friends.length === 0 ? (
             <Text style={styles.friendEmpty}>
               {lang === 'hu'
-                ? 'Még nincs barátod. Keress felhasználónév alapján.'
-                : 'No friends yet. Search by username above.'}
+                ? 'NINCS KAPCSOLÓDÓ CSOMÓPONT. KERESS FELHASZNÁLÓNÉV ALAPJÁN.'
+                : 'NO NODES LINKED. SEARCH A USERNAME TO CONNECT TO THE GRID.'}
             </Text>
           ) : (
             friends.map(f => (

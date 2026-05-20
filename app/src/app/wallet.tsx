@@ -402,7 +402,7 @@ export default function WalletScreen() {
             <ActivityIndicator color={SV.primaryContainer} style={{ marginTop: 20 }} />
           ) : transactions.length === 0 ? (
             <Text style={{ color: SV.outline, fontFamily: 'monospace', fontSize: 12, textAlign: 'center', marginTop: 20 }}>
-              No recent transactions.
+              THE LEDGER IS CLEAN. NO TRANSACTIONS LOGGED.
             </Text>
           ) : (
             transactions.map(tx => (

@@ -115,7 +115,7 @@ export default function CartScreen() {
         <View style={styles.itemsSection}>
           {items.length === 0 && !paid ? (
             <Text style={{ color: SV.outline, textAlign: 'center', marginTop: 40, fontFamily: 'monospace' }}>
-              CART IS EMPTY
+              PAYLOAD EMPTY. ADD FUEL TO YOUR LOADOUT.
             </Text>
           ) : (
             items.map(item => (
