@@ -1,10 +1,12 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
+import * as Notifications from 'expo-notifications';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Easing,
   ImageBackground,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -15,6 +17,19 @@ import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
 import { useLanguage } from '@/context/LanguageContext';
 import { GlitchText } from '@/components/glitch-text';
+
+// ─── Notifications setup ─────────────────────────────────────────────────────
+
+Notifications.setNotificationHandler({
+  handleNotification: async () =>
+    ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    } as any),
+});
 
 // ─── Countdown ──────────────────────────────────────────────────────────────
 
@@ -103,6 +118,26 @@ export default function HomeScreen() {
   const time = useCountdown();
   const { lang } = useLanguage();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
+
+  // ── Push notification for venue change ───────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      if (Platform.OS === 'web') return; // web does not support push notifications
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') return;
+
+      // Fire the alert after a short delay so it appears as an incoming push
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: '🔄 STAGE SWAP — PROGRAM CHANGE',
+          body: 'Beton.Hofi (18:00) and T. Danny (18:45) have swapped stages. Beton.Hofi is now on SUBURBIA, T. Danny on THE BASEMENT. Set times unchanged.',
+          data: { screen: 'lineup' },
+          sound: true,
+        },
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 2 },
+      });
+    })();
+  }, []);
 
   return (
     <View style={styles.root}>
@@ -203,6 +238,19 @@ export default function HomeScreen() {
 
           {[
             {
+              badge: t('STAGE SWAP', 'CSERE'),
+              badgeStyle: styles.urgentBadge,
+              badgeText: styles.urgentBadgeText,
+              time: t('JUST NOW', 'MOST'),
+              title: t('Stage Swap: Beton.Hofi ↔ T. Danny', 'Helyszíncsere: Beton.Hofi ↔ T. Danny'),
+              body: t(
+                'Beton.Hofi (18:00–19:45) moves to SUBURBIA. T. Danny (18:45–20:15) moves to THE BASEMENT. Set times are unchanged.',
+                'Beton.Hofi (18:00–19:45) a SUBURBIA-ra kerül. T. Danny (18:45–20:15) a THE BASEMENT-re kerül. Az időpontok változatlanok.',
+              ),
+              cta: t('VIEW LINEUP', 'PROGRAM'),
+              onCta: () => router.push('/lineup'),
+            },
+            {
               badge: t('ALERT', 'FIGYELMEZTETÉS'),
               badgeStyle: styles.alertBadge,
               badgeText: styles.alertBadgeText,
@@ -210,6 +258,7 @@ export default function HomeScreen() {
               title: t('Lockers Running Low', 'Szekrények fogyóban'),
               body: t('Secure your gear. Standard lockers in Sector 4 are nearly at capacity.', 'Gondoskodj a felszerelésedről. A 4-es szektorban lévő standard szekrények szinte megteltek.'),
               cta: t('BOOK LOCKER', 'SZEKRÉNY FOGLALÁS'),
+              onCta: () => {},
             },
             {
               badge: 'INFO',
@@ -219,16 +268,17 @@ export default function HomeScreen() {
               title: t("New Merch Drop: 'GRID' Collection", "Új merch: 'GRID' Kollekció"),
               body: t('Exclusive run of 200 heavy-weight organic cotton tees featuring the 2026 Grid design.', '200 darabos exkluzív, nehézsúlyú organikus pamut póló a 2026-os Grid dizájnnal.'),
               cta: t('PREVIEW DROP', 'ELŐNÉZET'),
+              onCta: () => {},
             },
           ].map((item, i) => (
-            <View key={item.title} style={[styles.logCard, i > 0 && { marginTop: 12 }]}>
+            <View key={item.title} style={[styles.logCard, i > 0 && { marginTop: 12 }, i === 0 && styles.logCardUrgent]}>
               <View style={styles.logCardHeader}>
                 <View style={item.badgeStyle}><Text style={item.badgeText}>{item.badge}</Text></View>
                 <Text style={styles.logTime}>{item.time}</Text>
               </View>
-              <Text style={styles.logTitle}>{item.title}</Text>
+              <Text style={[styles.logTitle, i === 0 && { color: '#FF6B6B' }]}>{item.title}</Text>
               <Text style={styles.logBody}>{item.body}</Text>
-              <AnimPressable style={styles.logBtn} onPress={() => { }}>
+              <AnimPressable style={styles.logBtn} onPress={item.onCta}>
                 <Text style={styles.logBtnText}>{item.cta}</Text>
               </AnimPressable>
             </View>
@@ -298,7 +348,10 @@ const styles = StyleSheet.create({
   fullScheduleText: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1 },
 
   logCard: { backgroundColor: SV.deepCharcoal, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 16, overflow: 'hidden' },
+  logCardUrgent: { borderColor: 'rgba(255,107,107,0.4)', backgroundColor: 'rgba(255,107,107,0.05)' },
   logCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  urgentBadge: { backgroundColor: 'rgba(255,107,107,0.18)', borderWidth: 1, borderColor: 'rgba(255,107,107,0.5)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  urgentBadgeText: { color: '#FF6B6B', fontFamily: 'monospace', fontSize: 10, letterSpacing: 1, fontWeight: '800' },
   alertBadge: { backgroundColor: 'rgba(208,91,255,0.15)', borderWidth: 1, borderColor: 'rgba(208,91,255,0.3)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
   alertBadgeText: { color: SV.secondaryFixedDim, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
   infoBadge: { backgroundColor: SV.surfaceContainerHigh, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
