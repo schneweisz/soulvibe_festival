@@ -6,6 +6,7 @@ type AuthContextType = {
   session: Session | null;
   user: User | null;
   profile: { username: string | null; points: number; balance: number } | null;
+  hasTicket: boolean;
   loading: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -15,6 +16,7 @@ const AuthContext = createContext<AuthContextType>({
   session: null,
   user: null,
   profile: null,
+  hasTicket: false,
   loading: true,
   signOut: async () => {},
   refreshProfile: async () => {},
@@ -24,30 +26,46 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<{ username: string | null; points: number; balance: number } | null>(null);
+  const [hasTicket, setHasTicket] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  const fetchProfile = async (userId: string) => {
+  const fetchData = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      // 1. Fetch Profile
+      const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('username, points, balance')
         .eq('id', userId)
         .single();
 
-      if (!error && data) {
-        setProfile(data);
+      if (!profileError && profileData) {
+        setProfile(profileData);
       } else {
         setProfile(null);
       }
+
+      // 2. Fetch Ticket Status
+      const { data: ticketData, error: ticketError } = await supabase
+        .from('tickets')
+        .select('id')
+        .eq('profile_id', userId)
+        .limit(1);
+
+      if (!ticketError && ticketData && ticketData.length > 0) {
+        setHasTicket(true);
+      } else {
+        setHasTicket(false);
+      }
     } catch (e) {
-      console.error('Error fetching profile:', e);
+      console.error('Error fetching auth data:', e);
       setProfile(null);
+      setHasTicket(false);
     }
   };
 
   const refreshProfile = async () => {
     if (user) {
-      await fetchProfile(user.id);
+      await fetchData(user.id);
     }
   };
 
@@ -57,7 +75,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        await fetchData(session.user.id);
       }
       setLoading(false);
     });
@@ -67,9 +85,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        await fetchData(session.user.id);
       } else {
         setProfile(null);
+        setHasTicket(false);
       }
       setLoading(false);
     });
@@ -84,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ session, user, profile, loading, signOut, refreshProfile }}>
+    <AuthContext.Provider value={{ session, user, profile, hasTicket, loading, signOut, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );

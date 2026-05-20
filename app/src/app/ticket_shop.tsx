@@ -130,11 +130,9 @@ function generateTicketId() {
   return `SV26-${r(4)}-${r(4)}`;
 }
 
-// ─── Main Screen ──────────────────────────────────────────────────────────────
-
 export default function TicketShopScreen() {
   const { lang } = useLanguage();
-  const { session, profile, refreshProfile } = useAuth();
+  const { session, profile, hasTicket, refreshProfile } = useAuth();
   const [selectedType, setSelectedType] = useState<TicketType>('BASE');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [purchasedTicket, setPurchasedTicket] = useState<TicketOption | null>(null);
@@ -147,6 +145,14 @@ export default function TicketShopScreen() {
   const handlePurchase = async (option: TicketOption) => {
     if (!session) {
       router.push('/auth');
+      return;
+    }
+
+    if (hasTicket) {
+      Alert.alert(
+        t('ALREADY OWNED', 'MÁR VAN JEGYED'),
+        t('You already have an active pass. Multiple tickets are not allowed.', 'Már rendelkezel aktív bérlettel. Több jegy vásárlása nem engedélyezett.')
+      );
       return;
     }
 
