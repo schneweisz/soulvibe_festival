@@ -1,10 +1,11 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
-import React, { useEffect, useState, useCallback } from 'react';
+import { Redirect, router, useFocusEffect } from 'expo-router';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
   Alert,
@@ -14,9 +15,11 @@ import { Image } from 'expo-image';
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 import { supabase } from '../utils/supabase';
-import { Session } from '@supabase/supabase-js';
 import { ThemedView } from '../components/themed-view';
+
+import { getRank } from '../utils/rank';
 
 const MY_LINEUP = [
   { time: '22:00', day: 'FRI', artist: 'Charlotte de Witte', stage: 'THE GRID' },
@@ -26,77 +29,106 @@ const MY_LINEUP = [
 
 export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [profile, setProfile] = useState<{ balance: number, points: number } | null>(null);
-
-  // Helper to determine rank based on PULSE_POINTS_PLAN.md
-  const getRank = (pts: number) => {
-    if (pts >= 3500) return { level: 4, name: 'THE SOURCE', next: null };
-    if (pts >= 1500) return { level: 3, name: 'RESONANCE', next: 3500 };
-    if (pts >= 500)  return { level: 2, name: 'FREQUENCY', next: 1500 };
-    return { level: 1, name: 'STATIC', next: 500 };
-  };
+  const { session, profile, loading: authLoading, signOut, refreshProfile } = useAuth();
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [transactions, setTransactions] = useState<{ id: string; type: 'credit' | 'debit'; label: string; amount: number; created_at: string }[]>([]);
+  const [editingUsername, setEditingUsername] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [savingUsername, setSavingUsername] = useState(false);
+  const inputRef = useRef<TextInput>(null);
 
   const rank = getRank(profile?.points || 0);
   const progressPercent = rank.next ? ((profile?.points || 0) / rank.next) * 100 : 100;
 
-  // Check auth and fetch profile every time the screen is focused
+  useEffect(() => {
+    if (profile) {
+      setUsernameInput(profile.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? '');
+    }
+  }, [profile]);
+
+  // Fetch transactions (remains here as it's specific to this screen)
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
 
-      async function loadData() {
-        try {
-          const { data: { session: currentSession } } = await supabase.auth.getSession();
-          if (isMounted) {
-            setSession(currentSession);
-            
-            if (!currentSession) {
-              setLoading(false);
-              router.push('/auth');
-              return;
-            }
+      async function loadTransactions() {
+        if (!session) return;
 
-            // Fetch extra data from 'profiles' table
-            const { data, error } = await supabase
-              .from('profiles')
-              .select('balance, points')
-              .eq('id', currentSession.user.id)
-              .single();
-            
-            if (isMounted) {
-              if (!error && data) {
-                setProfile(data);
-              }
-              setLoading(false);
+        try {
+          // Fetch last 5 transactions (falls back to mock data if table doesn't exist)
+          const { data: txData } = await supabase
+            .from('transactions')
+            .select('id, type, label, amount, created_at')
+            .eq('user_id', session.user.id)
+            .order('created_at', { ascending: false })
+            .limit(5);
+
+          if (isMounted) {
+            if (txData && txData.length > 0) {
+              setTransactions(txData as any);
+            } else {
+              // Fallback mock data for demo
+              setTransactions([
+                { id: 'm1', type: 'credit', label: 'Top Up',    amount: 10000, created_at: new Date(Date.now() - 3_600_000).toISOString() },
+                { id: 'm2', type: 'debit',  label: 'Gastro Hub', amount: 2900,  created_at: new Date(Date.now() - 7_200_000).toISOString() },
+                { id: 'm3', type: 'debit',  label: 'Loop Bar',   amount: 1500,  created_at: new Date(Date.now() - 10_800_000).toISOString() },
+                { id: 'm4', type: 'credit', label: 'Top Up',    amount: 20000, created_at: new Date(Date.now() - 86_400_000).toISOString() },
+                { id: 'm5', type: 'debit',  label: 'Beach Bar',  amount: 800,   created_at: new Date(Date.now() - 90_000_000).toISOString() },
+              ]);
             }
           }
         } catch (e) {
-          console.error('Data loading failed', e);
-          if (isMounted) setLoading(false);
+          console.error('Transactions loading failed', e);
         }
       }
 
-      loadData();
+      loadTransactions();
 
       return () => {
         isMounted = false;
       };
-    }, [])
+    }, [session])
   );
 
   async function handleSignOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert('Error signing out', error.message);
-    } else {
-      setSession(null);
+    try {
+      await signOut();
       router.replace('/auth');
+    } catch (error: any) {
+      Alert.alert('Error signing out', error.message);
     }
   }
 
-  if (loading) {
+  async function saveUsername() {
+    const trimmed = usernameInput.trim();
+    if (!trimmed || !session) return;
+    setSavingUsername(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ username: trimmed })
+      .eq('id', session.user.id);
+    setSavingUsername(false);
+    if (error) {
+      Alert.alert('Error', 'Could not save username. Try again.');
+    } else {
+      await refreshProfile();
+      setEditingUsername(false);
+    }
+  }
+
+  function startEditing() {
+    setEditingUsername(true);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }
+
+  function cancelEditing() {
+    setUsernameInput(profile?.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? '');
+    setEditingUsername(false);
+  }
+
+  const displayName = profile?.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? 'RAVER';
+
+  if (authLoading || (session && profileLoading)) {
     return (
       <ThemedView style={styles.center}>
         <ActivityIndicator size="large" color={SV.primaryContainer} />
@@ -106,13 +138,7 @@ export default function ProfileScreen() {
   }
 
   if (!session) {
-    return (
-      <ThemedView style={styles.center}>
-        <TouchableOpacity style={styles.authBtn} onPress={() => router.push('/auth')}>
-          <Text style={styles.authBtnText}>AUTHORIZE SYSTEM ACCESS</Text>
-        </TouchableOpacity>
-      </ThemedView>
-    );
+    return <Redirect href="/auth" />;
   }
 
   return (
@@ -127,10 +153,37 @@ export default function ProfileScreen() {
             source={{ uri: `https://api.dicebear.com/7.x/avataaars/svg?seed=${session.user.email}` }}
             style={styles.avatar}
           />
-          <Text style={styles.username}>{session.user.email?.split('@')[0].toUpperCase()}</Text>
+          {editingUsername ? (
+            <View style={styles.usernameEditRow}>
+              <TextInput
+                ref={inputRef}
+                style={styles.usernameInput}
+                value={usernameInput}
+                onChangeText={setUsernameInput}
+                autoCapitalize="characters"
+                maxLength={20}
+                returnKeyType="done"
+                onSubmitEditing={saveUsername}
+                placeholderTextColor={SV.surfaceVariant}
+              />
+              <TouchableOpacity style={styles.usernameAction} onPress={saveUsername} disabled={savingUsername}>
+                {savingUsername
+                  ? <ActivityIndicator size="small" color={SV.primaryContainer} />
+                  : <MaterialIcons name="check" size={20} color={SV.primaryContainer} />}
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.usernameAction} onPress={cancelEditing}>
+                <MaterialIcons name="close" size={20} color={SV.onSurfaceVariant} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={styles.usernameRow} onPress={startEditing} activeOpacity={0.7}>
+              <Text style={styles.username}>{displayName}</Text>
+              <MaterialIcons name="edit" size={16} color={SV.onSurfaceVariant} style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
+          )}
           <View style={styles.badgeRow}>
             <View style={styles.badgePrimary}>
-              <Text style={styles.badgePrimaryText}>PULSE LEVEL: HIGH</Text>
+              <Text style={styles.badgePrimaryText}>PULSE LEVEL: {rank.name}</Text>
             </View>
             <View style={styles.badgeSecondary}>
               <MaterialIcons name="check-circle" size={12} color={SV.secondaryFixedDim} />
@@ -194,12 +247,8 @@ export default function ProfileScreen() {
             <View style={styles.ticketHeader}>
               <View>
                 <Text style={styles.ticketName}>
-                  {profile?.ticket?.toUpperCase() || (lang === 'hu' ? 'NINCS AKTÍV JEGY' : 'NO ACTIVE TICKET')}
+                  {lang === 'hu' ? 'NINCS AKTÍV JEGY' : 'NO ACTIVE TICKET'}
                 </Text>
-              </View>
-              <View style={styles.liveBadge}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>LIVE</Text>
               </View>
             </View>
             <View style={styles.ticketActions}>
@@ -207,9 +256,6 @@ export default function ProfileScreen() {
                 <Text style={styles.showQrText}>
                   {lang === 'hu' ? 'QR MEGMUTATASA' : 'SHOW QR'}
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.shareBtn}>
-                <MaterialIcons name="share" size={18} color={SV.primaryContainer} />
               </TouchableOpacity>
             </View>
           </View>
@@ -263,6 +309,36 @@ export default function ProfileScreen() {
             </TouchableOpacity>
           </View>
         </View>
+
+        {/* Recent Transactions */}
+        {transactions.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitle}>
+                {lang === 'hu' ? 'LEGUTÓBBI TRANZAKCIÓK' : 'RECENT TRANSACTIONS'}
+              </Text>
+              <MaterialIcons name="receipt-long" size={20} color={SV.onSurfaceVariant} />
+            </View>
+            {transactions.map((tx, i) => {
+              const d = new Date(tx.created_at);
+              const timeStr = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+              const isToday = new Date().toDateString() === d.toDateString();
+              const dateStr = isToday ? lang === 'hu' ? 'MA' : 'TODAY' : d.toLocaleDateString(lang === 'hu' ? 'hu-HU' : 'en-GB', { day: 'numeric', month: 'short' });
+              return (
+                <View key={tx.id} style={[styles.txRow, i === transactions.length - 1 && { borderBottomWidth: 0 }]}>
+                  <View style={[styles.txDot, { backgroundColor: tx.type === 'credit' ? SV.primaryContainer : SV.secondaryContainer }]} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.txLabel}>{tx.label}</Text>
+                    <Text style={styles.txTime}>{timeStr} · {dateStr}</Text>
+                  </View>
+                  <Text style={[styles.txAmount, tx.type === 'credit' ? styles.txCredit : styles.txDebit]}>
+                    {tx.type === 'credit' ? '+' : '-'}{tx.amount.toLocaleString()} Ft
+                  </Text>
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         {/* My Lineup */}
         <View style={styles.card}>
@@ -330,7 +406,18 @@ const styles = StyleSheet.create({
   },
   heroGlass: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(57,255,20,0.03)' },
   avatar: { width: 100, height: 100, borderRadius: 50, borderWidth: 2, borderColor: SV.primaryContainer, marginBottom: 12, ...neonShadow },
-  username: { color: SV.primaryFixedDim, fontSize: 22, fontWeight: '900', letterSpacing: -0.5, textTransform: 'uppercase', marginBottom: 10 },
+  username: { color: SV.primaryFixedDim, fontSize: 22, fontWeight: '900', letterSpacing: -0.5, textTransform: 'uppercase' },
+  usernameRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  usernameEditRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10,
+    backgroundColor: SV.surfaceContainerHigh, borderRadius: 10, borderWidth: 1,
+    borderColor: SV.primaryContainer, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  usernameInput: {
+    color: SV.primaryFixedDim, fontSize: 18, fontWeight: '800', letterSpacing: 0.5,
+    textTransform: 'uppercase', flex: 1, minWidth: 80,
+  },
+  usernameAction: { padding: 4 },
   badgeRow: { flexDirection: 'row', gap: 8 },
   badgePrimary: { backgroundColor: SV.surfaceContainerHigh, borderWidth: 1, borderColor: 'rgba(57,255,20,0.3)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   badgePrimaryText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 11, letterSpacing: 0.5 },
@@ -389,6 +476,13 @@ const styles = StyleSheet.create({
   walletCurrency: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 14, fontWeight: '700' },
   topUpBtn: { backgroundColor: 'rgba(57,255,20,0.15)', borderWidth: 1, borderColor: SV.primaryContainer, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   topUpText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1 },
+  txRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  txDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
+  txLabel: { color: SV.onSurface, fontSize: 14, fontWeight: '600' },
+  txTime: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, marginTop: 2 },
+  txAmount: { fontFamily: 'monospace', fontSize: 13, fontWeight: '700' },
+  txCredit: { color: SV.primaryContainer },
+  txDebit: { color: SV.secondaryContainer },
 
   setRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: SV.surfaceContainerLow, borderRadius: 8, borderWidth: 1, borderColor: 'transparent', padding: 10, marginBottom: 8 },
   setTime: { width: 52, paddingRight: 12, borderRightWidth: 1, borderRightColor: SV.surfaceVariant },

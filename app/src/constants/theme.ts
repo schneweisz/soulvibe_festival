@@ -40,12 +40,12 @@ export const SV = {
   onSurfaceVariant: '#baccb0',
   onBackground: '#e5e2e1',
 
-  // Primary — Neon Green
-  primaryContainer: '#39ff14',
-  primaryFixed: '#79ff5b',
-  primaryFixedDim: '#2ae500',
-  onPrimaryContainer: '#107100',
-  onPrimaryFixed: '#022100',
+  // Primary — Neon Green (Darkened for better contrast/less strain)
+  primaryContainer: '#2cc90f',
+  primaryFixed: '#5ce640',
+  primaryFixedDim: '#20b300',
+  onPrimaryContainer: '#0d5900',
+  onPrimaryFixed: '#011a00',
 
   // Secondary — Electric Purple
   secondaryContainer: '#d05bff',
@@ -73,7 +73,7 @@ export const SV = {
   surfaceGlass: 'rgba(255, 255, 255, 0.05)',
 
   // Glows
-  neonGlow: 'rgba(57, 255, 20, 0.4)',
+  neonGlow: 'rgba(44, 201, 15, 0.4)',
   purpleGlow: 'rgba(191, 0, 255, 0.4)',
   cyanGlow: 'rgba(85, 242, 255, 0.4)',
 } as const;
@@ -114,7 +114,7 @@ export const MaxContentWidth = 800;
 
 /** Neon green glow shadow (iOS / Android elevation combo) */
 export const neonShadow = {
-  shadowColor: '#39ff14',
+  shadowColor: '#2cc90f',
   shadowOffset: { width: 0, height: 0 },
   shadowOpacity: 0.5,
   shadowRadius: 12,
