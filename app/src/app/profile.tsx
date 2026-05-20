@@ -31,10 +31,14 @@ export default function ProfileScreen() {
     transactions, 
     favourites, 
     friends, 
+    pendingRequests,
     loading: dbLoading, 
     refreshAll,
-    refreshFriends,
-    refreshProfile
+    refreshProfile,
+    sendFriendRequest,
+    acceptFriendRequest,
+    rejectFriendRequest,
+    removeFriend
   } = useDatabase();
 
   const [friendInput, setFriendInput] = useState('');
@@ -99,60 +103,36 @@ export default function ProfileScreen() {
     setEditingUsername(false);
   }
 
-  async function addFriend() {
-    const name = friendInput.trim().toUpperCase();
-    if (!name || !session) return;
+  async function handleAddFriend() {
+    if (!friendInput.trim()) return;
     setAddingFriend(true);
     setFriendError(null);
-    try {
-      const { data: found, error: findErr } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .eq('username', name)
-        .maybeSingle();
-
-      if (findErr) {
-        setFriendError(`${findErr.message} (${findErr.code})`);
-        return;
-      }
-      if (!found) {
-        setFriendError(lang === 'hu' ? 'Felhasználó nem található.' : 'User not found.');
-        return;
-      }
-      if (found.id === session.user.id) {
-        setFriendError(lang === 'hu' ? 'Önmagát nem adhatja hozzá.' : 'Cannot add yourself.');
-        return;
-      }
-      if (friends.some(f => f.id === found.id)) {
-        setFriendError(lang === 'hu' ? 'Már barát.' : 'Already a friend.');
-        return;
-      }
-
-      const { error: rpcErr } = await supabase.rpc('add_friend_bidirectional', {
-        friend_id:    found.id,
-        requester_id: session.user.id,
-      });
-
-      if (rpcErr) {
-        setFriendError(`${rpcErr.message} (${rpcErr.code})`);
-      } else {
-        await refreshFriends();
-        setFriendInput('');
-      }
-    } catch (e: any) {
-      setFriendError(e?.message ?? 'Unknown error');
-    } finally {
-      setAddingFriend(false);
+    const res = await sendFriendRequest(friendInput);
+    if (res.success) {
+      setFriendInput('');
+      Alert.alert(
+        lang === 'hu' ? 'Sikeres kérés' : 'Request Sent',
+        lang === 'hu' ? 'Barátkérés elküldve!' : 'Friend request has been sent.'
+      );
+    } else {
+      setFriendError(res.error || 'Error sending request');
     }
+    setAddingFriend(false);
   }
 
-  async function removeFriend(friendId: string) {
-    if (!profile?.friends || !session) return;
-    const newIds = profile.friends.filter(id => id !== friendId);
-    const { error } = await supabase.from('profiles').update({ friends: newIds }).eq('id', session.user.id);
-    if (!error) {
-      await refreshFriends();
-    }
+  async function handleAccept(id: string) {
+    const res = await acceptFriendRequest(id);
+    if (!res.success) Alert.alert('Error', res.error || 'Failed to accept');
+  }
+
+  async function handleReject(id: string) {
+    const res = await rejectFriendRequest(id);
+    if (!res.success) Alert.alert('Error', res.error || 'Failed to reject');
+  }
+
+  async function handleRemove(id: string) {
+    const res = await removeFriend(id);
+    if (!res.success) Alert.alert('Error', res.error || 'Failed to remove');
   }
 
   const displayName = profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? 'RAVER';
@@ -551,6 +531,31 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Friend Requests (New Section) */}
+        {pendingRequests.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitle}>{lang === 'hu' ? 'BARÁTKÉRÉSEK' : 'FRIEND REQUESTS'}</Text>
+              <View style={styles.requestCount}>
+                <Text style={styles.requestCountText}>{pendingRequests.length}</Text>
+              </View>
+            </View>
+            {pendingRequests.map(req => (
+              <View key={req.id} style={styles.reqRow}>
+                <Text style={styles.reqUsername}>{req.sender_username}</Text>
+                <View style={styles.reqActions}>
+                  <TouchableOpacity onPress={() => handleAccept(req.id)} style={styles.acceptBtn}>
+                    <MaterialIcons name="check" size={20} color={SV.primaryContainer} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleReject(req.id)} style={styles.rejectBtn}>
+                    <MaterialIcons name="close" size={20} color={SV.error} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Friends */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
@@ -568,9 +573,9 @@ export default function ProfileScreen() {
               autoCapitalize="characters"
               maxLength={20}
               returnKeyType="done"
-              onSubmitEditing={addFriend}
+              onSubmitEditing={handleAddFriend}
             />
-            <TouchableOpacity style={styles.friendAddBtn} onPress={addFriend} disabled={addingFriend}>
+            <TouchableOpacity style={styles.friendAddBtn} onPress={handleAddFriend} disabled={addingFriend}>
               {addingFriend
                 ? <ActivityIndicator size="small" color={SV.tertiaryContainer} />
                 : <MaterialIcons name="person-add" size={20} color={SV.tertiaryContainer} />}
@@ -591,7 +596,7 @@ export default function ProfileScreen() {
               <View key={f.id} style={styles.friendRow}>
                 <MaterialIcons name="location-on" size={14} color={SV.tertiaryContainer} />
                 <Text style={styles.friendName}>{f.username ?? f.id.slice(0, 8)}</Text>
-                <TouchableOpacity onPress={() => removeFriend(f.id)} hitSlop={10} style={{ marginLeft: 'auto' }}>
+                <TouchableOpacity onPress={() => handleRemove(f.id)} hitSlop={10} style={{ marginLeft: 'auto' }}>
                   <MaterialIcons name="person-remove" size={18} color={SV.error} />
                 </TouchableOpacity>
               </View>
@@ -683,9 +688,9 @@ const styles = StyleSheet.create({
   ticketHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
   ticketName: { color: SV.primaryFixedDim, fontSize: 17, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4 },
   ticketId: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11 },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(57,255,20,0.15)', borderWidth: 1, borderColor: 'rgba(57,255,20,0.5)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: SV.primaryContainer },
-  liveText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
+  liveDot: { width: 8, height: 8, borderRadius: 4 },
+  liveText: { fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
   ticketActions: { flexDirection: 'row', gap: 8 },
   showQrBtn: { flex: 1, backgroundColor: SV.primaryContainer, paddingVertical: 8, borderRadius: 2, alignItems: 'center' },
   showQrText: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
@@ -707,6 +712,13 @@ const styles = StyleSheet.create({
   favArtist: { color: SV.onSurface, fontSize: 14, fontWeight: '600', flex: 1 },
   viewFavsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,107,157,0.35)', backgroundColor: 'rgba(255,107,157,0.08)' },
   viewFavsBtnText: { color: '#FF6B9D', fontFamily: 'monospace', fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  requestCount: { backgroundColor: SV.primaryContainer, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  requestCountText: { color: SV.deepCharcoal, fontSize: 10, fontWeight: '900' },
+  reqRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  reqUsername: { color: SV.onSurface, fontSize: 14, fontWeight: '700', fontFamily: 'monospace' },
+  reqActions: { flexDirection: 'row', gap: 12 },
+  acceptBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(57,255,20,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: SV.primaryContainer },
+  rejectBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,107,107,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: SV.error },
   friendInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   friendInput: { flex: 1, backgroundColor: SV.surfaceContainerHigh, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 9, color: SV.onSurface, fontFamily: 'monospace', fontSize: 13 },
   friendAddBtn: { width: 40, height: 40, backgroundColor: SV.surfaceContainerHigh, borderRadius: 8, borderWidth: 1, borderColor: `${SV.tertiaryContainer}40`, alignItems: 'center', justifyContent: 'center' },

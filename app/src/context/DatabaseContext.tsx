@@ -1,12 +1,15 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase } from '../utils/supabase';
 import { useAuth } from './AuthContext';
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
 
 export interface Profile {
   username: string | null;
   points: number;
   balance: number;
   friends: string[] | null;
+  expo_push_token?: string | null;
 }
 
 export interface Ticket {
@@ -36,12 +39,22 @@ export interface Friend {
   username: string | null;
 }
 
+export interface FriendRequest {
+  id: string;
+  sender_id: string;
+  sender_username: string | null;
+  receiver_id: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+}
+
 type DatabaseContextType = {
   profile: Profile | null;
   tickets: Ticket[];
   transactions: Transaction[];
   favourites: Favourite[];
   friends: Friend[];
+  pendingRequests: FriendRequest[];
   loading: boolean;
   refreshAll: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -49,6 +62,10 @@ type DatabaseContextType = {
   refreshTransactions: () => Promise<void>;
   refreshFavourites: () => Promise<void>;
   refreshFriends: () => Promise<void>;
+  sendFriendRequest: (username: string) => Promise<{ success: boolean; error?: string }>;
+  acceptFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
+  rejectFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
+  removeFriend: (friendId: string) => Promise<{ success: boolean; error?: string }>;
 };
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -60,12 +77,13 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [favourites, setFavourites] = useState<Favourite[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('username, points, balance, friends')
+      .select('username, points, balance, friends, expo_push_token')
       .eq('id', userId)
       .single();
 
@@ -127,6 +145,153 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
 
+  const fetchPendingRequests = useCallback(async (userId: string) => {
+    const { data, error } = await supabase
+      .from('friend_requests')
+      .select(`
+        id,
+        sender_id,
+        receiver_id,
+        status,
+        created_at,
+        profiles!friend_requests_sender_id_fkey(username)
+      `)
+      .eq('receiver_id', userId)
+      .eq('status', 'pending');
+
+    if (!error && data) {
+      const formatted = data.map((r: any) => ({
+        id: r.id,
+        sender_id: r.sender_id,
+        sender_username: r.profiles?.username,
+        receiver_id: r.receiver_id,
+        status: r.status,
+        created_at: r.created_at
+      }));
+      setPendingRequests(formatted);
+    }
+  }, []);
+
+  const sendFriendRequest = async (targetUsername: string) => {
+    if (!user) return { success: false, error: 'Not authenticated (user missing)' };
+    if (!profile) return { success: false, error: 'Profile not loaded (please restart app)' };
+    const name = targetUsername.trim();
+    
+    try {
+      // 1. Find target user (case-insensitive match using .ilike)
+      const { data: target, error: findErr } = await supabase
+        .from('profiles')
+        .select('id, username, expo_push_token')
+        .ilike('username', name)
+        .maybeSingle();
+
+      if (findErr) return { success: false, error: `Database error: ${findErr.message}` };
+      if (!target) return { success: false, error: 'User not found' };
+      if (target.id === user.id) return { success: false, error: 'Cannot add yourself' };
+      if (profile.friends?.includes(target.id)) return { success: false, error: 'Already friends' };
+
+      // 2. Create request
+      const { error: reqErr } = await supabase
+        .from('friend_requests')
+        .insert({
+          sender_id: user.id,
+          receiver_id: target.id,
+          status: 'pending'
+        });
+
+      if (reqErr) {
+        console.error('Friend request insertion error:', reqErr);
+        return { success: false, error: `Request failed: ${reqErr.message}` };
+      }
+
+      // 3. Send push notification if possible
+      if (target.expo_push_token && Platform.OS !== 'web') {
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: target.expo_push_token,
+            title: 'New Friend Request! 🤘',
+            body: `${profile.username} wants to connect with you on SoulVibe.`,
+            data: { type: 'friend_request' },
+          }),
+        });
+      }
+
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const acceptFriendRequest = async (requestId: string) => {
+    if (!user) return { success: false, error: 'Not authenticated' };
+    try {
+      // Use RPC for atomic bidirectional add
+      const { data: request } = await supabase
+        .from('friend_requests')
+        .select('sender_id')
+        .eq('id', requestId)
+        .single();
+
+      if (!request) return { success: false, error: 'Request not found' };
+
+      const { error: rpcErr } = await supabase.rpc('add_friend_bidirectional', {
+        friend_id: request.sender_id,
+        requester_id: user.id,
+      });
+
+      if (rpcErr) return { success: false, error: rpcErr.message };
+
+      // Update request status
+      await supabase
+        .from('friend_requests')
+        .update({ status: 'accepted' })
+        .eq('id', requestId);
+
+      await refreshAll();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const rejectFriendRequest = async (requestId: string) => {
+    const { error } = await supabase
+      .from('friend_requests')
+      .update({ status: 'rejected' })
+      .eq('id', requestId);
+    
+    if (error) return { success: false, error: error.message };
+    await fetchPendingRequests(user!.id);
+    return { success: true };
+  };
+
+  const removeFriend = async (friendId: string) => {
+    if (!user || !profile?.friends) return { success: false, error: 'Not authenticated' };
+    try {
+      const newIds = profile.friends.filter(id => id !== friendId);
+      const { error } = await supabase
+        .from('profiles')
+        .update({ friends: newIds })
+        .eq('id', user.id);
+      
+      if (error) return { success: false, error: error.message };
+      
+      // Also remove from other person's list (bidirectional cleanup)
+      const { data: other } = await supabase.from('profiles').select('friends').eq('id', friendId).single();
+      if (other) {
+        const otherNewIds = (other.friends || []).filter((id: string) => id !== user.id);
+        await supabase.from('profiles').update({ friends: otherNewIds }).eq('id', friendId);
+      }
+
+      await refreshAll();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  };
+
   const refreshAll = useCallback(async () => {
     if (!user) return;
     setLoading(true);
@@ -134,7 +299,8 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
     const promises: Promise<any>[] = [
       fetchTickets(user.id),
       fetchTransactions(user.id),
-      fetchFavourites(user.id)
+      fetchFavourites(user.id),
+      fetchPendingRequests(user.id)
     ];
     
     if (profileData?.friends) {
@@ -145,7 +311,7 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
 
     await Promise.all(promises);
     setLoading(false);
-  }, [user, fetchProfile, fetchTickets, fetchTransactions, fetchFavourites, fetchFriends]);
+  }, [user, fetchProfile, fetchTickets, fetchTransactions, fetchFavourites, fetchFriends, fetchPendingRequests]);
 
   const refreshProfile = useCallback(async () => {
     if (user) await fetchProfile(user.id);
@@ -176,6 +342,7 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       setTransactions([]);
       setFavourites([]);
       setFriends([]);
+      setPendingRequests([]);
     }
   }, [session, refreshAll]);
 
@@ -186,13 +353,18 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       transactions,
       favourites,
       friends,
+      pendingRequests,
       loading,
       refreshAll,
       refreshProfile,
       refreshTickets,
       refreshTransactions,
       refreshFavourites,
-      refreshFriends
+      refreshFriends,
+      sendFriendRequest,
+      acceptFriendRequest,
+      rejectFriendRequest,
+      removeFriend
     }}>
       {children}
     </DatabaseContext.Provider>
