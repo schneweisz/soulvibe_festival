@@ -17,6 +17,7 @@ import { SV, neonShadow } from '../constants/theme';
 import { CartFAB, ScreenHeader } from '../components/screen-header';
 import { useLanguage } from '../context/LanguageContext';
 import { GlitchText } from '../components/glitch-text';
+import { NebulaBackground } from '../components/nebula-background';
 import { useAuth } from '../context/AuthContext';
 // ─── Notifications setup ─────────────────────────────────────────────────────
 
@@ -142,6 +143,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.root}>
+      <NebulaBackground />
       <ScreenHeader />
 
       <ScrollView style={styles.scroll} showsVerticalScrollIndicator={false}>
