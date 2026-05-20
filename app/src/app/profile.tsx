@@ -10,6 +10,7 @@ import {
   View,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SV, neonShadow } from '../constants/theme';
@@ -42,6 +43,8 @@ export default function ProfileScreen() {
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+  const [showTicketModal, setShowTicketModal] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const rank = getRank(profile?.points || 0);
@@ -153,6 +156,118 @@ export default function ProfileScreen() {
   }
 
   const displayName = profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? 'RAVER';
+
+  const TicketDetailsModal = () => {
+    if (!selectedTicket) return null;
+    
+    const ticketName = selectedTicket.name.toUpperCase();
+    const isVip = ticketName.includes('VIP');
+    const isPluto = ticketName.includes('PLUTO');
+    const themeColor = isVip ? SV.secondaryContainer : isPluto ? SV.tertiaryContainer : SV.primaryContainer;
+    const themeFixed = isVip ? SV.secondaryFixedDim : isPluto ? SV.tertiaryFixedDim : SV.primaryFixedDim;
+    
+    const duration = ticketName.includes('3-DAY') ? (lang === 'hu' ? '3 NAPOS BÉRLET' : '3-DAY PASS') : (lang === 'hu' ? '1 NAPOS JEGY' : '1-DAY PASS');
+    
+    const perks = isPluto 
+      ? [
+          { icon: 'star', en: 'All VIP perks included', hu: 'Összes VIP kedvezmény' },
+          { icon: 'Flight', en: 'Private helicopter shuttle', hu: 'Privát helikopter transzfer' },
+          { icon: 'hotel', en: 'Luxury glamping suite', hu: 'Luxus glamping lakosztály' },
+          { icon: 'restaurant', en: 'Personal Michelin-star chef', hu: 'Saját Michelin-csillagos séf' },
+          { icon: 'visibility', en: 'On-stage access (all stages)', hu: 'Színpadi hozzáférés (mindenhol)' },
+        ]
+      : isVip 
+      ? [
+          { icon: 'workspace-premium', en: 'Priority fast-track entry', hu: 'Elsőbbségi beléptetés' },
+          { icon: 'king-bed', en: 'Exclusive VIP lounge access', hu: 'Exkluzív VIP terasz használat' },
+          { icon: 'local-bar', en: 'Premium cocktail bar access', hu: 'Prémium koktélbár használat' },
+          { icon: 'wc', en: 'Dedicated luxury restrooms', hu: 'Külön mosdóhasználat' },
+          { icon: 'celebration', en: 'Complimentary welcome drink', hu: 'Üdvözlő ital érkezéskor' },
+        ]
+      : [
+          { icon: 'check-circle', en: 'Standard festival entry', hu: 'Általános belépés' },
+          { icon: 'music-note', en: 'Access to all main stages', hu: 'Minden nagyszínpad látogatása' },
+          { icon: 'payments', en: 'Cashless payment system', hu: 'Készpénzmentes fizetés' },
+          { icon: 'medical-services', en: '24/7 medical & security', hu: '24/7 orvosi és bizt. felügyelet' },
+          { icon: 'wifi', en: 'Free Wi-Fi in Gastro zone', hu: 'Ingyen Wi-Fi a Gastro zónában' },
+        ];
+
+    return (
+      <Modal
+        visible={showTicketModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTicketModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ThemedView style={[styles.modalContent, { borderColor: themeColor }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: `${themeColor}40` }]}>
+              <View>
+                <Text style={[styles.modalTicketName, { color: themeFixed }]}>{ticketName}</Text>
+                <Text style={styles.modalTicketDuration}>{duration}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowTicketModal(false)} style={styles.modalCloseBtn}>
+                <MaterialIcons name="close" size={24} color={SV.onSurfaceVariant} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {/* Status Section */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>{lang === 'hu' ? 'STATUSZ' : 'STATUS'}</Text>
+                <View style={[styles.modalStatusBox, { backgroundColor: `${themeColor}10`, borderColor: `${themeColor}30` }]}>
+                  <View style={[styles.modalStatusDot, { backgroundColor: selectedTicket.is_used ? SV.outline : SV.primaryContainer }]} />
+                  <Text style={[styles.modalStatusText, { color: selectedTicket.is_used ? SV.onSurfaceVariant : SV.primaryContainer }]}>
+                    {selectedTicket.is_used 
+                      ? (lang === 'hu' ? 'FELHASZNÁLVA' : 'ALREADY ACTIVATED') 
+                      : (lang === 'hu' ? 'AKTÍV / ÉRVÉNYES' : 'ACTIVE / VALID')}
+                  </Text>
+                </View>
+              </View>
+
+              {/* ID Section */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>{lang === 'hu' ? 'AZONOSÍTÓ' : 'TICKET ID'}</Text>
+                <Text style={styles.modalIdText}>{selectedTicket.ticket_id}</Text>
+              </View>
+
+              {/* Perks Section */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>{lang === 'hu' ? 'BENNE FOGLALT SZOLGÁLTATÁSOK' : 'INCLUDED SERVICES'}</Text>
+                {perks.map((perk, i) => (
+                  <View key={i} style={styles.modalPerkRow}>
+                    <View style={[styles.modalPerkIcon, { backgroundColor: `${themeColor}20` }]}>
+                      <MaterialIcons name={perk.icon as any} size={16} color={themeFixed} />
+                    </View>
+                    <Text style={styles.modalPerkText}>{lang === 'hu' ? perk.hu : perk.en}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* QR Disclaimer */}
+              <View style={styles.modalDisclaimer}>
+                <MaterialIcons name="info-outline" size={14} color={SV.onSurfaceVariant} style={{ marginRight: 6 }} />
+                <Text style={styles.modalDisclaimerText}>
+                  {lang === 'hu' 
+                    ? 'Kérjük, mutasd be ezt az azonosítót a beléptetésnél a karszalag átvételéhez.' 
+                    : 'Please present this ID at the entrance to claim your wristband.'}
+                </Text>
+              </View>
+              
+              <View style={{ height: 20 }} />
+            </ScrollView>
+
+            <TouchableOpacity 
+              style={[styles.modalDoneBtn, { backgroundColor: themeColor }]} 
+              onPress={() => setShowTicketModal(false)}
+            >
+              <Text style={styles.modalDoneBtnText}>{lang === 'hu' ? 'RENDBEN' : 'DONE'}</Text>
+            </TouchableOpacity>
+          </ThemedView>
+        </View>
+      </Modal>
+    );
+  };
 
   if (authLoading || !session) {
     return (
@@ -288,9 +403,15 @@ export default function ProfileScreen() {
                     </View>
                   </View>
                   <View style={styles.ticketActions}>
-                    <TouchableOpacity style={[styles.showQrBtn, { backgroundColor: themeColor }]}>
+                    <TouchableOpacity 
+                      style={[styles.showQrBtn, { backgroundColor: themeColor }]}
+                      onPress={() => {
+                        setSelectedTicket(ticket);
+                        setShowTicketModal(true);
+                      }}
+                    >
                       <Text style={styles.showQrText}>
-                        {lang === 'hu' ? 'QR MEGMUTATASA' : 'SHOW QR'}
+                        {lang === 'hu' ? 'RÉSZLETEK' : 'DETAILS'}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -501,6 +622,7 @@ export default function ProfileScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
+      <TicketDetailsModal />
       <CartFAB />
     </View>
   );
@@ -616,5 +738,131 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 14,
     letterSpacing: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxHeight: '80%',
+    backgroundColor: SV.deepCharcoal,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    ...neonShadow,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+  },
+  modalTicketName: {
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  modalTicketDuration: {
+    color: SV.onSurfaceVariant,
+    fontFamily: 'monospace',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  modalSection: {
+    marginBottom: 24,
+  },
+  modalSectionTitle: {
+    color: SV.onSurfaceVariant,
+    fontFamily: 'monospace',
+    fontSize: 11,
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  modalStatusBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  modalStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 10,
+  },
+  modalStatusText: {
+    fontFamily: 'monospace',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modalIdText: {
+    color: SV.onSurface,
+    fontFamily: 'monospace',
+    fontSize: 16,
+    fontWeight: '700',
+    backgroundColor: SV.surfaceContainerHigh,
+    padding: 12,
+    borderRadius: 8,
+    textAlign: 'center',
+  },
+  modalPerkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalPerkIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  modalPerkText: {
+    color: SV.onSurface,
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  modalDisclaimer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 10,
+  },
+  modalDisclaimerText: {
+    color: SV.onSurfaceVariant,
+    fontSize: 11,
+    lineHeight: 16,
+    flex: 1,
+  },
+  modalDoneBtn: {
+    margin: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    ...neonShadow,
+  },
+  modalDoneBtnText: {
+    color: SV.deepCharcoal,
+    fontWeight: '900',
+    fontSize: 15,
+    letterSpacing: 1,
   },
 });
