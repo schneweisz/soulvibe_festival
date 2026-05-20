@@ -24,16 +24,16 @@ import { getRank } from '../utils/rank';
 export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
   const { session, loading: authLoading, signOut } = useAuth();
-  const { 
-    profile, 
-    tickets, 
-    transactions, 
-    favourites, 
-    friends, 
-    loading: dbLoading, 
+  const {
+    profile,
+    tickets,
+    transactions,
+    favourites,
+    friends,
+    loading: dbLoading,
     refreshAll,
     refreshFriends,
-    refreshProfile
+    updateUsername,
   } = useDatabase();
 
   const [friendInput, setFriendInput] = useState('');
@@ -49,7 +49,7 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     if (profile) {
-      setUsernameInput(profile.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? '');
+      setUsernameInput(profile.username ?? '');
     }
   }, [profile]);
 
@@ -71,17 +71,13 @@ export default function ProfileScreen() {
 
   async function saveUsername() {
     const trimmed = usernameInput.trim();
-    if (!trimmed || !session) return;
+    if (!trimmed) return;
     setSavingUsername(true);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ username: trimmed })
-      .eq('id', session.user.id);
+    const ok = await updateUsername(trimmed);
     setSavingUsername(false);
-    if (error) {
+    if (!ok) {
       Alert.alert('Error', 'Could not save username. Try again.');
     } else {
-      await refreshProfile();
       setEditingUsername(false);
     }
   }
@@ -92,7 +88,7 @@ export default function ProfileScreen() {
   }
 
   function cancelEditing() {
-    setUsernameInput(profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? '');
+    setUsernameInput(profile?.username ?? '');
     setEditingUsername(false);
   }
 
@@ -152,7 +148,7 @@ export default function ProfileScreen() {
     }
   }
 
-  const displayName = profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? 'RAVER';
+  const displayName = profile?.username ?? 'RAVER';
 
   if (authLoading || !session) {
     return (

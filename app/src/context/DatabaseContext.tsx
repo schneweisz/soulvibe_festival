@@ -49,6 +49,7 @@ type DatabaseContextType = {
   refreshTransactions: () => Promise<void>;
   refreshFavourites: () => Promise<void>;
   refreshFriends: () => Promise<void>;
+  updateUsername: (username: string) => Promise<boolean>;
 };
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -167,6 +168,18 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
     if (profile?.friends) await fetchFriends(profile.friends);
   }, [profile, fetchFriends]);
 
+  const updateUsername = useCallback(async (newUsername: string): Promise<boolean> => {
+    if (!user) return false;
+    const { error } = await supabase
+      .from('profiles')
+      .update({ username: newUsername })
+      .eq('id', user.id);
+    if (!error) {
+      setProfile(prev => prev ? { ...prev, username: newUsername } : null);
+    }
+    return !error;
+  }, [user]);
+
   useEffect(() => {
     if (session?.user) {
       refreshAll();
@@ -192,7 +205,8 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       refreshTickets,
       refreshTransactions,
       refreshFavourites,
-      refreshFriends
+      refreshFriends,
+      updateUsername,
     }}>
       {children}
     </DatabaseContext.Provider>
