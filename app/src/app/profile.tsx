@@ -10,6 +10,7 @@ import {
   View,
   Alert,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { SV, neonShadow } from '../constants/theme';
@@ -30,10 +31,14 @@ export default function ProfileScreen() {
     transactions,
     favourites,
     friends,
+    pendingRequests,
     loading: dbLoading,
     refreshAll,
-    refreshFriends,
-    updateUsername,
+    updateUsername,,
+    sendFriendRequest,
+    acceptFriendRequest,
+    rejectFriendRequest,
+    removeFriend
   } = useDatabase();
 
   const [friendInput, setFriendInput] = useState('');
@@ -42,6 +47,8 @@ export default function ProfileScreen() {
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<any | null>(null);
+  const [showTicketModal, setShowTicketModal] = useState(false);
   const inputRef = useRef<TextInput>(null);
 
   const rank = getRank(profile?.points || 0);
@@ -92,63 +99,151 @@ export default function ProfileScreen() {
     setEditingUsername(false);
   }
 
-  async function addFriend() {
-    const name = friendInput.trim().toUpperCase();
-    if (!name || !session) return;
+  async function handleAddFriend() {
+    if (!friendInput.trim()) return;
     setAddingFriend(true);
     setFriendError(null);
-    try {
-      const { data: found, error: findErr } = await supabase
-        .from('profiles')
-        .select('id, username')
-        .eq('username', name)
-        .maybeSingle();
-
-      if (findErr) {
-        setFriendError(`${findErr.message} (${findErr.code})`);
-        return;
-      }
-      if (!found) {
-        setFriendError(lang === 'hu' ? 'Felhasználó nem található.' : 'User not found.');
-        return;
-      }
-      if (found.id === session.user.id) {
-        setFriendError(lang === 'hu' ? 'Önmagát nem adhatja hozzá.' : 'Cannot add yourself.');
-        return;
-      }
-      if (friends.some(f => f.id === found.id)) {
-        setFriendError(lang === 'hu' ? 'Már barát.' : 'Already a friend.');
-        return;
-      }
-
-      const { error: rpcErr } = await supabase.rpc('add_friend_bidirectional', {
-        friend_id:    found.id,
-        requester_id: session.user.id,
-      });
-
-      if (rpcErr) {
-        setFriendError(`${rpcErr.message} (${rpcErr.code})`);
-      } else {
-        await refreshFriends();
-        setFriendInput('');
-      }
-    } catch (e: any) {
-      setFriendError(e?.message ?? 'Unknown error');
-    } finally {
-      setAddingFriend(false);
+    const res = await sendFriendRequest(friendInput);
+    if (res.success) {
+      setFriendInput('');
+      Alert.alert(
+        lang === 'hu' ? 'Sikeres kérés' : 'Request Sent',
+        lang === 'hu' ? 'Barátkérés elküldve!' : 'Friend request has been sent.'
+      );
+    } else {
+      setFriendError(res.error || 'Error sending request');
     }
+    setAddingFriend(false);
   }
 
-  async function removeFriend(friendId: string) {
-    if (!profile?.friends || !session) return;
-    const newIds = profile.friends.filter(id => id !== friendId);
-    const { error } = await supabase.from('profiles').update({ friends: newIds }).eq('id', session.user.id);
-    if (!error) {
-      await refreshFriends();
-    }
+  async function handleAccept(id: string) {
+    const res = await acceptFriendRequest(id);
+    if (!res.success) Alert.alert('Error', res.error || 'Failed to accept');
   }
 
-  const displayName = profile?.username ?? 'RAVER';
+  async function handleReject(id: string) {
+    const res = await rejectFriendRequest(id);
+    if (!res.success) Alert.alert('Error', res.error || 'Failed to reject');
+  }
+
+  async function handleRemove(id: string) {
+    const res = await removeFriend(id);
+    if (!res.success) Alert.alert('Error', res.error || 'Failed to remove');
+  }
+
+  const displayName = profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? 'RAVER';
+
+  const TicketDetailsModal = () => {
+    if (!selectedTicket) return null;
+    
+    const ticketName = selectedTicket.name.toUpperCase();
+    const isVip = ticketName.includes('VIP');
+    const isPluto = ticketName.includes('PLUTO');
+    const themeColor = isVip ? SV.secondaryContainer : isPluto ? SV.tertiaryContainer : SV.primaryContainer;
+    const themeFixed = isVip ? SV.secondaryFixedDim : isPluto ? SV.tertiaryFixedDim : SV.primaryFixedDim;
+    
+    const duration = ticketName.includes('3-DAY') ? (lang === 'hu' ? '3 NAPOS BÉRLET' : '3-DAY PASS') : (lang === 'hu' ? '1 NAPOS JEGY' : '1-DAY PASS');
+    
+    const perks = isPluto 
+      ? [
+          { icon: 'star', en: 'All VIP perks included', hu: 'Összes VIP kedvezmény' },
+          { icon: 'Flight', en: 'Private helicopter shuttle', hu: 'Privát helikopter transzfer' },
+          { icon: 'hotel', en: 'Luxury glamping suite', hu: 'Luxus glamping lakosztály' },
+          { icon: 'restaurant', en: 'Personal Michelin-star chef', hu: 'Saját Michelin-csillagos séf' },
+          { icon: 'visibility', en: 'On-stage access (all stages)', hu: 'Színpadi hozzáférés (mindenhol)' },
+        ]
+      : isVip 
+      ? [
+          { icon: 'workspace-premium', en: 'Priority fast-track entry', hu: 'Elsőbbségi beléptetés' },
+          { icon: 'king-bed', en: 'Exclusive VIP lounge access', hu: 'Exkluzív VIP terasz használat' },
+          { icon: 'local-bar', en: 'Premium cocktail bar access', hu: 'Prémium koktélbár használat' },
+          { icon: 'wc', en: 'Dedicated luxury restrooms', hu: 'Külön mosdóhasználat' },
+          { icon: 'celebration', en: 'Complimentary welcome drink', hu: 'Üdvözlő ital érkezéskor' },
+        ]
+      : [
+          { icon: 'check-circle', en: 'Standard festival entry', hu: 'Általános belépés' },
+          { icon: 'music-note', en: 'Access to all main stages', hu: 'Minden nagyszínpad látogatása' },
+          { icon: 'payments', en: 'Cashless payment system', hu: 'Készpénzmentes fizetés' },
+          { icon: 'medical-services', en: '24/7 medical & security', hu: '24/7 orvosi és bizt. felügyelet' },
+          { icon: 'wifi', en: 'Free Wi-Fi in Gastro zone', hu: 'Ingyen Wi-Fi a Gastro zónában' },
+        ];
+
+    return (
+      <Modal
+        visible={showTicketModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowTicketModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <ThemedView style={[styles.modalContent, { borderColor: themeColor }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: `${themeColor}40` }]}>
+              <View>
+                <Text style={[styles.modalTicketName, { color: themeFixed }]}>{ticketName}</Text>
+                <Text style={styles.modalTicketDuration}>{duration}</Text>
+              </View>
+              <TouchableOpacity onPress={() => setShowTicketModal(false)} style={styles.modalCloseBtn}>
+                <MaterialIcons name="close" size={24} color={SV.onSurfaceVariant} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
+              {/* Status Section */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>{lang === 'hu' ? 'STATUSZ' : 'STATUS'}</Text>
+                <View style={[styles.modalStatusBox, { backgroundColor: `${themeColor}10`, borderColor: `${themeColor}30` }]}>
+                  <View style={[styles.modalStatusDot, { backgroundColor: selectedTicket.is_used ? SV.primaryContainer : SV.outline }]} />
+                  <Text style={[styles.modalStatusText, { color: selectedTicket.is_used ? SV.primaryContainer : SV.onSurfaceVariant }]}>
+                    {selectedTicket.is_used 
+                      ? (lang === 'hu' ? 'AKTÍV (BENT VAGY)' : 'ACTIVE (ENTERED)') 
+                      : (lang === 'hu' ? 'INAKTÍV (MÉG NINCS BEVÁLTVA)' : 'INACTIVE (NOT REDEEMED YET)')}
+                  </Text>
+                </View>
+              </View>
+
+              {/* ID Section */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>{lang === 'hu' ? 'AZONOSÍTÓ' : 'TICKET ID'}</Text>
+                <Text style={styles.modalIdText}>{selectedTicket.ticket_id}</Text>
+              </View>
+
+              {/* Perks Section */}
+              <View style={styles.modalSection}>
+                <Text style={styles.modalSectionTitle}>{lang === 'hu' ? 'BENNE FOGLALT SZOLGÁLTATÁSOK' : 'INCLUDED SERVICES'}</Text>
+                {perks.map((perk, i) => (
+                  <View key={i} style={styles.modalPerkRow}>
+                    <View style={[styles.modalPerkIcon, { backgroundColor: `${themeColor}20` }]}>
+                      <MaterialIcons name={perk.icon as any} size={16} color={themeFixed} />
+                    </View>
+                    <Text style={styles.modalPerkText}>{lang === 'hu' ? perk.hu : perk.en}</Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* QR Disclaimer */}
+              <View style={styles.modalDisclaimer}>
+                <MaterialIcons name="info-outline" size={14} color={SV.onSurfaceVariant} style={{ marginRight: 6 }} />
+                <Text style={styles.modalDisclaimerText}>
+                  {lang === 'hu' 
+                    ? 'Kérjük, mutasd be ezt az azonosítót a beléptetésnél a karszalag átvételéhez.' 
+                    : 'Please present this ID at the entrance to claim your wristband.'}
+                </Text>
+              </View>
+              
+              <View style={{ height: 20 }} />
+            </ScrollView>
+
+            <TouchableOpacity 
+              style={[styles.modalDoneBtn, { backgroundColor: themeColor }]} 
+              onPress={() => setShowTicketModal(false)}
+            >
+              <Text style={styles.modalDoneBtnText}>{lang === 'hu' ? 'RENDBEN' : 'DONE'}</Text>
+            </TouchableOpacity>
+          </ThemedView>
+        </View>
+      </Modal>
+    );
+  };
 
   if (authLoading || !session) {
     return (
@@ -278,15 +373,23 @@ export default function ProfileScreen() {
                       </Text>
                       <Text style={styles.ticketId}>ID: {ticket.ticket_id}</Text>
                     </View>
-                    <View style={styles.liveBadge}>
-                      <View style={styles.liveDot} />
-                      <Text style={styles.liveText}>{ticket.is_used ? 'USED' : 'VALID'}</Text>
+                    <View style={[styles.liveBadge, { borderColor: ticket.is_used ? 'rgba(57,255,20,0.5)' : 'rgba(255,255,255,0.2)', backgroundColor: ticket.is_used ? 'rgba(57,255,20,0.15)' : 'rgba(255,255,255,0.05)' }]}>
+                      <View style={[styles.liveDot, { backgroundColor: ticket.is_used ? SV.primaryContainer : SV.outline }]} />
+                      <Text style={[styles.liveText, { color: ticket.is_used ? SV.primaryContainer : SV.onSurfaceVariant }]}>
+                        {ticket.is_used ? 'ACTIVE' : 'INACTIVE'}
+                      </Text>
                     </View>
                   </View>
                   <View style={styles.ticketActions}>
-                    <TouchableOpacity style={[styles.showQrBtn, { backgroundColor: themeColor }]}>
+                    <TouchableOpacity 
+                      style={[styles.showQrBtn, { backgroundColor: themeColor }]}
+                      onPress={() => {
+                        setSelectedTicket(ticket);
+                        setShowTicketModal(true);
+                      }}
+                    >
                       <Text style={styles.showQrText}>
-                        {lang === 'hu' ? 'QR MEGMUTATASA' : 'SHOW QR'}
+                        {lang === 'hu' ? 'RÉSZLETEK' : 'DETAILS'}
                       </Text>
                     </TouchableOpacity>
                   </View>
@@ -424,6 +527,31 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Friend Requests (New Section) */}
+        {pendingRequests.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitle}>{lang === 'hu' ? 'BARÁTKÉRÉSEK' : 'FRIEND REQUESTS'}</Text>
+              <View style={styles.requestCount}>
+                <Text style={styles.requestCountText}>{pendingRequests.length}</Text>
+              </View>
+            </View>
+            {pendingRequests.map(req => (
+              <View key={req.id} style={styles.reqRow}>
+                <Text style={styles.reqUsername}>{req.sender_username}</Text>
+                <View style={styles.reqActions}>
+                  <TouchableOpacity onPress={() => handleAccept(req.id)} style={styles.acceptBtn}>
+                    <MaterialIcons name="check" size={20} color={SV.primaryContainer} />
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={() => handleReject(req.id)} style={styles.rejectBtn}>
+                    <MaterialIcons name="close" size={20} color={SV.error} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
+
         {/* Friends */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
@@ -441,9 +569,9 @@ export default function ProfileScreen() {
               autoCapitalize="characters"
               maxLength={20}
               returnKeyType="done"
-              onSubmitEditing={addFriend}
+              onSubmitEditing={handleAddFriend}
             />
-            <TouchableOpacity style={styles.friendAddBtn} onPress={addFriend} disabled={addingFriend}>
+            <TouchableOpacity style={styles.friendAddBtn} onPress={handleAddFriend} disabled={addingFriend}>
               {addingFriend
                 ? <ActivityIndicator size="small" color={SV.tertiaryContainer} />
                 : <MaterialIcons name="person-add" size={20} color={SV.tertiaryContainer} />}
@@ -464,7 +592,7 @@ export default function ProfileScreen() {
               <View key={f.id} style={styles.friendRow}>
                 <MaterialIcons name="location-on" size={14} color={SV.tertiaryContainer} />
                 <Text style={styles.friendName}>{f.username ?? f.id.slice(0, 8)}</Text>
-                <TouchableOpacity onPress={() => removeFriend(f.id)} hitSlop={10} style={{ marginLeft: 'auto' }}>
+                <TouchableOpacity onPress={() => handleRemove(f.id)} hitSlop={10} style={{ marginLeft: 'auto' }}>
                   <MaterialIcons name="person-remove" size={18} color={SV.error} />
                 </TouchableOpacity>
               </View>
@@ -497,6 +625,7 @@ export default function ProfileScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
+      <TicketDetailsModal />
       <CartFAB />
     </View>
   );
@@ -555,9 +684,9 @@ const styles = StyleSheet.create({
   ticketHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 14 },
   ticketName: { color: SV.primaryFixedDim, fontSize: 17, fontWeight: '800', letterSpacing: -0.5, marginBottom: 4 },
   ticketId: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11 },
-  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(57,255,20,0.15)', borderWidth: 1, borderColor: 'rgba(57,255,20,0.5)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: SV.primaryContainer },
-  liveText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
+  liveBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4 },
+  liveDot: { width: 8, height: 8, borderRadius: 4 },
+  liveText: { fontFamily: 'monospace', fontSize: 10, letterSpacing: 1 },
   ticketActions: { flexDirection: 'row', gap: 8 },
   showQrBtn: { flex: 1, backgroundColor: SV.primaryContainer, paddingVertical: 8, borderRadius: 2, alignItems: 'center' },
   showQrText: { color: SV.deepCharcoal, fontWeight: '800', fontSize: 13, letterSpacing: 1 },
@@ -579,6 +708,13 @@ const styles = StyleSheet.create({
   favArtist: { color: SV.onSurface, fontSize: 14, fontWeight: '600', flex: 1 },
   viewFavsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,107,157,0.35)', backgroundColor: 'rgba(255,107,157,0.08)' },
   viewFavsBtnText: { color: '#FF6B9D', fontFamily: 'monospace', fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  requestCount: { backgroundColor: SV.primaryContainer, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  requestCountText: { color: SV.deepCharcoal, fontSize: 10, fontWeight: '900' },
+  reqRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  reqUsername: { color: SV.onSurface, fontSize: 14, fontWeight: '700', fontFamily: 'monospace' },
+  reqActions: { flexDirection: 'row', gap: 12 },
+  acceptBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(57,255,20,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: SV.primaryContainer },
+  rejectBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,107,107,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: SV.error },
   friendInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   friendInput: { flex: 1, backgroundColor: SV.surfaceContainerHigh, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 9, color: SV.onSurface, fontFamily: 'monospace', fontSize: 13 },
   friendAddBtn: { width: 40, height: 40, backgroundColor: SV.surfaceContainerHigh, borderRadius: 8, borderWidth: 1, borderColor: `${SV.tertiaryContainer}40`, alignItems: 'center', justifyContent: 'center' },
@@ -612,5 +748,131 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     fontSize: 14,
     letterSpacing: 2,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.85)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    width: '100%',
+    maxHeight: '80%',
+    backgroundColor: SV.deepCharcoal,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+    ...neonShadow,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+  },
+  modalTicketName: {
+    fontSize: 20,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  modalTicketDuration: {
+    color: SV.onSurfaceVariant,
+    fontFamily: 'monospace',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  modalBody: {
+    padding: 20,
+  },
+  modalSection: {
+    marginBottom: 24,
+  },
+  modalSectionTitle: {
+    color: SV.onSurfaceVariant,
+    fontFamily: 'monospace',
+    fontSize: 11,
+    letterSpacing: 1.5,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  modalStatusBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  modalStatusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginRight: 10,
+  },
+  modalStatusText: {
+    fontFamily: 'monospace',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modalIdText: {
+    color: SV.onSurface,
+    fontFamily: 'monospace',
+    fontSize: 16,
+    fontWeight: '700',
+    backgroundColor: SV.surfaceContainerHigh,
+    padding: 12,
+    borderRadius: 8,
+    textAlign: 'center',
+  },
+  modalPerkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalPerkIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  modalPerkText: {
+    color: SV.onSurface,
+    fontSize: 14,
+    fontWeight: '500',
+    flex: 1,
+  },
+  modalDisclaimer: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    padding: 12,
+    borderRadius: 10,
+    marginTop: 10,
+  },
+  modalDisclaimerText: {
+    color: SV.onSurfaceVariant,
+    fontSize: 11,
+    lineHeight: 16,
+    flex: 1,
+  },
+  modalDoneBtn: {
+    margin: 20,
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    ...neonShadow,
+  },
+  modalDoneBtnText: {
+    color: SV.deepCharcoal,
+    fontWeight: '900',
+    fontSize: 15,
+    letterSpacing: 1,
   },
 });
