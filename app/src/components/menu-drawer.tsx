@@ -23,8 +23,8 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SV, neonShadow } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 import { supabase } from '../utils/supabase';
-import type { Session } from '@supabase/supabase-js';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 320);
 const DURATION_IN = 300;
@@ -51,7 +51,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const SECONDARY_ITEMS: NavItem[] = [
-  { en: 'MY TICKET', hu: 'JEGYEM', icon: 'confirmation-number', href: '/profile' },
+  { en: 'MY TICKET', hu: 'JEGYEM', icon: 'confirmation-number', href: '/ticket_shop' },
   { en: 'WALLET', hu: 'PÉNZTÁRCA', icon: 'account-balance-wallet', href: '/wallet' },
   { en: 'CART', hu: 'KOSÁR', icon: 'shopping-cart', href: '/cart' },
 ];
@@ -113,14 +113,10 @@ function Drawer({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const { lang } = useLanguage();
+  const { session } = useAuth();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
-  const [session, setSession] = useState<Session | null>(null);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
-  }, []);
 
   const username = session?.user?.email
     ? session.user.email.split('@')[0].toUpperCase()
@@ -194,7 +190,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
         </View>
 
         {/* Profile card */}
-        <Pressable style={styles.profileCard} onPress={() => navigate('/profile')}>
+        <Pressable style={styles.profileCard} onPress={() => navigate('/auth')}>
           <View style={styles.profileAvatar}>
             {avatarUri ? (
               <Image

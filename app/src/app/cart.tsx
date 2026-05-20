@@ -14,35 +14,36 @@ import {
 import { SV, neonShadow } from '@/constants/theme';
 import { ScreenHeader } from '@/components/screen-header';
 import { useCart } from '@/context/CartContext';
+import { useAuth } from '@/context/AuthContext';
 import { supabase } from '../utils/supabase';
 
 const SERVICE_FEE = 200;
 
 export default function CartScreen() {
   const { items, removeFromCart, clearCart } = useCart();
+  const { session } = useAuth();
   const [paid, setPaid] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
 
   const subtotal = items.reduce((acc, i) => acc + i.price * i.qty, 0);
   const total = items.length > 0 ? subtotal + SERVICE_FEE : 0;
 
+  const userId = session?.user?.id;
+
   // Fetch user balance
   useEffect(() => {
     (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setUserId(session.user.id);
+      if (userId) {
         const { data } = await supabase
           .from('profiles')
           .select('balance')
-          .eq('id', session.user.id)
+          .eq('id', userId)
           .single();
         if (data) setBalance(data.balance);
       }
     })();
-  }, []);
+  }, [userId]);
 
   const handlePayment = async () => {
     if (!userId || balance === null) return;

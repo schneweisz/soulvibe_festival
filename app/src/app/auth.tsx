@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState ,useEffect } from 'react';
 import { View, StyleSheet, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { router } from 'expo-router';
@@ -7,16 +7,24 @@ import { SV, neonShadow } from '@/constants/theme';
 import { ThemedView } from '../components/themed-view';
 import { ThemedText } from '../components/themed-text';
 import { ScreenHeader } from '@/components/screen-header';
+import { useAuth } from '@/context/AuthContext';
 import * as Linking from 'expo-linking';
 
 /** AnimPressable import - since it's local in index.tsx, we'll recreate a simple version or use Pressable */
 import { Pressable } from 'react-native';
 
 export default function AuthScreen() {
+  const { session } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
+
+  useEffect(() => {
+    if (session) {
+      router.replace('/profile');
+    }
+  }, [session]);
 
   const redirectTo = Linking.createURL('/auth/callback');
 

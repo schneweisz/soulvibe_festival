@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { Redirect, router, useFocusEffect } from 'expo-router';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   ScrollView,
@@ -15,8 +15,8 @@ import { Image } from 'expo-image';
 import { SV, neonShadow } from '@/constants/theme';
 import { CartFAB, ScreenHeader } from '@/components/screen-header';
 import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 import { supabase } from '../utils/supabase';
-import { Session } from '@supabase/supabase-js';
 import { ThemedView } from '../components/themed-view';
 
 const MY_LINEUP = [
@@ -27,8 +27,8 @@ const MY_LINEUP = [
 
 export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
-  const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { session, user, loading: authLoading, signOut } = useAuth();
+  const [profileLoading, setProfileLoading] = useState(true);
   const [profile, setProfile] = useState<{ balance: number; points: number; username: string | null } | null>(null);
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
@@ -46,61 +46,53 @@ export default function ProfileScreen() {
   const rank = getRank(profile?.points || 0);
   const progressPercent = rank.next ? ((profile?.points || 0) / rank.next) * 100 : 100;
 
-  // Check auth and fetch profile every time the screen is focused
+  // Fetch extra data from 'profiles' table when session changes or screen focused
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
 
-      async function loadData() {
+      async function loadProfile() {
+        if (!session) {
+          setProfileLoading(false);
+          return;
+        }
+
         try {
-          const { data: { session: currentSession } } = await supabase.auth.getSession();
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('balance, points, username')
+            .eq('id', session.user.id)
+            .single();
+
           if (isMounted) {
-            setSession(currentSession);
-            
-            if (!currentSession) {
-              setLoading(false);
-              router.push('/auth');
-              return;
+            if (!error && data) {
+              setProfile(data);
+              setUsernameInput(data.username ?? session.user.email?.split('@')[0].toUpperCase() ?? '');
+            } else {
+              setUsernameInput(session.user.email?.split('@')[0].toUpperCase() ?? '');
             }
-
-            // Fetch extra data from 'profiles' table
-            const { data, error } = await supabase
-              .from('profiles')
-              .select('balance, points, username')
-              .eq('id', currentSession.user.id)
-              .single();
-
-            if (isMounted) {
-              if (!error && data) {
-                setProfile(data);
-                setUsernameInput(data.username ?? currentSession.user.email?.split('@')[0].toUpperCase() ?? '');
-              } else {
-                setUsernameInput(currentSession.user.email?.split('@')[0].toUpperCase() ?? '');
-              }
-              setLoading(false);
-            }
+            setProfileLoading(false);
           }
         } catch (e) {
-          console.error('Data loading failed', e);
-          if (isMounted) setLoading(false);
+          console.error('Profile loading failed', e);
+          if (isMounted) setProfileLoading(false);
         }
       }
 
-      loadData();
+      loadProfile();
 
       return () => {
         isMounted = false;
       };
-    }, [])
+    }, [session])
   );
 
   async function handleSignOut() {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      Alert.alert('Error signing out', error.message);
-    } else {
-      setSession(null);
+    try {
+      await signOut();
       router.replace('/auth');
+    } catch (error: any) {
+      Alert.alert('Error signing out', error.message);
     }
   }
 
@@ -133,7 +125,7 @@ export default function ProfileScreen() {
 
   const displayName = profile?.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? 'RAVER';
 
-  if (loading) {
+  if (authLoading || (session && profileLoading)) {
     return (
       <ThemedView style={styles.center}>
         <ActivityIndicator size="large" color={SV.primaryContainer} />
@@ -143,13 +135,7 @@ export default function ProfileScreen() {
   }
 
   if (!session) {
-    return (
-      <ThemedView style={styles.center}>
-        <TouchableOpacity style={styles.authBtn} onPress={() => router.push('/auth')}>
-          <Text style={styles.authBtnText}>AUTHORIZE SYSTEM ACCESS</Text>
-        </TouchableOpacity>
-      </ThemedView>
-    );
+    return <Redirect href="/auth" />;
   }
 
   return (
@@ -261,19 +247,12 @@ export default function ProfileScreen() {
                   {lang === 'hu' ? 'NINCS AKTÍV JEGY' : 'NO ACTIVE TICKET'}
                 </Text>
               </View>
-              <View style={styles.liveBadge}>
-                <View style={styles.liveDot} />
-                <Text style={styles.liveText}>LIVE</Text>
-              </View>
             </View>
             <View style={styles.ticketActions}>
               <TouchableOpacity style={styles.showQrBtn}>
                 <Text style={styles.showQrText}>
                   {lang === 'hu' ? 'QR MEGMUTATASA' : 'SHOW QR'}
                 </Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.shareBtn}>
-                <MaterialIcons name="share" size={18} color={SV.primaryContainer} />
               </TouchableOpacity>
             </View>
           </View>

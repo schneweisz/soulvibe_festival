@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { SV, neonShadow } from '@/constants/theme';
 import { ScreenHeader } from '@/components/screen-header';
+import { useAuth } from '@/context/AuthContext';
 import { supabase } from '../utils/supabase';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -169,9 +170,9 @@ function SuccessOverlay({ amount, newBalance, dbError, onClose }: {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function WalletScreen() {
+  const { session } = useAuth();
   const [balance,     setBalance]     = useState<number | null>(null);
   const [balanceErr,  setBalanceErr]  = useState(false);
-  const [userId,      setUserId]      = useState<string | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [txLoading,   setTxLoading]   = useState(true);
   
@@ -180,6 +181,8 @@ export default function WalletScreen() {
   const [method,      setMethod]      = useState<string>('apple');
   const [phase,       setPhase]       = useState<Phase>('select');
   const [updateErr,   setUpdateErr]   = useState(false);
+
+  const userId = session?.user?.id;
 
   // Formatter for timestamps (e.g., "18:45")
   const formatTime = (isoString: string) => {
@@ -193,24 +196,12 @@ export default function WalletScreen() {
       let isMounted = true;
 
       (async () => {
-        setTxLoading(true);
-        // DEBUG LOGS
-        console.log('--- SUPABASE DEBUG ---');
-        console.log('URL:', process.env.EXPO_PUBLIC_SUPABASE_URL);
-        console.log('KEY (first 10 chars):', process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY?.substring(0, 10));
-
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!isMounted) return;
-
         if (!session) {
-          console.log('No session found, redirecting to auth');
           router.replace('/auth');
           return;
         }
 
-        console.log('User ID from session:', session.user.id);
-        setUserId(session.user.id);
+        setTxLoading(true);
 
         // 1. Fetch Balance
         const { data: profileData, error: profileError } = await supabase
@@ -223,28 +214,23 @@ export default function WalletScreen() {
 
         if (profileError) {
           if (profileError.code === 'PGRST116') {
-            console.log('No profile record found, creating default...');
             const { error: insertError } = await supabase
               .from('profiles')
               .insert([{ id: session.user.id, balance: 0, points: 0 }]);
             
             if (insertError) {
-              console.error('Failed to create profile:', insertError);
               setBalanceErr(true);
               setBalance(0);
             } else {
-              console.log('Default profile created successfully');
               setBalance(0);
             }
           } else {
-            console.error('Supabase fetch error:', profileError);
             setBalanceErr(true);
             setBalance(0);
           }
         } else if (!profileData) {
           setBalance(0);
         } else {
-          console.log('Profile balance loaded:', profileData.balance);
           setBalance(profileData.balance ?? 0);
         }
 
@@ -264,14 +250,12 @@ export default function WalletScreen() {
           setTransactions(txData);
         }
         setTxLoading(false);
-        
-        console.log('--- END DEBUG ---');
       })();
 
       return () => {
         isMounted = false;
       };
-    }, [])
+    }, [session])
   );
 
   const finalAmount = custom ? (parseInt(custom, 10) || 0) : selected;
