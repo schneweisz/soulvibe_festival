@@ -1,12 +1,39 @@
-name: Expo Auto Update
+name: Expo CI/CD
 on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
-  update:
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kód letöltése
+        uses: actions/checkout@v4
+
+      - name: Node.js beállítása
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: ./app/package-lock.json
+
+      - name: Függőségek telepítése
+        working-directory: ./app
+        run: npm install --legacy-peer-deps
+
+      - name: Tesztek futtatása
+        working-directory: ./app
+        run: npm test
+
+  deploy:
     name: EAS Update
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Kód letöltése
@@ -26,7 +53,7 @@ jobs:
 
       - name: Függőségek telepítése
         working-directory: ./app
-        run: npm install
+        run: npm install --legacy-peer-deps
 
       - name: CLI jogosultságok javítása
         working-directory: ./app
