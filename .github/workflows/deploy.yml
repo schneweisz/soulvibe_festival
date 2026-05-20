@@ -66,3 +66,31 @@ jobs:
         env:
           CI: 1
         run: eas update --auto --non-interactive
+
+  build:
+    name: Production Build
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kód letöltése
+        uses: actions/checkout@v4
+
+      - name: Node.js beállítása
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Expo környezet beállítása
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          packager: npm
+
+      - name: Függőségek telepítése
+        working-directory: ./app
+        run: npm install --legacy-peer-deps
+
+      - name: Build indítása preview környezetben (APK)
+        working-directory: ./app
+        run: eas build --platform android --profile preview --non-interactive --no-wait
