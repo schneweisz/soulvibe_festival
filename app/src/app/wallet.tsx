@@ -46,7 +46,6 @@ type Phase = 'select' | 'processing' | 'success';
 function ProcessingOverlay({ amount, onDone }: { amount: number; onDone: () => void }) {
   const progress  = useRef(new Animated.Value(0)).current;
   const scanY     = useRef(new Animated.Value(0)).current;
-  const pulse     = useRef(new Animated.Value(1)).current;
   const [hexLines, setHexLines] = useState(() => Array.from({ length: 6 }, randHex));
 
   useEffect(() => {
@@ -68,14 +67,6 @@ function ProcessingOverlay({ amount, onDone }: { amount: number; onDone: () => v
       })
     ).start();
 
-    // Pulse ring
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1.18, duration: 600, useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1,    duration: 600, useNativeDriver: true }),
-      ])
-    ).start();
-
     // Flicker hex codes
     const interval = setInterval(() => {
       setHexLines(Array.from({ length: 6 }, randHex));
@@ -88,8 +79,6 @@ function ProcessingOverlay({ amount, onDone }: { amount: number; onDone: () => v
 
   return (
     <View style={p.overlay}>
-      {/* Pulsing ring */}
-      <Animated.View style={[p.ring, { transform: [{ scale: pulse }] }]} />
       <View style={p.innerCircle}>
         <MaterialIcons name="bolt" size={44} color={SV.primaryContainer} />
       </View>
@@ -564,11 +553,6 @@ const p = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject, backgroundColor: '#09090E',
     alignItems: 'center', justifyContent: 'center', zIndex: 100, paddingHorizontal: 32,
-  },
-  ring: {
-    width: 160, height: 160, borderRadius: 80,
-    borderWidth: 2, borderColor: 'rgba(57,255,20,0.3)',
-    position: 'absolute',
   },
   innerCircle: {
     width: 100, height: 100, borderRadius: 50,
