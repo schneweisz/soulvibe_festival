@@ -24,8 +24,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SV, neonShadow } from '@/constants/theme';
 import { useLanguage } from '@/context/LanguageContext';
 import { useAuth } from '@/context/AuthContext';
-import { supabase } from '../utils/supabase';
-import type { Session } from '@supabase/supabase-js';
 import { getRank } from '../utils/rank';
 
 const DRAWER_WIDTH = Math.min(Dimensions.get('window').width * 0.82, 320);
@@ -115,29 +113,13 @@ function Drawer({ onClose }: { onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const { lang } = useLanguage();
-  const { session } = useAuth();
+  const { session, profile } = useAuth();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
-  const [session, setSession] = useState<Session | null>(null);
-  const [profileData, setProfileData] = useState<{ username: string | null; points: number } | null>(null);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(async ({ data }) => {
-      const s = data.session;
-      setSession(s);
-      if (!s) return;
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('username, points')
-        .eq('id', s.user.id)
-        .single();
-      if (profile) setProfileData({ username: profile.username, points: profile.points || 0 });
-    });
-  }, []);
-
-  const rank = getRank(profileData?.points || 0);
-  const username = profileData?.username
+  const rank = getRank(profile?.points || 0);
+  const username = profile?.username
     ?? (session?.user?.email ? session.user.email.split('@')[0].toUpperCase() : null)
     ?? t('GUEST', 'VENDÉG');
   const avatarUri = session?.user?.email

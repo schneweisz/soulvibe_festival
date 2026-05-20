@@ -29,9 +29,8 @@ const MY_LINEUP = [
 
 export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
-  const { session, user, loading: authLoading, signOut } = useAuth();
-  const [profileLoading, setProfileLoading] = useState(true);
-  const [profile, setProfile] = useState<{ balance: number; points: number; username: string | null } | null>(null);
+  const { session, profile, loading: authLoading, signOut, refreshProfile } = useAuth();
+  const [profileLoading, setProfileLoading] = useState(false);
   const [transactions, setTransactions] = useState<{ id: string; type: 'credit' | 'debit'; label: string; amount: number; created_at: string }[]>([]);
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
@@ -41,63 +40,49 @@ export default function ProfileScreen() {
   const rank = getRank(profile?.points || 0);
   const progressPercent = rank.next ? ((profile?.points || 0) / rank.next) * 100 : 100;
 
-  // Fetch extra data from 'profiles' table when session changes or screen focused
+  useEffect(() => {
+    if (profile) {
+      setUsernameInput(profile.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? '');
+    }
+  }, [profile]);
+
+  // Fetch transactions (remains here as it's specific to this screen)
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
 
-      async function loadProfile() {
-        if (!session) {
-          setProfileLoading(false);
-          return;
-        }
+      async function loadTransactions() {
+        if (!session) return;
 
         try {
-          const { data, error } = await supabase
-            .from('profiles')
-            .select('balance, points, username')
-            .eq('id', session.user.id)
-            .single();
+          // Fetch last 5 transactions (falls back to mock data if table doesn't exist)
+          const { data: txData } = await supabase
+            .from('transactions')
+            .select('id, type, label, amount, created_at')
+            .eq('user_id', session.user.id)
+            .order('created_at', { ascending: false })
+            .limit(5);
 
           if (isMounted) {
-            if (!error && data) {
-              setProfile(data);
-              setUsernameInput(data.username ?? session.user.email?.split('@')[0].toUpperCase() ?? '');
+            if (txData && txData.length > 0) {
+              setTransactions(txData as any);
             } else {
-              setUsernameInput(session.user.email?.split('@')[0].toUpperCase() ?? '');
+              // Fallback mock data for demo
+              setTransactions([
+                { id: 'm1', type: 'credit', label: 'Top Up',    amount: 10000, created_at: new Date(Date.now() - 3_600_000).toISOString() },
+                { id: 'm2', type: 'debit',  label: 'Gastro Hub', amount: 2900,  created_at: new Date(Date.now() - 7_200_000).toISOString() },
+                { id: 'm3', type: 'debit',  label: 'Loop Bar',   amount: 1500,  created_at: new Date(Date.now() - 10_800_000).toISOString() },
+                { id: 'm4', type: 'credit', label: 'Top Up',    amount: 20000, created_at: new Date(Date.now() - 86_400_000).toISOString() },
+                { id: 'm5', type: 'debit',  label: 'Beach Bar',  amount: 800,   created_at: new Date(Date.now() - 90_000_000).toISOString() },
+              ]);
             }
-
-            // Fetch last 5 transactions (falls back to mock data if table doesn't exist)
-            const { data: txData } = await supabase
-              .from('transactions')
-              .select('id, type, label, amount, created_at')
-              .eq('user_id', currentSession.user.id)
-              .order('created_at', { ascending: false })
-              .limit(5);
-
-            if (isMounted) {
-              if (txData && txData.length > 0) {
-                setTransactions(txData as any);
-              } else {
-                // Fallback mock data for demo
-                setTransactions([
-                  { id: 'm1', type: 'credit', label: 'Top Up',    amount: 10000, created_at: new Date(Date.now() - 3_600_000).toISOString() },
-                  { id: 'm2', type: 'debit',  label: 'Gastro Hub', amount: 2900,  created_at: new Date(Date.now() - 7_200_000).toISOString() },
-                  { id: 'm3', type: 'debit',  label: 'Loop Bar',   amount: 1500,  created_at: new Date(Date.now() - 10_800_000).toISOString() },
-                  { id: 'm4', type: 'credit', label: 'Top Up',    amount: 20000, created_at: new Date(Date.now() - 86_400_000).toISOString() },
-                  { id: 'm5', type: 'debit',  label: 'Beach Bar',  amount: 800,   created_at: new Date(Date.now() - 90_000_000).toISOString() },
-                ]);
-              }
-            }
-            setProfileLoading(false);
           }
         } catch (e) {
-          console.error('Profile loading failed', e);
-          if (isMounted) setProfileLoading(false);
+          console.error('Transactions loading failed', e);
         }
       }
 
-      loadProfile();
+      loadTransactions();
 
       return () => {
         isMounted = false;
@@ -126,7 +111,7 @@ export default function ProfileScreen() {
     if (error) {
       Alert.alert('Error', 'Could not save username. Try again.');
     } else {
-      setProfile(p => p ? { ...p, username: trimmed } : p);
+      await refreshProfile();
       setEditingUsername(false);
     }
   }

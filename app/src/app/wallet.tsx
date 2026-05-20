@@ -170,9 +170,7 @@ function SuccessOverlay({ amount, newBalance, dbError, onClose }: {
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function WalletScreen() {
-  const { session } = useAuth();
-  const [balance,     setBalance]     = useState<number | null>(null);
-  const [balanceErr,  setBalanceErr]  = useState(false);
+  const { session, profile, refreshProfile } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [txLoading,   setTxLoading]   = useState(true);
   
@@ -183,6 +181,7 @@ export default function WalletScreen() {
   const [updateErr,   setUpdateErr]   = useState(false);
 
   const userId = session?.user?.id;
+  const balance = profile?.balance ?? 0;
 
   // Formatter for timestamps (e.g., "18:45")
   const formatTime = (isoString: string) => {
@@ -190,7 +189,7 @@ export default function WalletScreen() {
     return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
   };
 
-  // ── Load balance and transactions from DB on mount ─────────────────────────
+  // ── Load transactions from DB on mount ─────────────────────────
   useFocusEffect(
     useCallback(() => {
       let isMounted = true;
@@ -203,38 +202,7 @@ export default function WalletScreen() {
 
         setTxLoading(true);
 
-        // 1. Fetch Balance
-        const { data: profileData, error: profileError } = await supabase
-          .from('profiles')
-          .select('balance')
-          .eq('id', session.user.id)
-          .single();
-
-        if (!isMounted) return;
-
-        if (profileError) {
-          if (profileError.code === 'PGRST116') {
-            const { error: insertError } = await supabase
-              .from('profiles')
-              .insert([{ id: session.user.id, balance: 0, points: 0 }]);
-            
-            if (insertError) {
-              setBalanceErr(true);
-              setBalance(0);
-            } else {
-              setBalance(0);
-            }
-          } else {
-            setBalanceErr(true);
-            setBalance(0);
-          }
-        } else if (!profileData) {
-          setBalance(0);
-        } else {
-          setBalance(profileData.balance ?? 0);
-        }
-
-        // 2. Fetch Transactions
+        // 1. Fetch Transactions
         const { data: txData, error: txError } = await supabase
           .from('transactions')
           .select('*')
@@ -261,7 +229,7 @@ export default function WalletScreen() {
   const finalAmount = custom ? (parseInt(custom, 10) || 0) : selected;
 
   const handleTopUp = () => {
-    if (finalAmount < 500 || balance === null) return;
+    if (finalAmount < 500) return;
     setUpdateErr(false);
     setPhase('processing');
   };
@@ -317,9 +285,11 @@ export default function WalletScreen() {
           points_change: 50,
           reason: 'Wallet Top-Up Bonus'
         }]);
+      
+      // 5. Refresh context profile
+      await refreshProfile();
     }
 
-    setBalance(newBalance);
     setPhase('success');
   };
 
