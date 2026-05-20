@@ -3,7 +3,7 @@ import { MaterialIcons } from '@expo/vector-icons';
 import React from 'react';
 import { Pressable, View, StyleSheet, Text } from 'react-native';
 
-import { SV, MaxContentWidth, Spacing } from '@/constants/theme';
+import { SV, MaxContentWidth, Spacing } from '../constants/theme';
 
 const NAV_ITEMS = [
   { name: 'home',    href: '/'       as const, label: 'HOME',   icon: 'home'       },

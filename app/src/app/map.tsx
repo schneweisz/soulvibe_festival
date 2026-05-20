@@ -20,8 +20,8 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SV, neonShadow } from '@/constants/theme';
-import { CartFAB, ScreenHeader } from '@/components/screen-header';
+import { SV, neonShadow } from '../constants/theme';
+import { CartFAB, ScreenHeader } from '../components/screen-header';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 

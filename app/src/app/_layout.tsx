@@ -1,13 +1,13 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import React from 'react';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import { MenuProvider } from '@/components/menu-drawer';
-import AppTabs from '@/components/app-tabs';
-import { LanguageProvider } from '@/context/LanguageContext';
-import { CartProvider } from '@/context/CartContext';
-import { AuthProvider } from '@/context/AuthContext';
-import { DatabaseProvider } from '@/context/DatabaseContext';
+import { AnimatedSplashOverlay } from '../components/animated-icon';
+import { MenuProvider } from '../components/menu-drawer';
+import AppTabs from '../components/app-tabs';
+import { LanguageProvider } from '../context/LanguageContext';
+import { CartProvider } from '../context/CartContext';
+import { AuthProvider } from '../context/AuthContext';
+import { DatabaseProvider } from '../context/DatabaseContext';
 
 const SoulVibeDarkTheme = {
   ...DarkTheme,

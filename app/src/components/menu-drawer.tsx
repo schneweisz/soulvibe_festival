@@ -130,7 +130,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
     : null;
 
   // Dynamically calculate the ticket href
-  const ticketHref = hasTicket ? '/profile' : '/ticket_shop';
+  const ticketHref = session ? (hasTicket ? '/profile' : '/ticket_shop') : '/auth';
   
   const secondaryItems: NavItem[] = [
     { en: 'MY TICKET', hu: 'JEGYEM', icon: 'confirmation-number', href: ticketHref },
@@ -203,7 +203,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
         </View>
 
         {/* Profile card */}
-        <Pressable style={styles.profileCard} onPress={() => navigate('/profile')}>
+        <Pressable style={styles.profileCard} onPress={() => navigate(session ? '/profile' : '/auth')}>
           <View style={styles.profileAvatar}>
             {avatarUri ? (
               <Image
@@ -451,3 +451,4 @@ const styles = StyleSheet.create({
     backgroundColor: SV.outline,
   },
 });
+

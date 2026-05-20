@@ -8,9 +8,9 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SV, neonShadow } from '@/constants/theme';
-import { ScreenHeader } from '@/components/screen-header';
-import { useLanguage } from '@/context/LanguageContext';
+import { SV, neonShadow } from '../constants/theme';
+import { ScreenHeader } from '../components/screen-header';
+import { useLanguage } from '../context/LanguageContext';
 
 const HOURS_DATA = [
   { en: 'FRI_JUL_18', hu: 'PÉN_JÚL_18', time: '18:00 - 06:00' },

@@ -52,6 +52,13 @@ export default function ProfileScreen() {
     }, [refreshAll])
   );
 
+  // Handle redirection to auth if not logged in
+  useEffect(() => {
+    if (!authLoading && !session) {
+      router.replace('/auth');
+    }
+  }, [authLoading, session]);
+
   async function handleSignOut() {
     try {
       await signOut();
@@ -100,7 +107,7 @@ export default function ProfileScreen() {
   }
 
   if (!session) {
-    return <Redirect href="/auth" />;
+    return null;
   }
 
   return (

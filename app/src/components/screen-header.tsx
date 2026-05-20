@@ -3,9 +3,9 @@ import { router, Link } from 'expo-router';
 import React, { useRef } from 'react';
 import { Animated, Image, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SV, neonShadow } from '@/constants/theme';
-import { useMenu } from '@/components/menu-drawer';
-import { useCart } from '@/context/CartContext';
+import { SV, neonShadow } from '../constants/theme';
+import { useMenu } from './menu-drawer';
+import { useCart } from '../context/CartContext';
 
 interface ScreenHeaderProps {
   /** True to show a ← back button instead of the hamburger menu */

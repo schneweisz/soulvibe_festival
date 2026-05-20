@@ -11,10 +11,10 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SV, neonShadow } from '@/constants/theme';
-import { ScreenHeader } from '@/components/screen-header';
-import { useCart } from '@/context/CartContext';
-import { useAuth } from '@/context/AuthContext';
+import { SV, neonShadow } from '../constants/theme';
+import { ScreenHeader } from '../components/screen-header';
+import { useCart } from '../context/CartContext';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../utils/supabase';
 
 const SERVICE_FEE = 200;

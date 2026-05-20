@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { SV, neonShadow } from '@/constants/theme';
-import { CartFAB, ScreenHeader } from '@/components/screen-header';
-import { useLanguage } from '@/context/LanguageContext';
-import { AudioBars } from '@/components/audio-bars';
-import { SkeletonLineupRow } from '@/components/skeleton';
+import { SV, neonShadow } from '../constants/theme';
+import { CartFAB, ScreenHeader } from '../components/screen-header';
+import { useLanguage } from '../context/LanguageContext';
+import { AudioBars } from '../components/audio-bars';
+import { SkeletonLineupRow } from '../components/skeleton';
 
 type DayIdx = 0 | 1 | 2;
 type StageFilter = 'ALL' | 'SUBURBIA' | 'BASEMENT' | 'GRID';

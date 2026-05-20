@@ -1,17 +1,14 @@
 import React, { useState ,useEffect } from 'react';
-import { View, StyleSheet, TextInput, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, TextInput, ScrollView, Alert, ActivityIndicator, Pressable } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { SV, neonShadow } from '@/constants/theme';
+import { SV, neonShadow } from '../constants/theme';
 import { ThemedView } from '../components/themed-view';
 import { ThemedText } from '../components/themed-text';
-import { ScreenHeader } from '@/components/screen-header';
-import { useAuth } from '@/context/AuthContext';
+import { ScreenHeader } from '../components/screen-header';
+import { useAuth } from '../context/AuthContext';
 import * as Linking from 'expo-linking';
-
-/** AnimPressable import - since it's local in index.tsx, we'll recreate a simple version or use Pressable */
-import { Pressable } from 'react-native';
 
 export default function AuthScreen() {
   const { session } = useAuth();
