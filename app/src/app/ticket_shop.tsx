@@ -124,6 +124,12 @@ function SuccessOverlay({ ticket, onClose }: { ticket: TicketOption; onClose: ()
   );
 }
 
+function generateTicketId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const r = (len: number) => Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  return `SV26-${r(4)}-${r(4)}`;
+}
+
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 
 export default function TicketShopScreen() {
@@ -159,23 +165,49 @@ export default function TicketShopScreen() {
     setIsPurchasing(true);
 
     try {
+      const ticketId = generateTicketId();
+      const userId = session.user.id;
+      
+      // 1. Create the ticket entry in the new DB table
+      const { error: ticketErr } = await supabase
+        .from('tickets')
+        .insert([{
+          ticket_id: ticketId,
+          type: `${option.type}_${option.duration.replace('-', '')}`,
+          name: `${option.type} ${option.duration} PASS`,
+          description: option.perks.join(', '),
+          price: option.price,
+          profile_id: userId,
+          valid_from: new Date().toISOString(),
+          valid_until: option.duration === '1-DAY' 
+            ? new Date('2026-07-19T06:00:00Z').toISOString() 
+            : new Date('2026-07-21T06:00:00Z').toISOString(),
+        }]);
+
+      if (ticketErr) {
+        console.error('Ticket DB insert failed:', ticketErr);
+        throw new Error(ticketErr.message);
+      }
+
+      // 2. Deduct balance from profile
       const newBalance = balance - option.price;
       const { error: updateErr } = await supabase
         .from('profiles')
         .update({ balance: newBalance })
-        .eq('id', session.user.id);
+        .eq('id', userId);
 
       if (updateErr) throw updateErr;
 
+      // 3. Record transaction for history
       await supabase.from('transactions').insert([{
-        user_id: session.user.id,
+        user_id: userId,
         amount: option.price,
         type: 'debit',
         label: `Ticket: ${option.type} ${option.duration}`,
       }]);
 
       await refreshProfile();
-      setPurchasedTicket(option);
+      setPurchasedTicket({ ...option, glow: ticketId }); // Reuse glow for ID in overlay
     } catch (err: any) {
       Alert.alert('Error', err.message);
     } finally {
