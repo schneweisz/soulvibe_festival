@@ -1,4 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
@@ -12,11 +13,13 @@ import { CartFAB, ScreenHeader } from '@/components/screen-header';
 import { useLanguage } from '@/context/LanguageContext';
 import { AudioBars } from '@/components/audio-bars';
 import { SkeletonLineupRow } from '@/components/skeleton';
+import { supabase } from '../utils/supabase';
 
 type DayIdx = 0 | 1 | 2;
-type StageFilter = 'ALL' | 'SUBURBIA' | 'BASEMENT' | 'GRID';
+type StageFilter = 'ALL' | 'SUBURBIA' | 'BASEMENT' | 'GRID' | 'FAVOURITES';
 
 interface ArtistEntry {
+  id: string;          // unique appointment ID: "d{day}-{stage}-{startTime}"
   day: DayIdx;
   name: string;
   time: string;
@@ -25,7 +28,14 @@ interface ArtistEntry {
   live?: boolean;
 }
 
-const ARTISTS: ArtistEntry[] = [
+// Generate a stable, unique ID for each appointment slot.
+// Using day + stage + start-time means one artist performing twice on different
+// stages/days gets two separate, independently favouritable IDs.
+function makeId(day: DayIdx, stage: string, time: string) {
+  return `d${day}-${stage}-${time.split(' ')[0].replace(':', '')}`;
+}
+
+const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
   // ── FRIDAY (Day 0) ──────────────────────────────────────────────────────────
   { day: 0, name: 'AKC Kendo', time: '14:00 - 15:30', stage: 'suburbia', favorite: false },
   { day: 0, name: 'Lmen Prala', time: '15:45 - 17:00', stage: 'suburbia', favorite: false },
@@ -94,17 +104,24 @@ const ARTISTS: ArtistEntry[] = [
   { day: 2, name: 'ZSOMAC (The Closing Set)', time: '04:00 - 06:00', stage: 'grid', favorite: false },
 ];
 
+// Attach stable IDs to every slot
+const ARTISTS: ArtistEntry[] = ARTISTS_RAW.map(a => ({
+  ...a,
+  id: makeId(a.day, a.stage, a.time),
+}));
+
 const DAYS_DATA: { key: DayIdx; en: string; hu: string; sub: string }[] = [
   { key: 0, en: 'FRIDAY', hu: 'PÉNTEK', sub: 'JUL 18' },
   { key: 1, en: 'SATURDAY', hu: 'SZOMBAT', sub: 'JUL 19' },
   { key: 2, en: 'SUNDAY', hu: 'VASÁRNAP', sub: 'JUL 20' },
 ];
 
-const STAGE_CHIPS_DATA: { key: StageFilter; en: string; hu: string }[] = [
-  { key: 'ALL', en: 'ALL', hu: 'MIND' },
-  { key: 'SUBURBIA', en: 'SubUrbia', hu: 'SubUrbia' },
-  { key: 'BASEMENT', en: 'The Basement', hu: 'The Basement' },
-  { key: 'GRID', en: 'The Grid', hu: 'The Grid' },
+const STAGE_CHIPS_DATA: { key: StageFilter; en: string; hu: string; icon?: string }[] = [
+  { key: 'ALL',        en: 'ALL',          hu: 'MIND',      },
+  { key: 'SUBURBIA',   en: 'SubUrbia',     hu: 'SubUrbia',  },
+  { key: 'BASEMENT',   en: 'The Basement', hu: 'Basement',  },
+  { key: 'GRID',       en: 'The Grid',     hu: 'The Grid',  },
+  { key: 'FAVOURITES', en: 'Favourites',   hu: 'Kedvencek', icon: 'favorite' },
 ];
 
 const STAGE_COLOR: Record<string, string> = {
@@ -126,32 +143,73 @@ const STAGE_LABEL_HU: Record<string, string> = {
 
 export default function LineupScreen() {
   const { lang } = useLanguage();
-  const [day, setDay] = useState<DayIdx>(0);
-  const [stage, setStage] = useState<StageFilter>('ALL');
-  const [loading, setLoading] = useState(true);
+  const { filter: filterParam } = useLocalSearchParams<{ filter?: string }>();
 
+  const [day,     setDay]     = useState<DayIdx>(0);
+  const [stage,   setStage]   = useState<StageFilter>('ALL');
+  const [loading, setLoading] = useState(true);
+  const [favs,    setFavs]    = useState<Record<string, boolean>>({});
+  const [userId,  setUserId]  = useState<string | null>(null);
+
+  // Activate Favourites filter if navigated with ?filter=favourites
   useEffect(() => {
-    const t = setTimeout(() => setLoading(false), 1500);
-    return () => clearTimeout(t);
+    if (filterParam === 'favourites') setStage('FAVOURITES');
+  }, [filterParam]);
+
+  // Load favourites from DB + skeleton delay
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setUserId(session.user.id);
+        const { data } = await supabase
+          .from('favourites')
+          .select('appointment_id')
+          .eq('user_id', session.user.id);
+        // Key by appointment_id so each slot is independently favouritable
+        const map: Record<string, boolean> = {};
+        (data ?? []).forEach(r => { map[r.appointment_id] = true; });
+        setFavs(map);
+      }
+      // Logged out → empty favs (no hardcoded defaults)
+      setTimeout(() => setLoading(false), 800);
+    })();
   }, []);
 
   const DAYS = DAYS_DATA.map(d => ({ ...d, label: lang === 'hu' ? d.hu : d.en }));
   const STAGE_CHIPS = STAGE_CHIPS_DATA.map(s => ({ ...s, label: lang === 'hu' ? s.hu : s.en }));
   const STAGE_LABEL = lang === 'hu' ? STAGE_LABEL_HU : STAGE_LABEL_EN;
-  const [favs, setFavs] = useState<Record<string, boolean>>(() => {
-    const init: Record<string, boolean> = {};
-    ARTISTS.forEach(a => { if (a.favorite) init[a.name] = true; });
-    return init;
-  });
 
-  const acts = ARTISTS.filter(a => {
-    if (a.day !== day) return false;
-    if (stage !== 'ALL' && a.stage.toUpperCase() !== stage) return false;
-    return true;
-  });
+  // FAVOURITES mode: show all favs across all days; otherwise filter by day+stage
+  const acts = stage === 'FAVOURITES'
+    ? ARTISTS.filter(a => favs[a.id])
+    : ARTISTS.filter(a => {
+        if (a.day !== day) return false;
+        if (stage !== 'ALL' && a.stage.toUpperCase() !== stage) return false;
+        return true;
+      });
 
-  const toggleFav = (name: string) =>
-    setFavs(f => ({ ...f, [name]: !f[name] }));
+  const toggleFav = async (act: ArtistEntry) => {
+    const next = !favs[act.id];
+    setFavs(f => ({ ...f, [act.id]: next }));
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    if (next) {
+      await supabase.from('favourites').insert({
+        user_id:        session.user.id,
+        appointment_id: act.id,
+        artist_name:    act.name,   // stored for profile display without needing a join
+      });
+    } else {
+      await supabase
+        .from('favourites')
+        .delete()
+        .eq('user_id', session.user.id)
+        .eq('appointment_id', act.id);
+    }
+  };
 
   return (
     <View style={styles.root}>
@@ -185,9 +243,12 @@ export default function LineupScreen() {
         {STAGE_CHIPS.map(s => (
           <TouchableOpacity
             key={s.key}
-            style={[styles.chip, s.key === stage && styles.chipActive]}
+            style={[styles.chip, s.key === stage && styles.chipActive, s.key === 'FAVOURITES' && styles.chipFav, s.key === 'FAVOURITES' && s.key === stage && styles.chipFavActive]}
             onPress={() => setStage(s.key)}
             activeOpacity={0.75}>
+            {s.icon ? (
+              <MaterialIcons name={s.icon as any} size={12} color={s.key === stage ? '#fff' : '#FF6B9D'} />
+            ) : null}
             <Text style={[styles.chipText, s.key === stage && styles.chipTextActive]}>
               {s.label}
             </Text>
@@ -202,8 +263,13 @@ export default function LineupScreen() {
         contentContainerStyle={styles.listContent}>
 
         {loading ? (
-          // ── Skeleton placeholder ──────────────────────────────────────────
           Array.from({ length: 7 }).map((_, i) => <SkeletonLineupRow key={i} />)
+        ) : acts.length === 0 && stage === 'FAVOURITES' ? (
+          <View style={styles.emptyFavs}>
+            <MaterialIcons name="favorite-border" size={40} color={SV.surfaceVariant} />
+            <Text style={styles.emptyFavsTitle}>{lang === 'hu' ? 'Még nincs kedvenc' : 'No favourites yet'}</Text>
+            <Text style={styles.emptyFavsSub}>{lang === 'hu' ? 'Nyomj a szív ikonra a fellépők mellett.' : 'Tap the heart icon next to any artist.'}</Text>
+          </View>
         ) : (
           // ── Real content ──────────────────────────────────────────────────
           acts.map((act, i) => (
@@ -212,15 +278,15 @@ export default function LineupScreen() {
               <View style={styles.rowBody}>
                 <View style={styles.rowTop}>
                   <Text
-                    style={[styles.artistName, favs[act.name] && styles.artistNameFav]}
+                    style={[styles.artistName, favs[act.id] && styles.artistNameFav]}
                     numberOfLines={1}>
                     {act.name}
                   </Text>
-                  <TouchableOpacity onPress={() => toggleFav(act.name)} hitSlop={10} style={styles.favBtn}>
+                  <TouchableOpacity onPress={() => toggleFav(act)} hitSlop={10} style={styles.favBtn}>
                     <MaterialIcons
-                      name={favs[act.name] ? 'favorite' : 'favorite-border'}
+                      name={favs[act.id] ? 'favorite' : 'favorite-border'}
                       size={18}
-                      color={favs[act.name] ? SV.primaryContainer : SV.surfaceVariant}
+                      color={favs[act.id] ? SV.primaryContainer : SV.surfaceVariant}
                     />
                   </TouchableOpacity>
                 </View>
@@ -236,11 +302,13 @@ export default function LineupScreen() {
                     <MaterialIcons name="schedule" size={11} color={SV.onSurfaceVariant} />
                   )}
                   <Text style={styles.timeText}>{act.time}</Text>
-                  {stage === 'ALL' && (
+                  {(stage === 'ALL' || stage === 'FAVOURITES') && (
                     <>
                       <View style={styles.dot} />
                       <Text style={[styles.stageText, { color: STAGE_COLOR[act.stage] }]}>
-                        {STAGE_LABEL[act.stage]}
+                        {stage === 'FAVOURITES'
+                          ? `${DAYS_DATA[act.day].en.slice(0, 3)} · ${STAGE_LABEL[act.stage]}`
+                          : STAGE_LABEL[act.stage]}
                       </Text>
                     </>
                   )}
@@ -321,6 +389,11 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(57,255,20,0.4)',
     ...neonShadow,
   },
+  chipFav: { borderColor: 'rgba(255,107,157,0.3)', flexDirection: 'row', alignItems: 'center', gap: 4 },
+  chipFavActive: { backgroundColor: 'rgba(255,107,157,0.18)', borderColor: '#FF6B9D', shadowColor: '#FF6B9D', shadowOpacity: 0.4, shadowRadius: 8, shadowOffset: { width: 0, height: 0 }, elevation: 6 },
+  emptyFavs: { alignItems: 'center', paddingVertical: 60, gap: 12 },
+  emptyFavsTitle: { color: SV.onSurfaceVariant, fontSize: 16, fontWeight: '700' },
+  emptyFavsSub: { color: SV.outline, fontFamily: 'monospace', fontSize: 12, textAlign: 'center', paddingHorizontal: 40 },
   chipText: {
     color: SV.onSurfaceVariant,
     fontFamily: 'monospace',

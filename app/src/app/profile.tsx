@@ -21,17 +21,13 @@ import { ThemedView } from '../components/themed-view';
 
 import { getRank } from '../utils/rank';
 
-const MY_LINEUP = [
-  { time: '22:00', day: 'FRI', artist: 'Charlotte de Witte', stage: 'THE GRID' },
-  { time: '01:30', day: 'SAT', artist: 'Amelie Lens', stage: 'THE GRID' },
-  { time: '03:00', day: 'SAT', artist: 'I Hate Models', stage: 'THE GRID' },
-];
 
 export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
   const { session, profile, loading: authLoading, signOut, refreshProfile } = useAuth();
   const [profileLoading, setProfileLoading] = useState(false);
   const [transactions, setTransactions] = useState<{ id: string; type: 'credit' | 'debit'; label: string; amount: number; created_at: string }[]>([]);
+  const [topFavs, setTopFavs] = useState<{ artist_name: string }[]>([]);
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
@@ -77,6 +73,14 @@ export default function ProfileScreen() {
               ]);
             }
           }
+          // Fetch top 3 favourites
+          const { data: favsData } = await supabase
+            .from('favourites')
+            .select('artist_name')
+            .eq('user_id', session.user.id)
+            .limit(3);
+          if (isMounted && favsData) setTopFavs(favsData);
+
         } catch (e) {
           console.error('Transactions loading failed', e);
         }
@@ -340,35 +344,33 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        {/* My Lineup */}
+        {/* My Lineup — shows favourited artists */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <Text style={styles.cardTitle}>
               {lang === 'hu' ? 'SAJÁT PROGRAMOM' : 'MY LINEUP'}
             </Text>
-            <MaterialIcons name="favorite" size={20} color={SV.secondaryFixedDim} />
+            <MaterialIcons name="favorite" size={20} color="#FF6B9D" />
           </View>
-          {MY_LINEUP.map(set => (
-            <TouchableOpacity key={set.artist} style={styles.setRow} onPress={() => router.push('/lineup')}>
-              <View style={styles.setTime}>
-                <Text style={styles.setTimeText}>{set.time}</Text>
-                <Text style={styles.setDay}>{set.day}</Text>
+          {topFavs.length === 0 ? (
+            <Text style={{ color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, marginBottom: 12 }}>
+              {lang === 'hu' ? 'Még nincs kedvenc előadód. Nyomj a ♡ ikonra a programban.' : 'No favourites yet. Tap ♡ next to any artist in Lineup.'}
+            </Text>
+          ) : (
+            topFavs.map(f => (
+              <View key={f.artist_name} style={styles.favRow}>
+                <MaterialIcons name="favorite" size={14} color="#FF6B9D" />
+                <Text style={styles.favArtist}>{f.artist_name}</Text>
               </View>
-              <View style={styles.setInfo}>
-                <Text style={styles.setArtist}>{set.artist}</Text>
-                <View style={styles.setStageRow}>
-                  <MaterialIcons name="location-on" size={12} color={SV.onSurfaceVariant} />
-                  <Text style={styles.setStage}>{set.stage}</Text>
-                </View>
-              </View>
-              <TouchableOpacity hitSlop={8}>
-                <MaterialIcons name="favorite" size={20} color={SV.primaryContainer} />
-              </TouchableOpacity>
-            </TouchableOpacity>
-          ))}
-          <TouchableOpacity style={styles.viewScheduleBtn} onPress={() => router.push('/lineup')}>
-            <Text style={styles.viewScheduleText}>
-              {lang === 'hu' ? 'TELJES PROGRAM' : 'VIEW FULL SCHEDULE'}
+            ))
+          )}
+          <TouchableOpacity
+            style={styles.viewFavsBtn}
+            onPress={() => router.push('/lineup?filter=favourites' as any)}
+            activeOpacity={0.8}>
+            <MaterialIcons name="favorite" size={15} color="#FF6B9D" />
+            <Text style={styles.viewFavsBtnText}>
+              {lang === 'hu' ? 'ÖSSZES KEDVENC' : 'VIEW FAVOURITES'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -476,6 +478,10 @@ const styles = StyleSheet.create({
   walletCurrency: { color: SV.primaryFixedDim, fontFamily: 'monospace', fontSize: 14, fontWeight: '700' },
   topUpBtn: { backgroundColor: 'rgba(57,255,20,0.15)', borderWidth: 1, borderColor: SV.primaryContainer, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
   topUpText: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1 },
+  favRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  favArtist: { color: SV.onSurface, fontSize: 14, fontWeight: '600', flex: 1 },
+  viewFavsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,107,157,0.35)', backgroundColor: 'rgba(255,107,157,0.08)' },
+  viewFavsBtnText: { color: '#FF6B9D', fontFamily: 'monospace', fontSize: 12, fontWeight: '700', letterSpacing: 1 },
   txRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   txDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   txLabel: { color: SV.onSurface, fontSize: 14, fontWeight: '600' },
