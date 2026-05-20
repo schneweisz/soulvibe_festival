@@ -1100,12 +1100,12 @@ export default function LineupScreen() {
             style={styles.chipScroll} contentContainerStyle={styles.chipContent}>
             {(['ALL', 'SUBURBIA', 'BASEMENT', 'GRID'] as const).map(s => (
               <TouchableOpacity key={s}
-                style={[styles.chip, favStageFilter === s && styles.chipActive]}
+                style={[styles.chip, favStageFilter === s && styles.chipActive, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
                 onPress={() => setFavStageFilter(s)} activeOpacity={0.75}>
                 {s !== 'ALL' && (
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: STAGE_COLOR[s.toLowerCase()] }} />
                 )}
-                <Text style={[styles.chipText, favStageFilter === s && styles.chipTextActive]}>
+                <Text style={[styles.chipText, favStageFilter === s && styles.chipTextActive, { marginTop: 0 }]}>
                   {s === 'ALL' ? (lang === 'hu' ? 'MIND' : 'ALL') :
                    s === 'SUBURBIA' ? 'SubUrbia' :
                    s === 'BASEMENT' ? 'Basement' : 'The Grid'}
