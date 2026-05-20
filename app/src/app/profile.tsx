@@ -12,10 +12,10 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { SV, neonShadow } from '../constants/theme';
-import { CartFAB, ScreenHeader } from '../components/screen-header';
-import { useLanguage } from '../context/LanguageContext';
-import { useAuth } from '../context/AuthContext';
+import { SV, neonShadow } from '@/constants/theme';
+import { CartFAB, ScreenHeader } from '@/components/screen-header';
+import { useLanguage } from '@/context/LanguageContext';
+import { useAuth } from '@/context/AuthContext';
 import { supabase } from '../utils/supabase';
 import { ThemedView } from '../components/themed-view';
 
@@ -242,23 +242,57 @@ export default function ProfileScreen() {
             </Text>
             <MaterialIcons name="confirmation-number" size={20} color={SV.primaryContainer} />
           </View>
-          <View style={styles.ticketBox}>
-            <View style={styles.ticketGlow} />
-            <View style={styles.ticketHeader}>
-              <View>
-                <Text style={styles.ticketName}>
-                  {lang === 'hu' ? 'NINCS AKTÍV JEGY' : 'NO ACTIVE TICKET'}
-                </Text>
+          
+          {(() => {
+            const latestTicket = transactions.find(tx => tx.label.startsWith('Ticket:'));
+            if (latestTicket) {
+              const ticketName = latestTicket.label.replace('Ticket: ', '').toUpperCase();
+              return (
+                <View style={[styles.ticketBox, { borderColor: ticketName.includes('VIP') ? SV.secondaryContainer : ticketName.includes('PLUTO') ? SV.tertiaryContainer : SV.primaryContainer }]}>
+                  <View style={styles.ticketGlow} />
+                  <View style={styles.ticketHeader}>
+                    <View>
+                      <Text style={[styles.ticketName, { color: ticketName.includes('VIP') ? SV.secondaryFixedDim : ticketName.includes('PLUTO') ? SV.tertiaryFixedDim : SV.primaryFixedDim }]}>
+                        {ticketName}
+                      </Text>
+                      <Text style={styles.ticketId}>ID: SV26-{latestTicket.id.slice(-8).toUpperCase()}</Text>
+                    </View>
+                    <View style={styles.liveBadge}>
+                      <View style={styles.liveDot} />
+                      <Text style={styles.liveText}>VALID</Text>
+                    </View>
+                  </View>
+                  <View style={styles.ticketActions}>
+                    <TouchableOpacity style={[styles.showQrBtn, { backgroundColor: ticketName.includes('VIP') ? SV.secondaryContainer : ticketName.includes('PLUTO') ? SV.tertiaryContainer : SV.primaryContainer }]}>
+                      <Text style={styles.showQrText}>
+                        {lang === 'hu' ? 'QR MEGMUTATASA' : 'SHOW QR'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            }
+
+            return (
+              <View style={styles.ticketBox}>
+                <View style={styles.ticketGlow} />
+                <View style={styles.ticketHeader}>
+                  <View>
+                    <Text style={styles.ticketName}>
+                      {lang === 'hu' ? 'NINCS AKTÍV JEGY' : 'NO ACTIVE TICKET'}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.ticketActions}>
+                  <TouchableOpacity style={styles.showQrBtn} onPress={() => router.push('/ticket_shop')}>
+                    <Text style={styles.showQrText}>
+                      {lang === 'hu' ? 'VÁSÁRLÁS' : 'BUY TICKET'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
               </View>
-            </View>
-            <View style={styles.ticketActions}>
-              <TouchableOpacity style={styles.showQrBtn}>
-                <Text style={styles.showQrText}>
-                  {lang === 'hu' ? 'QR MEGMUTATASA' : 'SHOW QR'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+            );
+          })()}
         </View>
 
         {/* Pulse Points */}
