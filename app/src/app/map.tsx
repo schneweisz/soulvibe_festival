@@ -1,6 +1,7 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
+import { supabase } from '../utils/supabase';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, {
   useAnimatedStyle,
@@ -234,6 +235,18 @@ function YouAreHere() {
   );
 }
 
+// Friend marker (shown on map canvas at friend's position)
+function FriendMarker({ username }: { username: string }) {
+  return (
+    <View style={s.friendWrap}>
+      <View style={s.friendDot} />
+      <View style={s.friendLabel}>
+        <Text style={s.friendLabelTxt}>{username}</Text>
+      </View>
+    </View>
+  );
+}
+
 // Crowd level badge
 function CrowdBadge({ level }: { level: CrowdLevel }) {
   const cfg = {
@@ -331,6 +344,28 @@ export default function MapScreen() {
   const [legendOpen, setLegendOpen] = useState(false);
   const sheetY = useRef(new RNAnimated.Value(400)).current;
   const [gpsPos, setGpsPos] = useState<{ x: number; y: number; inBounds: boolean } | null>(null);
+  const [friendMarkers, setFriendMarkers] = useState<{ username: string; x: number; y: number }[]>([]);
+
+  // Fetch friend positions from DB
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: myProfile } = await supabase
+        .from('profiles').select('friends').eq('id', session.user.id).single();
+      const ids: string[] = myProfile?.friends ?? [];
+      if (ids.length === 0) return;
+      const { data: friendData } = await supabase
+        .from('profiles').select('id, username, position').in('id', ids);
+      const markers = (friendData ?? [])
+        .filter((f: any) => f.position?.lat != null && f.position?.lon != null)
+        .map((f: any) => {
+          const c = gpsToCanvas(f.position.lat, f.position.lon);
+          return { username: f.username ?? 'RAVER', x: c.x, y: c.y };
+        });
+      setFriendMarkers(markers);
+    })();
+  }, []);
 
   // Request location permission and track position
   useEffect(() => {
@@ -687,6 +722,13 @@ export default function MapScreen() {
               </View>
             )}
 
+            {/* ════ LAYER 7b — Friend markers ════ */}
+            {friendMarkers.map(f => (
+              <View key={f.username} style={[s.poi, { left: f.x - 16, top: f.y - 20 }]}>
+                <FriendMarker username={f.username} />
+              </View>
+            ))}
+
             {/* ════ LAYER 8 — POIs ════ */}
             {POIS.filter(poi => isVisible(poi, filter)).map(poi => {
               const isLarge = poi.size === 'large';
@@ -983,6 +1025,22 @@ const s = StyleSheet.create({
   poiTagTime: { fontFamily:'monospace', fontSize:7.5, letterSpacing:0.5, marginTop:1 },
   poiCrowdBadge: { position:'absolute', top:-3, right:-3, width:10, height:10, borderRadius:5, alignItems:'center', justifyContent:'center' },
   poiCrowdDot: { width:4, height:4, borderRadius:2 },
+
+  // Friend markers
+  friendWrap: { alignItems: 'center' },
+  friendDot: {
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: SV.secondaryContainer,
+    borderWidth: 2.5, borderColor: '#fff',
+    shadowColor: SV.secondaryContainer, shadowOpacity: 0.9, shadowRadius: 10, shadowOffset: { width: 0, height: 0 },
+  },
+  friendLabel: {
+    marginTop: 5, backgroundColor: '#09090E', borderWidth: 1,
+    borderColor: `${SV.secondaryContainer}70`, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10,
+  },
+  friendLabelTxt: {
+    color: SV.secondaryContainer, fontFamily: 'monospace', fontSize: 8.5, letterSpacing: 1.2, fontWeight: '700',
+  },
 
   // You Are Here
   yah: { alignItems:'center' },

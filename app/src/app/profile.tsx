@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { Redirect, router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   ScrollView,
@@ -28,6 +28,10 @@ export default function ProfileScreen() {
   const [profileLoading, setProfileLoading] = useState(false);
   const [transactions, setTransactions] = useState<{ id: string; type: 'credit' | 'debit'; label: string; amount: number; created_at: string }[]>([]);
   const [topFavs, setTopFavs] = useState<{ artist_name: string }[]>([]);
+  const [friends, setFriends] = useState<{ id: string; username: string | null }[]>([]);
+  const [friendInput, setFriendInput] = useState('');
+  const [addingFriend, setAddingFriend] = useState(false);
+  const [friendError, setFriendError] = useState<string | null>(null);
   const [editingUsername, setEditingUsername] = useState(false);
   const [usernameInput, setUsernameInput] = useState('');
   const [savingUsername, setSavingUsername] = useState(false);
@@ -81,6 +85,25 @@ export default function ProfileScreen() {
             .limit(3);
           if (isMounted && favsData) setTopFavs(favsData);
 
+          // Update demo position (random inside festival bounds each visit)
+          const lat = 46.874 + Math.random() * (46.896 - 46.874);
+          const lon = 17.918 + Math.random() * (17.965 - 17.918);
+          const { error: posErr } = await supabase
+            .from('profiles').update({ position: { lat, lon } }).eq('id', session.user.id);
+          if (posErr) console.warn('[position update]', posErr.message);
+
+          // Load friends list
+          const { data: myProfile } = await supabase
+            .from('profiles').select('friends').eq('id', session.user.id).single();
+          const friendIds: string[] = myProfile?.friends ?? [];
+          if (friendIds.length > 0) {
+            const { data: friendData } = await supabase
+              .from('profiles').select('id, username').in('id', friendIds);
+            if (isMounted && friendData) setFriends(friendData);
+          } else if (isMounted) {
+            setFriends([]);
+          }
+
         } catch (e) {
           console.error('Transactions loading failed', e);
         }
@@ -132,17 +155,79 @@ export default function ProfileScreen() {
 
   const displayName = profile?.username ?? session?.user.email?.split('@')[0].toUpperCase() ?? 'RAVER';
 
-  if (authLoading || (session && profileLoading)) {
+  async function addFriend() {
+    const name = friendInput.trim().toUpperCase();
+    if (!name || !session) return;
+    setAddingFriend(true);
+    setFriendError(null);
+    try {
+      // maybeSingle() returns null data (no error) when 0 rows match,
+      // avoiding the PGRST116 "no rows" error from .single().
+      const { data: found, error: findErr } = await supabase
+        .from('profiles')
+        .select('id, username')
+        .eq('username', name)
+        .maybeSingle();
+
+      if (findErr) {
+        console.error('[addFriend] lookup error:', findErr.code, findErr.message);
+        setFriendError(`${findErr.message} (${findErr.code})`);
+        return;
+      }
+      if (!found) {
+        setFriendError(lang === 'hu' ? 'Felhasználó nem található.' : 'User not found.');
+        return;
+      }
+      if (found.id === session.user.id) {
+        setFriendError(lang === 'hu' ? 'Önmagát nem adhatja hozzá.' : 'Cannot add yourself.');
+        return;
+      }
+      if (friends.some(f => f.id === found.id)) {
+        setFriendError(lang === 'hu' ? 'Már barát.' : 'Already a friend.');
+        return;
+      }
+
+      const newIds = [...friends.map(f => f.id), found.id];
+      const { error: updateErr } = await supabase
+        .from('profiles').update({ friends: newIds }).eq('id', session.user.id);
+
+      if (updateErr) {
+        console.error('[addFriend] update error:', updateErr.code, updateErr.message);
+        setFriendError(`${updateErr.message} (${updateErr.code})`);
+      } else {
+        setFriends(prev => [...prev, { id: found.id, username: found.username }]);
+        setFriendInput('');
+      }
+    } catch (e: any) {
+      console.error('[addFriend] exception:', e);
+      setFriendError(e?.message ?? 'Unknown error');
+    } finally {
+      setAddingFriend(false);
+    }
+  }
+
+  async function removeFriend(friendId: string) {
+    const newIds = friends.filter(f => f.id !== friendId).map(f => f.id);
+    await supabase.from('profiles').update({ friends: newIds }).eq('id', session.user.id);
+    setFriends(prev => prev.filter(f => f.id !== friendId));
+  }
+
+  // Redirect to auth only after auth has fully loaded and session is confirmed absent.
+  // Debounced so a brief null session during token refresh doesn't trigger a redirect.
+  useEffect(() => {
+    if (authLoading) return;
+    if (session) return;
+    const t = setTimeout(() => router.replace('/auth'), 500);
+    return () => clearTimeout(t);
+  }, [authLoading, session]);
+
+  if (authLoading || !session) {
     return (
       <ThemedView style={styles.center}>
         <ActivityIndicator size="large" color={SV.primaryContainer} />
         <Text style={styles.loadingText}>SCANNING BIOMETRICS...</Text>
       </ThemedView>
     );
-  }
-
-  if (!session) {
-    return <Redirect href="/auth" />;
   }
 
   return (
@@ -375,6 +460,66 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
+        {/* Friends */}
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>{lang === 'hu' ? 'BARÁTOK' : 'FRIENDS'}</Text>
+            <MaterialIcons name="people" size={20} color={SV.tertiaryContainer} />
+          </View>
+
+          {/* Add friend input */}
+          <View style={styles.friendInputRow}>
+            <TextInput
+              style={styles.friendInput}
+              placeholder={lang === 'hu' ? 'Felhasználónév...' : 'Username...'}
+              placeholderTextColor={SV.surfaceVariant}
+              value={friendInput}
+              onChangeText={t => { setFriendInput(t); setFriendError(null); }}
+              autoCapitalize="characters"
+              maxLength={20}
+              returnKeyType="done"
+              onSubmitEditing={addFriend}
+            />
+            <TouchableOpacity style={styles.friendAddBtn} onPress={addFriend} disabled={addingFriend}>
+              {addingFriend
+                ? <ActivityIndicator size="small" color={SV.tertiaryContainer} />
+                : <MaterialIcons name="person-add" size={20} color={SV.tertiaryContainer} />}
+            </TouchableOpacity>
+          </View>
+          {friendError ? (
+            <Text style={styles.friendError}>{friendError}</Text>
+          ) : null}
+
+          {/* Friends list */}
+          {friends.length === 0 ? (
+            <Text style={styles.friendEmpty}>
+              {lang === 'hu'
+                ? 'Még nincs barátod. Keress felhasználónév alapján.'
+                : 'No friends yet. Search by username above.'}
+            </Text>
+          ) : (
+            friends.map(f => (
+              <View key={f.id} style={styles.friendRow}>
+                <MaterialIcons name="location-on" size={14} color={SV.tertiaryContainer} />
+                <Text style={styles.friendName}>{f.username ?? f.id.slice(0, 8)}</Text>
+                <TouchableOpacity onPress={() => removeFriend(f.id)} hitSlop={10} style={{ marginLeft: 'auto' }}>
+                  <MaterialIcons name="person-remove" size={18} color={SV.error} />
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
+
+          <TouchableOpacity
+            style={styles.viewMapBtn}
+            onPress={() => router.push('/map')}
+            activeOpacity={0.8}>
+            <MaterialIcons name="map" size={15} color={SV.tertiaryContainer} />
+            <Text style={styles.viewMapBtnText}>
+              {lang === 'hu' ? 'BARÁTOK A TÉRKÉPEN' : 'VIEW FRIENDS ON MAP'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Settings / Logout */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
@@ -482,6 +627,15 @@ const styles = StyleSheet.create({
   favArtist: { color: SV.onSurface, fontSize: 14, fontWeight: '600', flex: 1 },
   viewFavsBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,107,157,0.35)', backgroundColor: 'rgba(255,107,157,0.08)' },
   viewFavsBtnText: { color: '#FF6B9D', fontFamily: 'monospace', fontSize: 12, fontWeight: '700', letterSpacing: 1 },
+  friendInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
+  friendInput: { flex: 1, backgroundColor: SV.surfaceContainerHigh, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 9, color: SV.onSurface, fontFamily: 'monospace', fontSize: 13 },
+  friendAddBtn: { width: 40, height: 40, backgroundColor: SV.surfaceContainerHigh, borderRadius: 8, borderWidth: 1, borderColor: `${SV.tertiaryContainer}40`, alignItems: 'center', justifyContent: 'center' },
+  friendError: { color: '#FF6B6B', fontFamily: 'monospace', fontSize: 11, marginBottom: 8 },
+  friendEmpty: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, marginTop: 4, marginBottom: 8 },
+  friendRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  friendName: { color: SV.onSurface, fontSize: 14, fontWeight: '600', flex: 1 },
+  viewMapBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12, paddingVertical: 10, borderRadius: 10, borderWidth: 1, borderColor: `${SV.tertiaryContainer}40`, backgroundColor: `${SV.tertiaryContainer}10` },
+  viewMapBtnText: { color: SV.tertiaryContainer, fontFamily: 'monospace', fontSize: 12, fontWeight: '700', letterSpacing: 1 },
   txRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   txDot: { width: 8, height: 8, borderRadius: 4, flexShrink: 0 },
   txLabel: { color: SV.onSurface, fontSize: 14, fontWeight: '600' },

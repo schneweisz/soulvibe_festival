@@ -37,7 +37,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!error && data) {
         setProfile(data);
       } else {
-        setProfile(null);
+        // No row yet — create one so every screen can rely on a profile existing
+        // Create a minimal profile row — only columns guaranteed to exist
+        const { data: created } = await supabase
+          .from('profiles')
+          .upsert({ id: userId, balance: 0, points: 0 }, { onConflict: 'id' })
+          .select('username, points, balance')
+          .single();
+        setProfile(created ?? null);
       }
     } catch (e) {
       console.error('Error fetching profile:', e);
@@ -52,18 +59,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   useEffect(() => {
-    // Check for initial session
+    // Resolve the initial session once — this is the source of truth for loading=false
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      if (session?.user) {
-        await fetchProfile(session.user.id);
-      }
-      setLoading(false);
+      if (session?.user) await fetchProfile(session.user.id);
+      setLoading(false);          // ← only here, never in onAuthStateChange
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    // React to real auth events (sign-in, sign-out, token refresh)
+    // INITIAL_SESSION is redundant with getSession above — skip it to avoid
+    // a brief session=null flash that causes spurious redirects.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === 'INITIAL_SESSION') return;
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -71,12 +79,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         setProfile(null);
       }
-      setLoading(false);
+      // Do NOT call setLoading(false) here — keeps loading true until getSession resolves
     });
 
-    return () => {
-      subscription.unsubscribe();
-    };
+    return () => { subscription.unsubscribe(); };
   }, []);
 
   const signOut = async () => {
