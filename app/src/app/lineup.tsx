@@ -18,6 +18,7 @@ import { useLanguage } from "@/context/LanguageContext";
 import { AudioBars } from "@/components/audio-bars";
 import { SkeletonLineupRow } from "@/components/skeleton";
 import { supabase } from '../utils/supabase';
+import * as Haptics from 'expo-haptics';
 
 type DayIdx = 0 | 1 | 2;
 type StageFilter = "ALL" | "SUBURBIA" | "BASEMENT" | "GRID" | 'FAVOURITES';
@@ -1130,6 +1131,7 @@ export default function LineupScreen() {
 
   const toggleFav = useCallback(async (act: ArtistEntry) => {
     const next = !favs[act.id];
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setFavs(f => ({ ...f, [act.id]: next }));
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -1226,7 +1228,7 @@ export default function LineupScreen() {
             <TouchableOpacity
               key={d.key}
               style={[styles.dayTab, d.key === day && styles.dayTabActive]}
-              onPress={() => setDay(d.key)}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setDay(d.key); }}
               activeOpacity={0.75}
             >
               <Text style={[styles.dayLabel, d.key === day && styles.dayLabelActive]}>{d.label}</Text>
@@ -1241,7 +1243,7 @@ export default function LineupScreen() {
           {STAGE_CHIPS.filter(s => s.key !== 'FAVOURITES').map((s) => (
             <TouchableOpacity key={s.key}
               style={[styles.chip, s.key === stage && styles.chipActive]}
-              onPress={() => setStage(s.key)} activeOpacity={0.75}>
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStage(s.key); }} activeOpacity={0.75}>
               <Text style={[styles.chipText, s.key === stage && styles.chipTextActive]}>{s.label}</Text>
             </TouchableOpacity>
           ))}

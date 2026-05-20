@@ -21,6 +21,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { SV, neonShadow } from '../constants/theme';
 import { useLanguage } from '../context/LanguageContext';
 import { useAuth } from '../context/AuthContext';
@@ -275,7 +276,10 @@ function Drawer({ onClose }: { onClose: () => void }) {
 
 export function MenuProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
-  const openMenu = useCallback(() => setOpen(true), []);
+  const openMenu = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setOpen(true);
+  }, []);
   const closeMenu = useCallback(() => setOpen(false), []);
 
   return (

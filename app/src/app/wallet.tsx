@@ -12,6 +12,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { SV, neonShadow } from '../constants/theme';
 import { ScreenHeader } from '../components/screen-header';
 import { useAuth } from '../context/AuthContext';
@@ -251,6 +252,7 @@ export default function WalletScreen() {
       await refreshAll();
     }
 
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setPhase('success');
   };
 
