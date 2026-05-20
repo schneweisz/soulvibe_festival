@@ -41,12 +41,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (!profileError && profileData) {
         setProfile(profileData);
       } else {
-        // No row yet — create one so every screen can rely on a profile existing
-        // Create a minimal profile row — only columns guaranteed to exist
+        // No row yet — new user. Generate a one-time random position inside the
+        // festival grounds (Zamárdi, Lake Balaton) and persist it permanently.
+        const lat = 46.874 + Math.random() * (46.896 - 46.874);
+        const lon = 17.918 + Math.random() * (17.965 - 17.918);
+
+        // INSERT (not upsert) so we never overwrite an existing position.
+        // Ignore conflicts: if the row already exists we just fetch it below.
+        await supabase.from('profiles').insert({
+          id: userId,
+          balance: 0,
+          points: 0,
+          position: { lat, lon },
+        });
+
         const { data: created } = await supabase
           .from('profiles')
-          .upsert({ id: userId, balance: 0, points: 0 }, { onConflict: 'id' })
           .select('username, points, balance')
+          .eq('id', userId)
           .single();
         setProfile(created ?? null);
       }

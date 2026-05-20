@@ -94,13 +94,6 @@ export default function ProfileScreen() {
             .limit(3);
           if (isMounted && favsData) setTopFavs(favsData);
 
-          // Update demo position (random inside festival bounds each visit)
-          const lat = 46.874 + Math.random() * (46.896 - 46.874);
-          const lon = 17.918 + Math.random() * (17.965 - 17.918);
-          const { error: posErr } = await supabase
-            .from('profiles').update({ position: { lat, lon } }).eq('id', session.user.id);
-          if (posErr) console.warn('[position update]', posErr.message);
-
           // Load friends list
           const { data: myProfile } = await supabase
             .from('profiles').select('friends').eq('id', session.user.id).single();
@@ -196,13 +189,16 @@ export default function ProfileScreen() {
         return;
       }
 
-      const newIds = [...friends.map(f => f.id), found.id];
-      const { error: updateErr } = await supabase
-        .from('profiles').update({ friends: newIds }).eq('id', session.user.id);
+      // Bidirectional: adds each user to the other's friends list.
+      // Uses a SECURITY DEFINER function so it can write to both rows.
+      const { error: rpcErr } = await supabase.rpc('add_friend_bidirectional', {
+        friend_id:    found.id,
+        requester_id: session.user.id,
+      });
 
-      if (updateErr) {
-        console.error('[addFriend] update error:', updateErr.code, updateErr.message);
-        setFriendError(`${updateErr.message} (${updateErr.code})`);
+      if (rpcErr) {
+        console.error('[addFriend] rpc error:', rpcErr.code, rpcErr.message);
+        setFriendError(`${rpcErr.message} (${rpcErr.code})`);
       } else {
         setFriends(prev => [...prev, { id: found.id, username: found.username }]);
         setFriendInput('');
