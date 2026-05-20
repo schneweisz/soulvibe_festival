@@ -1,8 +1,9 @@
-import { MaterialIcons } from "@expo/vector-icons";
+﻿import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams } from 'expo-router';
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Dimensions,
+  FlatList,
   ScrollView,
   StyleSheet,
   Text,
@@ -126,8 +127,6 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     favorite: false,
     description:
       "Underground trap warrior with hypnotic beats and raw lyrical delivery from Budapest's streets.",
-    imageUrl:
-      "data:image/jpeg;base64,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",
   },
   {
     day: 0,
@@ -980,6 +979,89 @@ const tl = StyleSheet.create({
   cardStageName: { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 8, letterSpacing: 0.4, flex: 1 },
 });
 
+// ─── Memoised list helpers ────────────────────────────────────────────────────
+
+function SkeletonList() {
+  return <>{Array.from({ length: 7 }).map((_, i) => <SkeletonLineupRow key={i} />)}</>;
+}
+
+const ArtistRow = React.memo(function ArtistRow({ act, isExpanded, isFav, showStageLabel, stageLabel, onToggleExpand, onToggleFav }: {
+  act: ArtistEntry; isExpanded: boolean; isFav: boolean; showStageLabel: boolean;
+  stageLabel: Record<string, string>;
+  onToggleExpand: (name: string) => void; onToggleFav: (act: ArtistEntry) => void;
+}) {
+  const color = STAGE_COLOR[act.stage];
+  return (
+    <View style={[styles.row, act.live && styles.rowLive]}>
+      <View style={[styles.stagePill, { backgroundColor: color }]} />
+      <TouchableOpacity
+        style={styles.rowBody}
+        activeOpacity={0.9}
+        onPress={() => onToggleExpand(act.name)}
+      >
+        <View style={styles.rowTop}>
+          <Text style={[styles.artistName, isFav && styles.artistNameFav]} numberOfLines={1}>
+            {act.name}
+          </Text>
+          <TouchableOpacity onPress={() => onToggleFav(act)} hitSlop={10} style={styles.favBtn}>
+            <MaterialIcons
+              name={isFav ? 'favorite' : 'favorite-border'}
+              size={18}
+              color={isFav ? SV.primaryContainer : SV.surfaceVariant}
+            />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.rowMeta}>
+          {act.live ? (
+            <>
+              <AudioBars color={color} />
+              <Text style={[styles.liveTag, { color }]}>LIVE</Text>
+              <View style={styles.dot} />
+            </>
+          ) : (
+            <MaterialIcons name="schedule" size={11} color={SV.onSurfaceVariant} />
+          )}
+          <Text style={styles.timeText}>{act.time}</Text>
+          {showStageLabel && (
+            <>
+              <View style={styles.dot} />
+              <Text style={[styles.stageText, { color }]}>{stageLabel[act.stage]}</Text>
+            </>
+          )}
+          <MaterialIcons
+            name={isExpanded ? 'keyboard-arrow-up' : 'keyboard-arrow-down'}
+            size={16}
+            color={SV.surfaceVariant}
+            style={{ marginLeft: 'auto' }}
+          />
+        </View>
+
+        {isExpanded && act.description && (
+          <Animated.View
+            entering={FadeIn.duration(300)}
+            exiting={FadeOut.duration(200)}
+            style={styles.dropdown}
+          >
+            <View style={styles.dropdownDivider} />
+            <View style={styles.dropdownContent}>
+              {act.imageUrl ? (
+                <Image
+                  source={{ uri: act.imageUrl }}
+                  style={styles.artistImage}
+                  contentFit="cover"
+                  transition={500}
+                />
+              ) : null}
+              <Text style={styles.descriptionText}>{act.description}</Text>
+            </View>
+          </Animated.View>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+});
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function LineupScreen() {
@@ -1015,7 +1097,7 @@ export default function LineupScreen() {
         setFavs(map);
       }
       // Logged out → empty favs (no hardcoded defaults)
-      setTimeout(() => setLoading(false), 800);
+      setLoading(false);
     })();
   }, []);
 
@@ -1029,22 +1111,24 @@ export default function LineupScreen() {
   }));
   const STAGE_LABEL = lang === "hu" ? STAGE_LABEL_HU : STAGE_LABEL_EN;
 
-  // FAVOURITES mode: all favs across all days, optionally filtered by stage
-  const favActs = ARTISTS.filter(a => favs[a.id])
-    .filter(a => favStageFilter === 'ALL' || a.stage.toUpperCase() === favStageFilter);
+  const favActs = useMemo(
+    () => ARTISTS.filter(a => favs[a.id]).filter(a =>
+      favStageFilter === 'ALL' || a.stage.toUpperCase() === favStageFilter),
+    [favs, favStageFilter],
+  );
 
-  const acts = stage === 'FAVOURITES'
-    ? favActs
-    : ARTISTS.filter((a) => {
-        if (a.day !== day) return false;
-        if (stage !== "ALL" && a.stage.toUpperCase() !== stage) return false;
-        return true;
-      });
+  const acts = useMemo(
+    () => stage === 'FAVOURITES'
+      ? favActs
+      : ARTISTS.filter(a =>
+          a.day === day && (stage === 'ALL' || a.stage.toUpperCase() === stage)),
+    [stage, day, favActs],
+  );
 
-  const toggleExpand = (name: string) =>
-    setExpandedArtist(prev => (prev === name ? null : name));
+  const toggleExpand = useCallback((name: string) =>
+    setExpandedArtist(prev => prev === name ? null : name), []);
 
-  const toggleFav = async (act: ArtistEntry) => {
+  const toggleFav = useCallback(async (act: ArtistEntry) => {
     const next = !favs[act.id];
     setFavs(f => ({ ...f, [act.id]: next }));
 
@@ -1055,7 +1139,7 @@ export default function LineupScreen() {
       await supabase.from('favourites').insert({
         user_id:        session.user.id,
         appointment_id: act.id,
-        artist_name:    act.name,   // stored for profile display without needing a join
+        artist_name:    act.name,
       });
     } else {
       await supabase
@@ -1064,7 +1148,19 @@ export default function LineupScreen() {
         .eq('user_id', session.user.id)
         .eq('appointment_id', act.id);
     }
-  };
+  }, [favs]);
+
+  const renderActItem = useCallback(({ item: act }: { item: ArtistEntry }) => (
+    <ArtistRow
+      act={act}
+      isExpanded={expandedArtist === act.name}
+      isFav={!!favs[act.id]}
+      showStageLabel={stage === 'ALL'}
+      stageLabel={STAGE_LABEL}
+      onToggleExpand={toggleExpand}
+      onToggleFav={toggleFav}
+    />
+  ), [expandedArtist, favs, stage, STAGE_LABEL, toggleExpand, toggleFav]);
 
   const favCount = Object.values(favs).filter(Boolean).length;
   const isFavMode = stage === 'FAVOURITES';
@@ -1151,126 +1247,19 @@ export default function LineupScreen() {
           ))}
         </ScrollView>
 
-        <ScrollView style={styles.list} showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.listContent}>
-          {loading
-            ? Array.from({ length: 7 }).map((_, i) => <SkeletonLineupRow key={i} />)
-            : acts.map((act, i) => {
-              const isExpanded = expandedArtist === act.name;
-              return (
-                <View
-                  key={`${act.name}-${i}`}
-                  style={[styles.row, act.live && styles.rowLive]}
-                >
-                  <View
-                    style={[
-                      styles.stagePill,
-                      { backgroundColor: STAGE_COLOR[act.stage] },
-                    ]}
-                  />
-                  <TouchableOpacity
-                    style={styles.rowBody}
-                    activeOpacity={0.9}
-                    onPress={() => toggleExpand(act.name)}
-                  >
-                    <View style={styles.rowTop}>
-                      <Text
-                        style={[
-                          styles.artistName,
-                          favs[act.id] && styles.artistNameFav,
-                        ]}
-                        numberOfLines={1}
-                      >
-                        {act.name}
-                      </Text>
-                      <TouchableOpacity
-                        onPress={() => toggleFav(act)}
-                        hitSlop={10}
-                        style={styles.favBtn}
-                      >
-                        <MaterialIcons
-                          name={favs[act.id] ? "favorite" : "favorite-border"}
-                          size={18}
-                          color={
-                            favs[act.id]
-                              ? SV.primaryContainer
-                              : SV.surfaceVariant
-                          }
-                        />
-                      </TouchableOpacity>
-                    </View>
-
-                    <View style={styles.rowMeta}>
-                      {act.live ? (
-                        <>
-                          <AudioBars color={STAGE_COLOR[act.stage]} />
-                          <Text
-                            style={[
-                              styles.liveTag,
-                              { color: STAGE_COLOR[act.stage] },
-                            ]}
-                          >
-                            LIVE
-                          </Text>
-                          <View style={styles.dot} />
-                        </>
-                      ) : (
-                        <MaterialIcons
-                          name="schedule"
-                          size={11}
-                          color={SV.onSurfaceVariant}
-                        />
-                      )}
-                      <Text style={styles.timeText}>{act.time}</Text>
-                      {stage === "ALL" && (
-                        <>
-                          <View style={styles.dot} />
-                          <Text style={[styles.stageText, { color: STAGE_COLOR[act.stage] }]}>
-                            {STAGE_LABEL[act.stage]}
-                          </Text>
-                        </>
-                      )}
-                      <MaterialIcons
-                        name={
-                          isExpanded
-                            ? "keyboard-arrow-up"
-                            : "keyboard-arrow-down"
-                        }
-                        size={16}
-                        color={SV.surfaceVariant}
-                        style={{ marginLeft: "auto" }}
-                      />
-                    </View>
-
-                    {isExpanded && act.description && (
-                      <Animated.View
-                        entering={FadeIn.duration(300)}
-                        exiting={FadeOut.duration(200)}
-                        style={styles.dropdown}
-                      >
-                        <View style={styles.dropdownDivider} />
-                        <View style={styles.dropdownContent}>
-                          {act.imageUrl && (
-                            <Image
-                              source={{ uri: act.imageUrl }}
-                              style={styles.artistImage}
-                              contentFit="cover"
-                              transition={500}
-                            />
-                          )}
-                          <Text style={styles.descriptionText}>
-                            {act.description}
-                          </Text>
-                        </View>
-                      </Animated.View>
-                    )}
-                  </TouchableOpacity>
-                </View>
-              );
-            })}
-
-          <View style={{ height: 120 }} />
-        </ScrollView>
+        <FlatList
+          style={styles.list}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          data={loading ? [] : acts}
+          keyExtractor={(act) => act.id}
+          renderItem={renderActItem}
+          ListHeaderComponent={loading ? <SkeletonList /> : null}
+          ListFooterComponent={<View style={{ height: 120 }} />}
+          initialNumToRender={10}
+          windowSize={5}
+          maxToRenderPerBatch={5}
+        />
       </>}
 
       <CartFAB />
