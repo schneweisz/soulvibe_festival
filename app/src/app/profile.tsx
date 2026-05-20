@@ -216,11 +216,11 @@ export default function ProfileScreen() {
               <View style={styles.modalSection}>
                 <Text style={styles.modalSectionTitle}>{lang === 'hu' ? 'STATUSZ' : 'STATUS'}</Text>
                 <View style={[styles.modalStatusBox, { backgroundColor: `${themeColor}10`, borderColor: `${themeColor}30` }]}>
-                  <View style={[styles.modalStatusDot, { backgroundColor: selectedTicket.is_used ? SV.outline : SV.primaryContainer }]} />
-                  <Text style={[styles.modalStatusText, { color: selectedTicket.is_used ? SV.onSurfaceVariant : SV.primaryContainer }]}>
+                  <View style={[styles.modalStatusDot, { backgroundColor: selectedTicket.is_used ? SV.primaryContainer : SV.outline }]} />
+                  <Text style={[styles.modalStatusText, { color: selectedTicket.is_used ? SV.primaryContainer : SV.onSurfaceVariant }]}>
                     {selectedTicket.is_used 
-                      ? (lang === 'hu' ? 'FELHASZNÁLVA' : 'ALREADY ACTIVATED') 
-                      : (lang === 'hu' ? 'AKTÍV / ÉRVÉNYES' : 'ACTIVE / VALID')}
+                      ? (lang === 'hu' ? 'AKTÍV (BENT VAGY)' : 'ACTIVE (ENTERED)') 
+                      : (lang === 'hu' ? 'INAKTÍV (MÉG NINCS BEVÁLTVA)' : 'INACTIVE (NOT REDEEMED YET)')}
                   </Text>
                 </View>
               </View>
@@ -397,9 +397,11 @@ export default function ProfileScreen() {
                       </Text>
                       <Text style={styles.ticketId}>ID: {ticket.ticket_id}</Text>
                     </View>
-                    <View style={styles.liveBadge}>
-                      <View style={styles.liveDot} />
-                      <Text style={styles.liveText}>{ticket.is_used ? 'USED' : 'VALID'}</Text>
+                    <View style={[styles.liveBadge, { borderColor: ticket.is_used ? 'rgba(57,255,20,0.5)' : 'rgba(255,255,255,0.2)', backgroundColor: ticket.is_used ? 'rgba(57,255,20,0.15)' : 'rgba(255,255,255,0.05)' }]}>
+                      <View style={[styles.liveDot, { backgroundColor: ticket.is_used ? SV.primaryContainer : SV.outline }]} />
+                      <Text style={[styles.liveText, { color: ticket.is_used ? SV.primaryContainer : SV.onSurfaceVariant }]}>
+                        {ticket.is_used ? 'ACTIVE' : 'INACTIVE'}
+                      </Text>
                     </View>
                   </View>
                   <View style={styles.ticketActions}>
