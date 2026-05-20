@@ -47,9 +47,11 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return;
     }
 
-    // Row missing — create it (covers accounts created before the trigger existed)
-    const lat = 46.874 + Math.random() * (46.896 - 46.874);
-    const lon = 17.918 + Math.random() * (17.965 - 17.918);
+    // Row missing — create it (covers accounts created before the trigger existed).
+    // Position is stored as canvas pixel coordinates {cx, cy} so all clients
+    // display it identically without any GPS→canvas conversion.
+    const cx = 220 + Math.random() * (1180 - 220);
+    const cy = 420 + Math.random() * (1280 - 420);
 
     await supabase.from('profiles').insert({
       id:       userId,
@@ -57,7 +59,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email:    userEmail ?? null,
       balance:  0,
       points:   0,
-      position: { lat, lon },
+      position: { cx, cy },
       friends:  [],
     });
 

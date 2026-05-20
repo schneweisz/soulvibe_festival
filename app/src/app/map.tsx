@@ -346,6 +346,7 @@ export default function MapScreen() {
   const [gpsPos, setGpsPos] = useState<{ x: number; y: number; inBounds: boolean } | null>(null);
   const [dbPos,  setDbPos]  = useState<{ x: number; y: number } | null>(null);
   const [friendMarkers, setFriendMarkers] = useState<{ username: string; x: number; y: number }[]>([]);
+  const centeredOnUser = useRef(false); // ensures auto-center only fires once
 
   // Fetch own DB position + friend positions
   useEffect(() => {
@@ -360,8 +361,14 @@ export default function MapScreen() {
         .eq('id', session.user.id)
         .single();
 
-      if (myProfile?.position?.lat != null && myProfile.position?.lon != null) {
-        const c = gpsToCanvas(myProfile.position.lat, myProfile.position.lon);
+      // Position is now stored as canvas pixel coords {cx, cy} — no conversion needed.
+      // Legacy rows with {lat, lon} fall through to null so the GPS fallback is used.
+      const pos = myProfile?.position;
+      if (pos?.cx != null && pos?.cy != null) {
+        setDbPos({ x: pos.cx, y: pos.cy });
+      } else if (pos?.lat != null && pos?.lon != null) {
+        // Migrate: convert old GPS record to canvas coords on first view
+        const c = gpsToCanvas(pos.lat, pos.lon);
         setDbPos({ x: c.x, y: c.y });
       }
 
@@ -371,10 +378,20 @@ export default function MapScreen() {
       const { data: friendData } = await supabase
         .from('profiles').select('id, username, position').in('id', ids);
       const markers = (friendData ?? [])
-        .filter((f: any) => f.position?.lat != null && f.position?.lon != null)
+        .filter((f: any) => {
+          const p = f.position;
+          return (p?.cx != null && p?.cy != null) || (p?.lat != null && p?.lon != null);
+        })
         .map((f: any) => {
-          const c = gpsToCanvas(f.position.lat, f.position.lon);
-          return { username: f.username ?? 'RAVER', x: c.x, y: c.y };
+          const p = f.position;
+          let x: number, y: number;
+          if (p?.cx != null && p?.cy != null) {
+            x = p.cx; y = p.cy;
+          } else {
+            const c = gpsToCanvas(p.lat, p.lon);
+            x = c.x; y = c.y;
+          }
+          return { username: f.username ?? 'RAVER', x, y };
         });
       setFriendMarkers(markers);
     })();
@@ -413,6 +430,31 @@ export default function MapScreen() {
   const scale = useSharedValue(1);
   const savedScale = useSharedValue(1);
 
+  // Compute the translate needed to place canvas point (cx, cy) at the centre of
+  // the visible viewport when the canvas is rendered at the given scale.
+  // React Native scales the canvas around its OWN geometric centre (MAP_W/2, MAP_H/2),
+  // so the formula must account for that pivot shift.
+  function centreOn(cx: number, cy: number, S: number) {
+    const tx = SW / 2 + MAP_W / 2 * (S - 1) - cx * S;
+    const ty = SH / 2 + MAP_H / 2 * (S - 1) - cy * S;
+    return { tx, ty };
+  }
+
+  // Auto-center on the user's DB position the first time it loads
+  useEffect(() => {
+    if (!dbPos || centeredOnUser.current) return;
+    centeredOnUser.current = true;
+    const S   = 1.4;
+    const PAN = { duration: 600, easing: Easing.out(Easing.cubic) };
+    const { tx, ty } = centreOn(dbPos.x, dbPos.y, S);
+    translateX.value = withTiming(tx, PAN);
+    translateY.value = withTiming(ty, PAN);
+    scale.value      = withTiming(S, PAN);
+    savedTX.value    = tx;
+    savedTY.value    = ty;
+    savedScale.value = S;
+  }, [dbPos]);
+
   const panGesture = Gesture.Pan()
     .onUpdate(e => { translateX.value = savedTX.value + e.translationX; translateY.value = savedTY.value + e.translationY; })
     .onEnd(() => { savedTX.value = translateX.value; savedTY.value = translateY.value; });
@@ -433,23 +475,22 @@ export default function MapScreen() {
   const zoomIn  = () => { const n = Math.min(MAX_SCALE, scale.value * 1.5); scale.value = withTiming(n, ZOOM_CFG); savedScale.value = n; };
   const zoomOut = () => { const n = Math.max(MIN_SCALE, scale.value / 1.5); scale.value = withTiming(n, ZOOM_CFG); savedScale.value = n; };
   const recenter = () => {
-    // Pan to: live GPS → DB position → map centre
     const target = (gpsPos && gpsPos.inBounds) ? gpsPos : (dbPos ?? { x: 580, y: 800 });
-    const tx = SW / 2 - target.x;
-    const ty = SH / 2 - target.y;
+    const S = 1.4;
+    const { tx, ty } = centreOn(target.x, target.y, S);
     translateX.value = withTiming(tx, PAN_CFG); translateY.value = withTiming(ty, PAN_CFG);
-    scale.value = withTiming(1.4, PAN_CFG);
-    savedTX.value = tx; savedTY.value = ty; savedScale.value = 1.4;
+    scale.value = withTiming(S, PAN_CFG);
+    savedTX.value = tx; savedTY.value = ty; savedScale.value = S;
   };
 
   // Navigate to a specific POI
   const focusPOI = useCallback((poi: POI) => {
-    const targetX = SW / 2 - poi.x;
-    const targetY = SH / 2 - poi.y - 80;
-    translateX.value = withTiming(targetX, PAN_CFG);
-    translateY.value = withTiming(targetY, PAN_CFG);
-    scale.value = withTiming(1.6, PAN_CFG);
-    savedTX.value = targetX; savedTY.value = targetY; savedScale.value = 1.6;
+    const S = 1.6;
+    const { tx, ty } = centreOn(poi.x, poi.y, S);
+    translateX.value = withTiming(tx, PAN_CFG);
+    translateY.value = withTiming(ty, PAN_CFG);
+    scale.value = withTiming(S, PAN_CFG);
+    savedTX.value = tx; savedTY.value = ty; savedScale.value = S;
     setTimeout(() => openSheet(poi), 300);
   }, []);
 
