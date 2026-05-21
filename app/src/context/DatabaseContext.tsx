@@ -364,10 +364,16 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
     const requestSub = supabase
       .channel(`requests:${user.id}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, (payload) => {
-          const rec = (payload.new || payload.old) as any;
-          if (rec?.sender_id === user.id || rec?.receiver_id === user.id) {
+          // On INSERT/UPDATE, 'new' has the data. On DELETE, 'old' has the data.
+          const newRec = payload.new as any;
+          const oldRec = payload.old as any;
+          
+          const isSender = newRec?.sender_id === user.id || oldRec?.sender_id === user.id;
+          const isReceiver = newRec?.receiver_id === user.id || oldRec?.receiver_id === user.id;
+
+          if (isSender || isReceiver) {
               refreshRequests();
-              if (payload.eventType === 'DELETE' || (payload.new as any)?.status === 'accepted') {
+              if (payload.eventType === 'DELETE' || newRec?.status === 'accepted') {
                   refreshAll();
               }
           }
