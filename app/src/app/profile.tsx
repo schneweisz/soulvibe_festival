@@ -42,8 +42,7 @@ export default function ProfileScreen() {
     acceptFriendRequest,
     rejectFriendRequest,
     cancelFriendRequest,
-    removeFriend,
-    updateUsername
+    removeFriend
   } = useDatabase();
 
   const [friendInput, setFriendInput] = useState('');

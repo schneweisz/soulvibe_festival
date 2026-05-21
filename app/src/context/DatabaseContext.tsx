@@ -67,6 +67,7 @@ type DatabaseContextType = {
   friends: Friend[];
   pendingRequests: FriendRequest[];
   outgoingRequests: FriendRequest[];
+  locker: LockerReservation | null;
   loading: boolean;
   refreshAll: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -75,15 +76,13 @@ type DatabaseContextType = {
   refreshFavourites: () => Promise<void>;
   refreshFriends: () => Promise<void>;
   refreshRequests: () => Promise<void>;
+  refreshLocker: () => Promise<void>;
   updateUsername: (newUsername: string) => Promise<boolean>;
   sendFriendRequest: (username: string) => Promise<{ success: boolean; error?: string }>;
   acceptFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   rejectFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   cancelFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   removeFriend: (friendId: string) => Promise<{ success: boolean; error?: string }>;
-  locker: LockerReservation | null;
-  refreshLocker: () => Promise<void>;
-  updateUsername: (username: string) => Promise<boolean>;
 };
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -208,6 +207,16 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }, []);
 
+  const fetchLocker = useCallback(async (userId: string) => {
+    const { data } = await supabase
+      .from('lockers')
+      .select('id, hub_name, slot_number, pin_code, reserved_at')
+      .eq('user_id', userId)
+      .eq('status', 'occupied')
+      .maybeSingle();
+    setLocker(data ?? null);
+  }, []);
+
   const refreshProfile = useCallback(async () => {
     if (user) await fetchProfile(user.id);
   }, [user, fetchProfile]);
@@ -234,14 +243,31 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
     if (user) await fetchRequests(user.id);
   }, [user, fetchRequests]);
 
+  const refreshLocker = useCallback(async () => {
+    if (user) await fetchLocker(user.id);
+  }, [user, fetchLocker]);
+
+  const refreshAll = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    await fetchProfile(user.id);
+    await Promise.all([
+        fetchTickets(user.id), 
+        fetchTransactions(user.id), 
+        fetchFavourites(user.id), 
+        fetchRequests(user.id),
+        fetchLocker(user.id)
+    ]);
+    const { data: current } = await supabase.from('profiles').select('friends').eq('id', user.id).single();
+    if (current?.friends) await fetchFriends(current.friends);
+    else setFriends([]);
+    setLoading(false);
+  }, [user, fetchProfile, fetchTickets, fetchTransactions, fetchFavourites, fetchFriends, fetchRequests, fetchLocker]);
+
   const registerForPushNotificationsAsync = async (userId: string) => {
     if (Platform.OS === 'web') return;
-    if (!Device.isDevice) {
-        console.log('Must use physical device for push notifications');
-        return;
-    }
+    if (!Device.isDevice) return;
 
-    // Android 8+ needs a channel
     if (Platform.OS === 'android') {
         await Notifications.setNotificationChannelAsync('default', {
             name: 'default',
@@ -257,22 +283,17 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
-    if (finalStatus !== 'granted') {
-        console.log('Failed to get push token for push notification!');
-        return;
-    }
+    if (finalStatus !== 'granted') return;
 
-    // Reliable projectId extraction
     const projectId = 
       Constants.expoConfig?.extra?.eas?.projectId ?? 
       Constants.easConfig?.projectId ?? 
-      '20aeddd4-0061-4461-8ad0-447d23988d8b'; // Fallback from app.json
+      '20aeddd4-0061-4461-8ad0-447d23988d8b';
 
     try {
         const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
         if (token) {
           await supabase.from('profiles').update({ expo_push_token: token }).eq('id', userId);
-          console.log('Push token registered successfully');
         }
     } catch (e) {
         console.error('Error getting push token:', e);
@@ -280,18 +301,12 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
   };
 
   const sendFriendRequest = async (targetUsername: string) => {
-    if (!user) return { success: false, error: 'Not authenticated (user missing)' };
+    if (!user) return { success: false, error: 'Not authenticated' };
     if (!profile) return { success: false, error: 'Profile not loaded' };
     const name = targetUsername.trim();
     
     try {
-      const { data: target, error: findErr } = await supabase
-        .from('profiles')
-        .select('id, username, expo_push_token')
-        .ilike('username', name)
-        .maybeSingle();
-
-      if (findErr) return { success: false, error: `Database error: ${findErr.message}` };
+      const { data: target } = await supabase.from('profiles').select('id, username, expo_push_token').ilike('username', name).maybeSingle();
       if (!target) return { success: false, error: 'User not found' };
       if (target.id === user.id) return { success: false, error: 'Cannot add yourself' };
       if (profile.friends?.includes(target.id)) return { success: false, error: 'Already friends' };
@@ -306,7 +321,7 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: target.expo_push_token,
-            title: '🤘 Új barátkérés! / New Friend Request!',
+            title: '🤘 Barátkérés / Friend Request!',
             body: `${profile.username} bejelölt a SoulVibe-on.`,
             data: { type: 'friend_request' },
             sound: 'default',
@@ -368,63 +383,6 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
     }
   };
 
-  const refreshAll = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    const profileData = await fetchProfile(user.id);
-    const promises: Promise<any>[] = [
-      fetchTickets(user.id),
-      fetchTransactions(user.id),
-      fetchFavourites(user.id),
-      fetchPendingRequests(user.id),
-      fetchLocker(user.id),
-    ];
-    
-    if (profileData?.friends) {
-      promises.push(fetchFriends(profileData.friends));
-    } else {
-      setFriends([]);
-    }
-
-    await Promise.all(promises);
-    setLoading(false);
-  }, [user, fetchProfile, fetchTickets, fetchTransactions, fetchFavourites, fetchFriends, fetchRequests]);
-  }, [user, fetchProfile, fetchTickets, fetchTransactions, fetchFavourites, fetchFriends, fetchPendingRequests]);
-
-  const refreshProfile = useCallback(async () => {
-    if (user) await fetchProfile(user.id);
-  }, [user, fetchProfile]);
-
-  const refreshTickets = useCallback(async () => {
-    if (user) await fetchTickets(user.id);
-  }, [user, fetchTickets]);
-
-  const refreshTransactions = useCallback(async () => {
-    if (user) await fetchTransactions(user.id);
-  }, [user, fetchTransactions]);
-
-  const refreshFavourites = useCallback(async () => {
-    if (user) await fetchFavourites(user.id);
-  }, [user, fetchFavourites]);
-
-  const refreshFriends = useCallback(async () => {
-    if (profile?.friends) await fetchFriends(profile.friends);
-  }, [profile, fetchFriends]);
-
-  const fetchLocker = useCallback(async (userId: string) => {
-    const { data } = await supabase
-      .from('lockers')
-      .select('id, hub_name, slot_number, pin_code, reserved_at')
-      .eq('user_id', userId)
-      .eq('status', 'occupied')
-      .maybeSingle();
-    setLocker(data ?? null);
-  }, []);
-
-  const refreshLocker = useCallback(async () => {
-    if (user) await fetchLocker(user.id);
-  }, [user, fetchLocker]);
-
   const updateUsername = useCallback(async (newUsername: string): Promise<boolean> => {
     if (!user) return false;
     const { error } = await supabase.from('profiles').update({ username: newUsername }).eq('id', user.id);
@@ -448,29 +406,27 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, async (payload) => {
           const newRec = payload.new as any;
           const oldRec = payload.old as any;
-          
-          // Determine involvement reliably
           const isSender = newRec?.sender_id === user.id || oldRec?.sender_id === user.id;
           const isReceiver = newRec?.receiver_id === user.id || oldRec?.receiver_id === user.id;
 
           if (isSender || isReceiver) {
               refreshRequests();
-
-              // Trigger local notification for NEW incoming requests
               if (payload.eventType === 'INSERT' && newRec?.receiver_id === user.id) {
                 if (Platform.OS !== 'web') {
-                  await Notifications.scheduleNotificationAsync({
-                    content: {
-                      title: '🤘 Új barátkérés! / New Friend Request!',
-                      body: 'Valaki bejelölt téged a SoulVibe-on. Nyisd meg a profilodat!',
-                      data: { screen: 'profile' },
-                      sound: 'default',
-                    },
-                    trigger: null,
-                  });
+                  // Small delay to ensure the OS doesn't drop the immediate notification
+                  setTimeout(async () => {
+                    await Notifications.scheduleNotificationAsync({
+                      content: {
+                        title: '🤘 Új barátkérés! / New Friend Request!',
+                        body: 'Valaki bejelölt téged a SoulVibe-on. Nyisd meg a profilodat!',
+                        data: { screen: 'profile' },
+                        sound: 'default',
+                      },
+                      trigger: null,
+                    });
+                  }, 500);
                 }
               }
-
               if (payload.eventType === 'DELETE' || newRec?.status === 'accepted') {
                   refreshAll();
               }
@@ -489,38 +445,15 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
         refreshAll();
         registerForPushNotificationsAsync(session.user.id);
     } else {
-      setProfile(null);
-      setTickets([]);
-      setTransactions([]);
-      setFavourites([]);
-      setFriends([]);
-      setPendingRequests([]);
-      setLocker(null);
+      setProfile(null); setTickets([]); setTransactions([]); setFavourites([]); setFriends([]); setPendingRequests([]); setOutgoingRequests([]); setLocker(null);
     }
   }, [session, refreshAll]);
 
   return (
     <DatabaseContext.Provider value={{
-      profile,
-      tickets,
-      transactions,
-      favourites,
-      friends,
-      pendingRequests,
-      loading,
-      refreshAll,
-      refreshProfile,
-      refreshTickets,
-      refreshTransactions,
-      refreshFavourites,
-      refreshFriends,
-      updateUsername,
-      locker,
-      refreshLocker,
-      sendFriendRequest,
-      acceptFriendRequest,
-      rejectFriendRequest,
-      removeFriend
+      profile, tickets, transactions, favourites, friends, pendingRequests, outgoingRequests, locker, loading,
+      refreshAll, refreshProfile, refreshTickets, refreshTransactions, refreshFavourites, refreshFriends, refreshRequests, refreshLocker,
+      updateUsername, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, cancelFriendRequest, removeFriend
     }}>
       {children}
     </DatabaseContext.Provider>
