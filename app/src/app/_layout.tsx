@@ -9,6 +9,16 @@ import { LanguageProvider } from '../context/LanguageContext';
 import { CartProvider } from '../context/CartContext';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { DatabaseProvider } from '../context/DatabaseContext';
+import * as Notifications from 'expo-notifications';
+
+// Set up global notification handler
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 const SoulVibeDarkTheme = {
   ...DarkTheme,

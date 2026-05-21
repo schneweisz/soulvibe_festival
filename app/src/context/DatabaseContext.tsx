@@ -224,7 +224,20 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
 
   const registerForPushNotificationsAsync = async (userId: string) => {
     if (Platform.OS === 'web') return;
-    if (!Device.isDevice) return;
+    if (!Device.isDevice) {
+        console.log('Must use physical device for push notifications');
+        return;
+    }
+
+    // Android 8+ needs a channel
+    if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+            name: 'default',
+            importance: Notifications.AndroidImportance.MAX,
+            vibrationPattern: [0, 250, 250, 250],
+            lightColor: '#39FF14',
+        });
+    }
 
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -232,14 +245,25 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
-    if (finalStatus !== 'granted') return;
+    if (finalStatus !== 'granted') {
+        console.log('Failed to get push token for push notification!');
+        return;
+    }
 
-    const token = (await Notifications.getExpoPushTokenAsync({
-      projectId: Constants.expoConfig?.extra?.eas?.projectId,
-    })).data;
+    // Reliable projectId extraction
+    const projectId = 
+      Constants.expoConfig?.extra?.eas?.projectId ?? 
+      Constants.easConfig?.projectId ?? 
+      '20aeddd4-0061-4461-8ad0-447d23988d8b'; // Fallback from app.json
 
-    if (token) {
-      await supabase.from('profiles').update({ expo_push_token: token }).eq('id', userId);
+    try {
+        const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+        if (token) {
+          await supabase.from('profiles').update({ expo_push_token: token }).eq('id', userId);
+          console.log('Push token registered successfully');
+        }
+    } catch (e) {
+        console.error('Error getting push token:', e);
     }
   };
 
@@ -270,7 +294,7 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             to: target.expo_push_token,
-            title: '🤘 Barátkérés / Friend Request!',
+            title: '🤘 Új barátkérés! / New Friend Request!',
             body: `${profile.username} bejelölt a SoulVibe-on.`,
             data: { type: 'friend_request' },
             sound: 'default',
@@ -363,16 +387,32 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
 
     const requestSub = supabase
       .channel(`requests:${user.id}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, (payload) => {
-          // On INSERT/UPDATE, 'new' has the data. On DELETE, 'old' has the data.
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, async (payload) => {
           const newRec = payload.new as any;
           const oldRec = payload.old as any;
           
+          // Determine involvement reliably
           const isSender = newRec?.sender_id === user.id || oldRec?.sender_id === user.id;
           const isReceiver = newRec?.receiver_id === user.id || oldRec?.receiver_id === user.id;
 
           if (isSender || isReceiver) {
               refreshRequests();
+
+              // Trigger local notification for NEW incoming requests
+              if (payload.eventType === 'INSERT' && newRec?.receiver_id === user.id) {
+                if (Platform.OS !== 'web') {
+                  await Notifications.scheduleNotificationAsync({
+                    content: {
+                      title: '🤘 Új barátkérés! / New Friend Request!',
+                      body: 'Valaki bejelölt téged a SoulVibe-on. Nyisd meg a profilodat!',
+                      data: { screen: 'profile' },
+                      sound: 'default',
+                    },
+                    trigger: null,
+                  });
+                }
+              }
+
               if (payload.eventType === 'DELETE' || newRec?.status === 'accepted') {
                   refreshAll();
               }
