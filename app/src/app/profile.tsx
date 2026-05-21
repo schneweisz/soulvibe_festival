@@ -36,7 +36,7 @@ export default function ProfileScreen() {
     refreshAll,
     refreshProfile,
     updateUsername,
-    locker
+    locker,
     sendFriendRequest,
     acceptFriendRequest,
     rejectFriendRequest,
