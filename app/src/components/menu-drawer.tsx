@@ -130,11 +130,13 @@ function Drawer({ onClose }: { onClose: () => void }) {
     ? `https://api.dicebear.com/7.x/avataaars/png?seed=${encodeURIComponent(session.user.email)}`
     : null;
 
-  // Dynamically calculate the ticket href
-  const ticketHref = session ? (hasTicket ? '/profile' : '/ticket_shop') : '/auth';
+  // Dynamically calculate the ticket href and label
+  const ticketHref = session ? (hasTicket ? '/profile?openTicket=true' : '/ticket_shop') : '/auth';
+  const ticketLabelEn = hasTicket ? 'MY TICKET' : 'BUY TICKET';
+  const ticketLabelHu = hasTicket ? 'JEGYEM' : 'JEGYVÁSÁRLÁS';
   
   const secondaryItems: NavItem[] = [
-    { en: 'MY TICKET', hu: 'JEGYEM', icon: 'confirmation-number', href: ticketHref },
+    { en: ticketLabelEn, hu: ticketLabelHu, icon: 'confirmation-number', href: ticketHref },
     { en: 'WALLET', hu: 'PÉNZTÁRCA', icon: 'account-balance-wallet', href: '/wallet' },
     { en: 'CART', hu: 'KOSÁR', icon: 'shopping-cart', href: '/cart' },
   ];

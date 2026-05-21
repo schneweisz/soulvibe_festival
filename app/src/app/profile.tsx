@@ -1,5 +1,5 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { router, useFocusEffect } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   ScrollView,
@@ -58,11 +58,23 @@ export default function ProfileScreen() {
   const rank = getRank(profile?.points || 0);
   const progressPercent = rank.next ? ((profile?.points || 0) / rank.next) * 100 : 100;
 
+  const { openTicket } = useLocalSearchParams<{ openTicket?: string }>();
+
   useEffect(() => {
     if (profile) {
       setUsernameInput(profile.username ?? '');
     }
   }, [profile]);
+
+  // Handle deep link to open ticket modal
+  useEffect(() => {
+    if (openTicket === 'true' && tickets.length > 0 && !authLoading && !dbLoading) {
+      setSelectedTicket(tickets[0]);
+      setShowTicketModal(true);
+      // Optional: Clear the param after opening so it doesn't reopen on every focus
+      router.setParams({ openTicket: undefined });
+    }
+  }, [openTicket, tickets, authLoading, dbLoading]);
 
   // Refresh all data when the screen comes into focus
   useFocusEffect(
@@ -142,7 +154,7 @@ export default function ProfileScreen() {
 
   const displayName = profile?.username ?? session?.user?.email?.split('@')[0].toUpperCase() ?? 'RAVER';
 
-  const TicketDetailsModal = () => {
+  const renderTicketModal = () => {
     if (!selectedTicket) return null;
     
     const ticketName = selectedTicket.name.toUpperCase();
@@ -692,7 +704,7 @@ export default function ProfileScreen() {
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <TicketDetailsModal />
+      {renderTicketModal()}
       <CartFAB />
     </View>
   );

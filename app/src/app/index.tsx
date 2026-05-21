@@ -19,6 +19,8 @@ import { useLanguage } from '../context/LanguageContext';
 import { GlitchText } from '../components/glitch-text';
 import { NebulaBackground } from '../components/nebula-background';
 import { useAuth } from '../context/AuthContext';
+import { useDatabase } from '../context/DatabaseContext';
+
 // ─── Notifications setup ─────────────────────────────────────────────────────
 
 Notifications.setNotificationHandler({
@@ -119,7 +121,10 @@ export default function HomeScreen() {
   const time = useCountdown();
   const { lang } = useLanguage();
   const { user, session } = useAuth();
+  const { tickets } = useDatabase();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
+
+  const hasTicket = tickets.length > 0;
 
   // ── Push notification for venue change ───────────────────────────────────
   useEffect(() => {
@@ -169,12 +174,14 @@ export default function HomeScreen() {
               <AnimPressable 
                 style={styles.btnPrimary} 
                 onPress={() => {
-                  const hasTicket = false; // We don't have direct access to tickets here easily without more hooks, but we can check session
                   if (!session) router.push('/auth');
-                  else router.push('/profile');
+                  else if (hasTicket) router.push('/profile?openTicket=true' as any);
+                  else router.push('/ticket_shop');
                 }}
               >
-                <Text style={styles.btnPrimaryText}>{t('MY TICKET', 'JEGYEM')}</Text>
+                <Text style={styles.btnPrimaryText}>
+                  {hasTicket ? t('MY TICKET', 'JEGYEM') : t('BUY TICKET', 'JEGYVÁSÁRLÁS')}
+                </Text>
               </AnimPressable>
               <AnimPressable style={styles.btnOutline} onPress={() => router.push('/lineup' as any)}>
                 <Text style={styles.btnOutlineText}>{t('LINEUP', 'PROGRAM')}</Text>
