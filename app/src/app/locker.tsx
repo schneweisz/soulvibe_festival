@@ -22,13 +22,13 @@ import { supabase } from '../utils/supabase';
 // ─── Types & constants ────────────────────────────────────────────────────────
 
 type HubName = 'alpha' | 'beta' | 'gamma' | 'delta';
-interface HubStatus { hub_name: HubName; available: number; }
+interface HubStatus { hub_name: HubName; available: number; total: number; }
 
 const HUBS: HubName[] = ['alpha', 'beta', 'gamma', 'delta'];
 const HUB_LABELS: Record<HubName, string> = {
   alpha: 'ALPHA', beta: 'BETA', gamma: 'GAMMA', delta: 'DELTA',
 };
-const TOTAL_SLOTS = 100;
+const DEFAULT_TOTAL = 100;
 const PRICE_BASE = 2500;
 
 function getPulseDiscount(points: number): number {
@@ -63,12 +63,35 @@ export default function LockerScreen() {
   const finalPrice = Math.round(PRICE_BASE * (1 - discount));
 
   const fetchOccupancy = useCallback(async () => {
-    const { data } = await supabase.from('lockers').select('hub_name, status');
+    const { data, error: fetchErr } = await supabase.from('lockers').select('hub_name, status');
+    if (fetchErr) {
+      console.error('Error fetching lockers:', fetchErr.message);
+      setError(`Database error: ${fetchErr.message}`);
+      return;
+    }
+    
     if (data) {
-      setHubStatuses(HUBS.map(hub => ({
-        hub_name: hub,
-        available: data.filter(l => l.hub_name === hub && l.status === 'available').length,
-      })));
+      if (data.length === 0) {
+        console.warn('Locker table is empty! Seed required.');
+        setError('Vault system offline. Table contains 0 rows.');
+      } else {
+        const sample = data[0];
+        console.log('Locker data sample:', sample);
+        // If we have rows but none are available, let the user know for debugging
+        const anyAvailable = data.some(l => l.status === 'available');
+        if (!anyAvailable) {
+          console.warn('No rows found with status="available"');
+        }
+      }
+      
+      setHubStatuses(HUBS.map(hub => {
+        const hubRows = data.filter(l => l.hub_name?.toLowerCase().trim() === hub.toLowerCase());
+        return {
+          hub_name: hub,
+          available: hubRows.filter(l => l.status?.toLowerCase().trim() === 'available').length,
+          total: hubRows.length,
+        };
+      }));
     }
   }, []);
 
@@ -235,11 +258,12 @@ export default function LockerScreen() {
 
             {HUBS.map(hub => {
               const status    = hubStatuses.find(s => s.hub_name === hub);
-              const available = status?.available ?? 0;
-              const isFull    = available === 0;
+              const total     = status?.total ?? DEFAULT_TOTAL;
+              const available = status?.available ?? (loadingScreen ? total : 0);
+              const isFull    = !loadingScreen && total > 0 && available === 0;
               const isSelected = selectedHub === hub;
-              const occupied  = TOTAL_SLOTS - available;
-              const pct       = Math.round((occupied / TOTAL_SLOTS) * 100);
+              const occupied  = total - available;
+              const pct       = total > 0 ? Math.round((occupied / total) * 100) : 0;
               const barColor  = pct > 80 ? '#FF6B6B' : pct > 50 ? '#F5A623' : SV.tertiaryContainer;
 
               return (
@@ -259,7 +283,7 @@ export default function LockerScreen() {
                       VAULT {HUB_LABELS[hub]}
                     </Text>
                     <Text style={ls.hubMeta}>
-                      {isFull ? 'CAPACITY REACHED' : `${occupied}/${TOTAL_SLOTS} SLOTS SECURED`}
+                      {isFull ? 'CAPACITY REACHED' : `${occupied}/${total} SLOTS SECURED`}
                     </Text>
                     <View style={ls.occBar}>
                       <View style={[ls.occFill, { width: `${pct}%` as any, backgroundColor: barColor }]} />
