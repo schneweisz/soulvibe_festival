@@ -1,7 +1,9 @@
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { supabase } from '../utils/supabase';
 import { useAuth } from './AuthContext';
 import * as Notifications from 'expo-notifications';
+import * as Device from 'expo-device';
+import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 
 export interface Profile {
@@ -44,6 +46,7 @@ export interface FriendRequest {
   sender_id: string;
   sender_username: string | null;
   receiver_id: string;
+  receiver_username: string | null;
   status: 'pending' | 'accepted' | 'rejected';
   created_at: string;
 }
@@ -55,6 +58,7 @@ type DatabaseContextType = {
   favourites: Favourite[];
   friends: Friend[];
   pendingRequests: FriendRequest[];
+  outgoingRequests: FriendRequest[];
   loading: boolean;
   refreshAll: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -62,10 +66,12 @@ type DatabaseContextType = {
   refreshTransactions: () => Promise<void>;
   refreshFavourites: () => Promise<void>;
   refreshFriends: () => Promise<void>;
+  refreshRequests: () => Promise<void>;
   updateUsername: (newUsername: string) => Promise<boolean>;
   sendFriendRequest: (username: string) => Promise<{ success: boolean; error?: string }>;
   acceptFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   rejectFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
+  cancelFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   removeFriend: (friendId: string) => Promise<{ success: boolean; error?: string }>;
 };
 
@@ -79,6 +85,7 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
   const [favourites, setFavourites] = useState<Favourite[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [outgoingRequests, setOutgoingRequests] = useState<FriendRequest[]>([]);
   const [loading, setLoading] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -88,7 +95,9 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       .eq('id', userId)
       .single();
 
-    if (!error && data) {
+    if (error) {
+      console.error('Error fetching profile:', error.message);
+    } else if (data) {
       setProfile(data);
     }
     return data;
@@ -101,9 +110,7 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       .eq('profile_id', userId)
       .order('created_at', { ascending: false });
 
-    if (!error && data) {
-      setTickets(data);
-    }
+    if (!error && data) setTickets(data);
   }, []);
 
   const fetchTransactions = useCallback(async (userId: string) => {
@@ -114,9 +121,7 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       .order('created_at', { ascending: false })
       .limit(20);
 
-    if (!error && data) {
-      setTransactions(data);
-    }
+    if (!error && data) setTransactions(data);
   }, []);
 
   const fetchFavourites = useCallback(async (userId: string) => {
@@ -125,9 +130,7 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       .select('artist_name')
       .eq('user_id', userId);
 
-    if (!error && data) {
-      setFavourites(data);
-    }
+    if (!error && data) setFavourites(data);
   }, []);
 
   const fetchFriends = useCallback(async (friendIds: string[]) => {
@@ -135,184 +138,63 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       setFriends([]);
       return;
     }
-
     const { data, error } = await supabase
       .from('profiles')
       .select('id, username')
       .in('id', friendIds);
 
-    if (!error && data) {
-      setFriends(data);
-    }
+    if (!error && data) setFriends(data);
   }, []);
 
-  const fetchPendingRequests = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
+  const fetchRequests = useCallback(async (userId: string) => {
+    // Fetch INCOMING
+    const { data: incoming, error: inErr } = await supabase
       .from('friend_requests')
       .select(`
-        id,
-        sender_id,
-        receiver_id,
-        status,
-        created_at,
+        id, sender_id, receiver_id, status, created_at,
         profiles!friend_requests_sender_id_fkey(username)
       `)
       .eq('receiver_id', userId)
       .eq('status', 'pending');
 
-    if (!error && data) {
-      const formatted = data.map((r: any) => ({
+    if (!inErr && incoming) {
+      setPendingRequests(incoming.map((r: any) => ({
         id: r.id,
         sender_id: r.sender_id,
         sender_username: r.profiles?.username,
         receiver_id: r.receiver_id,
+        receiver_username: null,
         status: r.status,
         created_at: r.created_at
-      }));
-      setPendingRequests(formatted);
+      })));
+    } else {
+        setPendingRequests([]);
+    }
+
+    // Fetch OUTGOING
+    const { data: outgoing, error: outErr } = await supabase
+      .from('friend_requests')
+      .select(`
+        id, sender_id, receiver_id, status, created_at,
+        profiles!friend_requests_receiver_id_fkey(username)
+      `)
+      .eq('sender_id', userId)
+      .eq('status', 'pending');
+
+    if (!outErr && outgoing) {
+      setOutgoingRequests(outgoing.map((r: any) => ({
+        id: r.id,
+        sender_id: r.sender_id,
+        sender_username: null,
+        receiver_id: r.receiver_id,
+        receiver_username: r.profiles?.username,
+        status: r.status,
+        created_at: r.created_at
+      })));
+    } else {
+        setOutgoingRequests([]);
     }
   }, []);
-
-  const sendFriendRequest = async (targetUsername: string) => {
-    if (!user) return { success: false, error: 'Not authenticated (user missing)' };
-    if (!profile) return { success: false, error: 'Profile not loaded (please restart app)' };
-    const name = targetUsername.trim();
-    
-    try {
-      // 1. Find target user (case-insensitive match using .ilike)
-      const { data: target, error: findErr } = await supabase
-        .from('profiles')
-        .select('id, username, expo_push_token')
-        .ilike('username', name)
-        .maybeSingle();
-
-      if (findErr) return { success: false, error: `Database error: ${findErr.message}` };
-      if (!target) return { success: false, error: 'User not found' };
-      if (target.id === user.id) return { success: false, error: 'Cannot add yourself' };
-      if (profile.friends?.includes(target.id)) return { success: false, error: 'Already friends' };
-
-      // 2. Create request
-      const { error: reqErr } = await supabase
-        .from('friend_requests')
-        .insert({
-          sender_id: user.id,
-          receiver_id: target.id,
-          status: 'pending'
-        });
-
-      if (reqErr) {
-        console.error('Friend request insertion error:', reqErr);
-        return { success: false, error: `Request failed: ${reqErr.message}` };
-      }
-
-      // 3. Send push notification if possible
-      if (target.expo_push_token && Platform.OS !== 'web') {
-        await fetch('https://exp.host/--/api/v2/push/send', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: target.expo_push_token,
-            title: 'New Friend Request! 🤘',
-            body: `${profile.username} wants to connect with you on SoulVibe.`,
-            data: { type: 'friend_request' },
-          }),
-        });
-      }
-
-      return { success: true };
-    } catch (e: any) {
-      return { success: false, error: e.message };
-    }
-  };
-
-  const acceptFriendRequest = async (requestId: string) => {
-    if (!user) return { success: false, error: 'Not authenticated' };
-    try {
-      // Use RPC for atomic bidirectional add
-      const { data: request } = await supabase
-        .from('friend_requests')
-        .select('sender_id')
-        .eq('id', requestId)
-        .single();
-
-      if (!request) return { success: false, error: 'Request not found' };
-
-      const { error: rpcErr } = await supabase.rpc('add_friend_bidirectional', {
-        friend_id: request.sender_id,
-        requester_id: user.id,
-      });
-
-      if (rpcErr) return { success: false, error: rpcErr.message };
-
-      // Update request status
-      await supabase
-        .from('friend_requests')
-        .update({ status: 'accepted' })
-        .eq('id', requestId);
-
-      await refreshAll();
-      return { success: true };
-    } catch (e: any) {
-      return { success: false, error: e.message };
-    }
-  };
-
-  const rejectFriendRequest = async (requestId: string) => {
-    const { error } = await supabase
-      .from('friend_requests')
-      .update({ status: 'rejected' })
-      .eq('id', requestId);
-    
-    if (error) return { success: false, error: error.message };
-    await fetchPendingRequests(user!.id);
-    return { success: true };
-  };
-
-  const removeFriend = async (friendId: string) => {
-    if (!user || !profile?.friends) return { success: false, error: 'Not authenticated' };
-    try {
-      const newIds = profile.friends.filter(id => id !== friendId);
-      const { error } = await supabase
-        .from('profiles')
-        .update({ friends: newIds })
-        .eq('id', user.id);
-      
-      if (error) return { success: false, error: error.message };
-      
-      // Also remove from other person's list (bidirectional cleanup)
-      const { data: other } = await supabase.from('profiles').select('friends').eq('id', friendId).single();
-      if (other) {
-        const otherNewIds = (other.friends || []).filter((id: string) => id !== user.id);
-        await supabase.from('profiles').update({ friends: otherNewIds }).eq('id', friendId);
-      }
-
-      await refreshAll();
-      return { success: true };
-    } catch (e: any) {
-      return { success: false, error: e.message };
-    }
-  };
-
-  const refreshAll = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    const profileData = await fetchProfile(user.id);
-    const promises: Promise<any>[] = [
-      fetchTickets(user.id),
-      fetchTransactions(user.id),
-      fetchFavourites(user.id),
-      fetchPendingRequests(user.id)
-    ];
-    
-    if (profileData?.friends) {
-      promises.push(fetchFriends(profileData.friends));
-    } else {
-      setFriends([]);
-    }
-
-    await Promise.all(promises);
-    setLoading(false);
-  }, [user, fetchProfile, fetchTickets, fetchTransactions, fetchFavourites, fetchFriends, fetchPendingRequests]);
 
   const refreshProfile = useCallback(async () => {
     if (user) await fetchProfile(user.id);
@@ -331,54 +213,187 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
   }, [user, fetchFavourites]);
 
   const refreshFriends = useCallback(async () => {
-    if (profile?.friends) await fetchFriends(profile.friends);
-  }, [profile, fetchFriends]);
+    const { data } = await supabase.from('profiles').select('friends').eq('id', user?.id).single();
+    if (data?.friends) await fetchFriends(data.friends);
+    else setFriends([]);
+  }, [user, fetchFriends]);
+
+  const refreshRequests = useCallback(async () => {
+    if (user) await fetchRequests(user.id);
+  }, [user, fetchRequests]);
+
+  const registerForPushNotificationsAsync = async (userId: string) => {
+    if (Platform.OS === 'web') return;
+    if (!Device.isDevice) return;
+
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync();
+      finalStatus = status;
+    }
+    if (finalStatus !== 'granted') return;
+
+    const token = (await Notifications.getExpoPushTokenAsync({
+      projectId: Constants.expoConfig?.extra?.eas?.projectId,
+    })).data;
+
+    if (token) {
+      await supabase.from('profiles').update({ expo_push_token: token }).eq('id', userId);
+    }
+  };
+
+  const sendFriendRequest = async (targetUsername: string) => {
+    if (!user) return { success: false, error: 'Not authenticated (user missing)' };
+    if (!profile) return { success: false, error: 'Profile not loaded' };
+    const name = targetUsername.trim();
+    
+    try {
+      const { data: target, error: findErr } = await supabase
+        .from('profiles')
+        .select('id, username, expo_push_token')
+        .ilike('username', name)
+        .maybeSingle();
+
+      if (findErr) return { success: false, error: `Database error: ${findErr.message}` };
+      if (!target) return { success: false, error: 'User not found' };
+      if (target.id === user.id) return { success: false, error: 'Cannot add yourself' };
+      if (profile.friends?.includes(target.id)) return { success: false, error: 'Already friends' };
+      if (outgoingRequests.some(r => r.receiver_id === target.id)) return { success: false, error: 'Request already sent' };
+
+      const { error: reqErr } = await supabase.from('friend_requests').insert({ sender_id: user.id, receiver_id: target.id, status: 'pending' });
+      if (reqErr) return { success: false, error: `Request failed: ${reqErr.message}` };
+
+      if (target.expo_push_token) {
+        await fetch('https://exp.host/--/api/v2/push/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: target.expo_push_token,
+            title: '🤘 Barátkérés / Friend Request!',
+            body: `${profile.username} bejelölt a SoulVibe-on.`,
+            data: { type: 'friend_request' },
+            sound: 'default',
+          }),
+        }).catch(e => console.log('Push error:', e));
+      }
+
+      await refreshRequests();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const acceptFriendRequest = async (requestId: string) => {
+    if (!user) return { success: false, error: 'Not authenticated' };
+    try {
+      const { data: request } = await supabase.from('friend_requests').select('sender_id').eq('id', requestId).single();
+      if (!request) return { success: false, error: 'Request not found' };
+
+      const { error: rpcErr } = await supabase.rpc('add_friend_bidirectional', { friend_id: request.sender_id, requester_id: user.id });
+      if (rpcErr) return { success: false, error: rpcErr.message };
+
+      await supabase.from('friend_requests').delete().eq('id', requestId);
+      await refreshAll();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    }
+  };
+
+  const rejectFriendRequest = async (requestId: string) => {
+    const { error } = await supabase.from('friend_requests').delete().eq('id', requestId);
+    if (error) return { success: false, error: error.message };
+    await refreshRequests();
+    return { success: true };
+  };
+
+  const cancelFriendRequest = async (requestId: string) => {
+    const { error } = await supabase.from('friend_requests').delete().eq('id', requestId);
+    if (error) return { success: false, error: error.message };
+    await refreshRequests();
+    return { success: true };
+  };
+
+  const removeFriend = async (friendId: string) => {
+    if (!user) return { success: false, error: 'Not authenticated' };
+    try {
+      setLoading(true);
+      const { error: rpcErr } = await supabase.rpc('remove_friend_bidirectional', { friend_id: friendId, user_id: user.id });
+      if (rpcErr) throw rpcErr;
+      await supabase.from('friend_requests').delete().or(`and(sender_id.eq.${user.id},receiver_id.eq.${friendId}),and(sender_id.eq.${friendId},receiver_id.eq.${user.id})`);
+      await refreshAll();
+      return { success: true };
+    } catch (e: any) {
+      return { success: false, error: e.message };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshAll = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    await fetchProfile(user.id);
+    await Promise.all([fetchTickets(user.id), fetchTransactions(user.id), fetchFavourites(user.id), fetchRequests(user.id)]);
+    const { data: current } = await supabase.from('profiles').select('friends').eq('id', user.id).single();
+    if (current?.friends) await fetchFriends(current.friends);
+    else setFriends([]);
+    setLoading(false);
+  }, [user, fetchProfile, fetchTickets, fetchTransactions, fetchFavourites, fetchFriends, fetchRequests]);
 
   const updateUsername = useCallback(async (newUsername: string): Promise<boolean> => {
     if (!user) return false;
-    const { error } = await supabase
-      .from('profiles')
-      .update({ username: newUsername })
-      .eq('id', user.id);
-    if (!error) {
-      setProfile(prev => prev ? { ...prev, username: newUsername } : null);
-    }
+    const { error } = await supabase.from('profiles').update({ username: newUsername }).eq('id', user.id);
+    if (!error) setProfile(prev => prev ? { ...prev, username: newUsername } : null);
     return !error;
   }, [user]);
 
+  // REALTIME SUBSCRIPTIONS
+  useEffect(() => {
+    if (!user) return;
+
+    const profileSub = supabase
+      .channel(`profile:${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, () => {
+        refreshAll();
+      })
+      .subscribe();
+
+    const requestSub = supabase
+      .channel(`requests:${user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'friend_requests' }, (payload) => {
+          const rec = (payload.new || payload.old) as any;
+          if (rec?.sender_id === user.id || rec?.receiver_id === user.id) {
+              refreshRequests();
+              if (payload.eventType === 'DELETE' || (payload.new as any)?.status === 'accepted') {
+                  refreshAll();
+              }
+          }
+      })
+      .subscribe();
+
+    return () => {
+      profileSub.unsubscribe();
+      requestSub.unsubscribe();
+    };
+  }, [user, refreshAll, refreshRequests]);
+
   useEffect(() => {
     if (session?.user) {
-      refreshAll();
+        refreshAll();
+        registerForPushNotificationsAsync(session.user.id);
     } else {
-      setProfile(null);
-      setTickets([]);
-      setTransactions([]);
-      setFavourites([]);
-      setFriends([]);
-      setPendingRequests([]);
+      setProfile(null); setTickets([]); setTransactions([]); setFavourites([]); setFriends([]); setPendingRequests([]); setOutgoingRequests([]);
     }
   }, [session, refreshAll]);
 
   return (
     <DatabaseContext.Provider value={{
-      profile,
-      tickets,
-      transactions,
-      favourites,
-      friends,
-      pendingRequests,
-      loading,
-      refreshAll,
-      refreshProfile,
-      refreshTickets,
-      refreshTransactions,
-      refreshFavourites,
-      refreshFriends,
-      updateUsername,
-      sendFriendRequest,
-      acceptFriendRequest,
-      rejectFriendRequest,
-      removeFriend
+      profile, tickets, transactions, favourites, friends, pendingRequests, outgoingRequests, loading,
+      refreshAll, refreshProfile, refreshTickets, refreshTransactions, refreshFavourites, refreshFriends, refreshRequests,
+      updateUsername, sendFriendRequest, acceptFriendRequest, rejectFriendRequest, cancelFriendRequest, removeFriend
     }}>
       {children}
     </DatabaseContext.Provider>
@@ -387,8 +402,6 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
 
 export const useDatabase = () => {
   const context = useContext(DatabaseContext);
-  if (context === undefined) {
-    throw new Error('useDatabase must be used within a DatabaseProvider');
-  }
+  if (context === undefined) throw new Error('useDatabase must be used within a DatabaseProvider');
   return context;
 };
