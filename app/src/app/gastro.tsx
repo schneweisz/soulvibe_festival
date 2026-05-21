@@ -22,6 +22,7 @@ interface MenuItem {
   desc: L10n;
   price: number;
   image: string;
+  allergens?: string[];
 }
 
 interface Vendor {
@@ -52,6 +53,7 @@ const VENDORS: Vendor[] = [
         desc: { en: 'Double patty, cheddar, secret hot BBQ sauce', hu: 'Dupla húspogácsa, cheddar sajt, titkos BBQ szósz' },
         price: 4100,
         image: 'https://images.unsplash.com/photo-1594212699903-ec8a3eca50f5?q=80&w=300&auto=format&fit=crop',
+        allergens: ['GLUTEN', 'DAIRY', 'EGG'],
       },
       {
         id: 'tg2',
@@ -59,6 +61,7 @@ const VENDORS: Vendor[] = [
         desc: { en: 'French fries, warm cheddar sauce, pulled pork', hu: 'Sült burgonya, meleg cheddar szósz, húzott sertéshús' },
         price: 2400,
         image: 'https://images.unsplash.com/photo-1585109649139-366815a0d713?q=80&w=300&auto=format&fit=crop',
+        allergens: ['GLUTEN', 'DAIRY', 'PORK'],
       },
       {
         id: 'tg3',
@@ -66,6 +69,7 @@ const VENDORS: Vendor[] = [
         desc: { en: 'Hot, sticky-glazed crispy chicken wings', hu: 'Forró, ragacsos mázas ropogós csirkeszárnyak' },
         price: 2900,
         image: 'https://images.unsplash.com/photo-1527477396000-e27163b481c2?q=80&w=300&auto=format&fit=crop',
+        allergens: ['GLUTEN', 'EGG'],
       },
     ],
   },
@@ -86,6 +90,7 @@ const VENDORS: Vendor[] = [
         desc: { en: 'Spicy Italian salami, mozzarella, chili oil', hu: 'Csípős olasz szalámi, mozzarella, chili olaj' },
         price: 1800,
         image: 'https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=300&auto=format&fit=crop',
+        allergens: ['GLUTEN', 'DAIRY', 'PORK'],
       },
       {
         id: 'wp2',
@@ -93,6 +98,7 @@ const VENDORS: Vendor[] = [
         desc: { en: 'Goat cheese, cherry tomatoes, fresh basil', hu: 'Kecskesajt, koktélparadicsom, friss bazsalikom' },
         price: 1700,
         image: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?q=80&w=300&auto=format&fit=crop',
+        allergens: ['GLUTEN', 'DAIRY'],
       },
       {
         id: 'wp3',
@@ -100,6 +106,7 @@ const VENDORS: Vendor[] = [
         desc: { en: 'Spicy ground beef, red onion, smoky BBQ', hu: 'Fűszeres darált marha, vöröshagyma, füstös BBQ' },
         price: 1900,
         image: 'https://images.unsplash.com/photo-1541745537411-b8046dc6d66c?q=80&w=300&auto=format&fit=crop',
+        allergens: ['GLUTEN', 'DAIRY'],
       },
     ],
   },
@@ -120,6 +127,7 @@ const VENDORS: Vendor[] = [
         desc: { en: 'Neon-green gin-tonic with green apple & lime', hu: 'Neonfényes gin-tonic zöld almával és lime-mal' },
         price: 2900,
         image: 'https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?q=80&w=300&auto=format&fit=crop',
+        allergens: ['ALCOHOL'],
       },
       {
         id: 'lb2',
@@ -127,6 +135,7 @@ const VENDORS: Vendor[] = [
         desc: { en: 'Spiced dark rum, ginger beer, lime juice & ice', hu: 'Fűszeres dark rum, gyömbérsör, lime lé & jég' },
         price: 3100,
         image: 'https://images.unsplash.com/photo-1470337458703-46ad1756a187?q=80&w=300&auto=format&fit=crop',
+        allergens: ['ALCOHOL', 'GLUTEN'],
       },
       {
         id: 'lb3',
@@ -134,6 +143,7 @@ const VENDORS: Vendor[] = [
         desc: { en: 'Electric purple blueberry gin shooter', hu: 'Elektromos lila áfonya gin shooter' },
         price: 1500,
         image: 'https://images.unsplash.com/photo-1556679343-c7306c1976bc?q=80&w=300&auto=format&fit=crop',
+        allergens: ['ALCOHOL'],
       },
       {
         id: 'lb4',
@@ -161,6 +171,7 @@ const VENDORS: Vendor[] = [
         desc: { en: 'Warm waffle, salted caramel, crushed hazelnuts, whipped cream', hu: 'Meleg gofri, sós karamell, törött mogyoró, tejszínhab' },
         price: 1950,
         image: 'https://images.unsplash.com/photo-1504754524776-8f4f37790ca0?q=80&w=300&auto=format&fit=crop',
+        allergens: ['GLUTEN', 'DAIRY', 'EGG', 'NUTS'],
       },
       {
         id: 'ms2',
@@ -168,6 +179,7 @@ const VENDORS: Vendor[] = [
         desc: { en: 'Huge crepe stuffed with Nutella, banana slices & powdered sugar', hu: 'Hatalmas palacsinta Nutellával, banánszeletekkel és porcukorral töltve' },
         price: 1650,
         image: 'https://images.unsplash.com/photo-1519676867240-f03562e64548?q=80&w=300&auto=format&fit=crop',
+        allergens: ['GLUTEN', 'DAIRY', 'EGG', 'NUTS'],
       },
     ],
   },
@@ -261,6 +273,15 @@ export default function GastroScreen() {
                       <Text style={[styles.menuItemPrice, { color: vendor.accentColor }]}>
                         {item.price.toLocaleString('hu-HU')} Ft
                       </Text>
+                      {item.allergens && item.allergens.length > 0 && (
+                        <View style={styles.allergenRow}>
+                          {item.allergens.map(a => (
+                            <View key={a} style={styles.allergenPill}>
+                              <Text style={styles.allergenText}>{a}</Text>
+                            </View>
+                          ))}
+                        </View>
+                      )}
                     </View>
 
                     {qty === 0 ? (
@@ -411,6 +432,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '800',
     letterSpacing: 0.3,
+  },
+
+  // ── Allergens ──────────────────────────────────────────────────────────────
+  allergenRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 6,
+  },
+  allergenPill: {
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  allergenText: {
+    color: SV.onSurfaceVariant,
+    fontFamily: 'monospace',
+    fontSize: 9,
+    letterSpacing: 0.4,
   },
 
   // ── Get button / stepper ───────────────────────────────────────────────────
