@@ -1,7 +1,6 @@
 import { DarkTheme, ThemeProvider } from '@react-navigation/native';
 import { router, useSegments } from 'expo-router';
 import React, { useEffect } from 'react';
-
 import { AnimatedSplashOverlay } from '../components/animated-icon';
 import { MenuProvider } from '../components/menu-drawer';
 import AppTabs from '../components/app-tabs';
@@ -9,6 +8,32 @@ import { LanguageProvider } from '../context/LanguageContext';
 import { CartProvider } from '../context/CartContext';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { DatabaseProvider } from '../context/DatabaseContext';
+
+import * as Notifications from 'expo-notifications';
+import { Platform } from 'react-native';
+
+
+useEffect(() => {
+  if (Platform.OS === 'web') return;
+
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,  
+    }),
+  });
+
+  if (Platform.OS === 'android') {
+    Notifications.setNotificationChannelAsync('default', {
+      name: 'default',
+      importance: Notifications.AndroidImportance.MAX,
+    });
+  }
+}, []);
+
 
 const SoulVibeDarkTheme = {
   ...DarkTheme,

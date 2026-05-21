@@ -5,6 +5,7 @@ import React, { useCallback, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Animated,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -54,6 +55,7 @@ export default function LockerScreen() {
   );
   const [error, setError]               = useState<string | null>(null);
   const [justReserved, setJustReserved] = useState(false);
+  const [showPayModal, setShowPayModal] = useState(false);
 
   const unlockScale = useRef(new Animated.Value(1)).current;
   const unlockGlow  = useRef(new Animated.Value(0)).current;
@@ -112,6 +114,7 @@ export default function LockerScreen() {
 
   const handleReserve = async () => {
     if (!session || !selectedHub) return;
+    setShowPayModal(false);
     setReserving(true);
     setError(null);
 
@@ -124,17 +127,23 @@ export default function LockerScreen() {
       if (data?.error === 'hub_full') {
         setError('This hub is at capacity. Select another vault.');
       } else if (data?.error === 'already_reserved') {
-        // DB has a reservation the context hadn't loaded — sync and show it.
         await refreshLocker();
       } else {
         setError('Reservation failed. Try again.');
       }
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const currentBalance = profile?.balance ?? 0;
       await supabase
         .from('profiles')
-        .update({ points: points + 50 })
+        .update({ balance: currentBalance - finalPrice, points: points + 50 })
         .eq('id', session.user.id);
+      await supabase.from('transactions').insert([{
+        user_id: session.user.id,
+        amount: finalPrice,
+        type: 'debit',
+        label: `Vault ${HUB_LABELS[selectedHub]} Locker Reservation`,
+      }]);
       await Promise.all([refreshLocker(), fetchOccupancy()]);
       setJustReserved(true);
     }
@@ -301,7 +310,7 @@ export default function LockerScreen() {
 
             <TouchableOpacity
               style={[ls.reserveBtn, (!selectedHub || reserving) && ls.reserveBtnDisabled]}
-              onPress={handleReserve}
+              onPress={() => { if (selectedHub) setShowPayModal(true); }}
               disabled={!selectedHub || reserving}
               activeOpacity={0.85}
             >
@@ -323,6 +332,103 @@ export default function LockerScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* ── Payment Modal ── */}
+      <Modal
+        visible={showPayModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPayModal(false)}
+      >
+        <View style={ls.modalOverlay}>
+          <View style={ls.modalCard}>
+            <View style={ls.modalGlow} />
+
+            {/* Title */}
+            <View style={ls.modalTitleRow}>
+              <MaterialIcons name="account-balance-wallet" size={20} color={SV.tertiaryContainer} />
+              <Text style={ls.modalTitle}>VAULT PAYMENT</Text>
+            </View>
+
+            {/* Wallet balance */}
+            <View style={ls.modalBalanceBox}>
+              <Text style={ls.modalBalanceLabel}>WALLET BALANCE</Text>
+              <Text style={[
+                ls.modalBalanceValue,
+                (profile?.balance ?? 0) < finalPrice && { color: '#FF6B6B' },
+              ]}>
+                {(profile?.balance ?? 0).toLocaleString()} HUF
+              </Text>
+            </View>
+
+            {/* Price breakdown */}
+            <View style={ls.modalDivider} />
+            <View style={ls.modalRow}>
+              <Text style={ls.modalRowKey}>BASE PRICE</Text>
+              <Text style={ls.modalRowVal}>{PRICE_BASE.toLocaleString()} HUF/DAY</Text>
+            </View>
+            {discount > 0 && (
+              <View style={ls.modalRow}>
+                <Text style={ls.modalRowKey}>
+                  PULSE DISCOUNT {(discount * 100).toFixed(0)}%
+                </Text>
+                <Text style={[ls.modalRowVal, { color: SV.primaryContainer }]}>
+                  -{Math.round(PRICE_BASE * discount).toLocaleString()} HUF
+                </Text>
+              </View>
+            )}
+            <View style={ls.modalDivider} />
+            <View style={ls.modalRow}>
+              <Text style={[ls.modalRowKey, { color: SV.onSurface, fontWeight: '700' }]}>TOTAL</Text>
+              <Text style={[ls.modalRowVal, { color: SV.tertiaryContainer, fontSize: 16, fontWeight: '900' }]}>
+                {finalPrice.toLocaleString()} HUF
+              </Text>
+            </View>
+
+            {/* Balance after */}
+            {(profile?.balance ?? 0) >= finalPrice ? (
+              <View style={ls.modalRow}>
+                <Text style={ls.modalRowKey}>BALANCE AFTER</Text>
+                <Text style={ls.modalRowVal}>
+                  {((profile?.balance ?? 0) - finalPrice).toLocaleString()} HUF
+                </Text>
+              </View>
+            ) : (
+              <View style={ls.modalInsufficientBox}>
+                <MaterialIcons name="warning" size={14} color="#FF6B6B" />
+                <Text style={ls.modalInsufficientText}>INSUFFICIENT FUNDS — TOP UP YOUR WALLET</Text>
+              </View>
+            )}
+
+            {/* Buttons */}
+            <TouchableOpacity
+              style={[
+                ls.modalConfirmBtn,
+                (profile?.balance ?? 0) < finalPrice && ls.modalConfirmBtnDisabled,
+              ]}
+              onPress={handleReserve}
+              disabled={(profile?.balance ?? 0) < finalPrice}
+              activeOpacity={0.85}
+            >
+              <MaterialIcons
+                name="lock"
+                size={18}
+                color={(profile?.balance ?? 0) < finalPrice ? SV.onSurfaceVariant : SV.deepCharcoal}
+              />
+              <Text style={[
+                ls.modalConfirmBtnText,
+                (profile?.balance ?? 0) < finalPrice && { color: SV.onSurfaceVariant },
+              ]}>
+                CONFIRM PURCHASE
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={ls.modalCancelBtn} onPress={() => setShowPayModal(false)} activeOpacity={0.75}>
+              <Text style={ls.modalCancelBtnText}>CANCEL</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -434,4 +540,81 @@ const ls = StyleSheet.create({
   reserveBtnTextDisabled: { color: SV.onSurfaceVariant },
 
   disclaimer: { color: SV.outline, fontFamily: 'monospace', fontSize: 9, textAlign: 'center', marginTop: 12, letterSpacing: 0.5 },
+
+  // Payment modal
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.75)',
+    alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24,
+  },
+  modalCard: {
+    width: '100%', backgroundColor: SV.deepCharcoal,
+    borderRadius: 20, borderWidth: 1.5, borderColor: `${SV.tertiaryContainer}40`,
+    padding: 24, overflow: 'hidden',
+    shadowColor: SV.tertiaryContainer, shadowOpacity: 0.25, shadowRadius: 24,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  modalGlow: {
+    position: 'absolute', top: -60, right: -60,
+    width: 200, height: 200, borderRadius: 100,
+    backgroundColor: `${SV.tertiaryContainer}08`,
+  },
+  modalTitleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20,
+  },
+  modalTitle: {
+    color: SV.tertiaryContainer, fontFamily: 'monospace',
+    fontSize: 15, fontWeight: '900', letterSpacing: 2,
+  },
+  modalBalanceBox: {
+    backgroundColor: SV.surfaceContainerHigh, borderRadius: 12,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16,
+  },
+  modalBalanceLabel: {
+    color: SV.onSurfaceVariant, fontFamily: 'monospace',
+    fontSize: 10, letterSpacing: 1.5, marginBottom: 4,
+  },
+  modalBalanceValue: {
+    color: SV.primaryContainer, fontFamily: 'monospace',
+    fontSize: 24, fontWeight: '900',
+  },
+  modalDivider: {
+    height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: 10,
+  },
+  modalRow: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    alignItems: 'center', paddingVertical: 6,
+  },
+  modalRowKey: {
+    color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, letterSpacing: 0.5,
+  },
+  modalRowVal: {
+    color: SV.onSurface, fontFamily: 'monospace', fontSize: 13, fontWeight: '700',
+  },
+  modalInsufficientBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(255,107,107,0.1)', borderWidth: 1, borderColor: 'rgba(255,107,107,0.3)',
+    borderRadius: 10, paddingHorizontal: 12, paddingVertical: 10, marginTop: 6,
+  },
+  modalInsufficientText: {
+    color: '#FF6B6B', fontFamily: 'monospace', fontSize: 10, letterSpacing: 0.5, flex: 1,
+  },
+  modalConfirmBtn: {
+    backgroundColor: SV.tertiaryContainer, borderRadius: 12, paddingVertical: 15,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    marginTop: 20,
+    shadowColor: SV.tertiaryContainer, shadowOpacity: 0.4, shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  modalConfirmBtnDisabled: { backgroundColor: SV.surfaceContainerHigh, shadowOpacity: 0 },
+  modalConfirmBtnText: {
+    color: SV.deepCharcoal, fontWeight: '900', fontSize: 13, letterSpacing: 1.5,
+  },
+  modalCancelBtn: {
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', borderRadius: 12,
+    paddingVertical: 13, alignItems: 'center', marginTop: 10,
+  },
+  modalCancelBtnText: {
+    color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 12, letterSpacing: 1,
+  },
 });

@@ -1,5 +1,5 @@
 import React, { useState ,useEffect } from 'react';
-import { View, StyleSheet, TextInput, ScrollView, Alert, ActivityIndicator, Pressable } from 'react-native';
+import { View, StyleSheet, TextInput, ScrollView, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
 import { supabase } from '../utils/supabase';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -9,6 +9,10 @@ import { ThemedText } from '../components/themed-text';
 import { ScreenHeader } from '../components/screen-header';
 import { useAuth } from '../context/AuthContext';
 import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
+
+// Handle redirect for web (though standard OAuth doesn't strictly need it for the popup-less flow)
+WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
   const { session } = useAuth();
@@ -47,14 +51,56 @@ export default function AuthScreen() {
   }
 
   async function signInWithGoogle() {
+    if (loading) return;
     setLoading(true);
-    const redirectTo = Linking.createURL('/auth/callback');
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo },
-    });
-    if (error) Alert.alert('Google Login Error', error.message);
-    setLoading(false);
+
+    try {
+      // Use a consistent path without leading slash
+      const redirectTo = Linking.createURL('auth/callback');
+      console.log('Auth Redirect URL:', redirectTo);
+      
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+          skipBrowserRedirect: Platform.OS !== 'web',
+        },
+      });
+
+      if (error) throw error;
+
+      if (Platform.OS !== 'web' && data?.url) {
+        const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
+        
+        if (result.type === 'success' && result.url) {
+          // Parse tokens from the URL fragment (Supabase uses # for tokens)
+          const fragment = result.url.split('#')[1];
+          if (fragment) {
+            const params = fragment.split('&').reduce((acc, part) => {
+              const [key, value] = part.split('=');
+              acc[key] = value;
+              return acc;
+            }, {} as Record<string, string>);
+
+            if (params.error) {
+              throw new Error(params.error_description?.replace(/\+/g, ' ') || params.error);
+            }
+
+            if (params.access_token) {
+              const { error: sessionError } = await supabase.auth.setSession({
+                access_token: params.access_token,
+                refresh_token: params.refresh_token,
+              });
+              if (sessionError) throw sessionError;
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      Alert.alert('Google Login Error', error.message);
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
