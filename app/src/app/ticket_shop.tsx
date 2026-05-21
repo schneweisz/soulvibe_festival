@@ -146,6 +146,7 @@ export default function TicketShopScreen() {
       return;
     }
 
+
     if (balance < option.price) {
       Alert.alert(
         t('INSUFFICIENT BALANCE', 'KEVÉS EGYENLEG'),
@@ -162,22 +163,59 @@ export default function TicketShopScreen() {
 
     try {
       const newBalance = balance - option.price;
+
+      // Update balance
       const { error: updateErr } = await supabase
         .from('profiles')
         .update({ balance: newBalance })
         .eq('id', session.user.id);
 
-      if (updateErr) throw updateErr;
+      if (updateErr) {
+        console.error('Balance update error:', updateErr);
+        throw updateErr;
+      }
 
-      await supabase.from('transactions').insert([{
+      // Insert transaction
+      const { error: transErr } = await supabase.from('transactions').insert([{
         user_id: session.user.id,
         amount: option.price,
         type: 'debit',
         label: `Ticket: ${option.type} ${option.duration}`,
       }]);
+      
+      if (transErr) {
+        console.error('Transaction insertion error:', transErr);
+        throw transErr;
+      }
 
-      await refreshProfile();
-      setPurchasedTicket(option);
+      // Insert ticket
+      const ticketData = {
+        profile_id: session.user.id,
+        ticket_id: ticketId,
+        type: option.type,
+        name: `${option.type} ${option.duration} PASS`,
+        description: option.perks.join(', '),
+        price: option.price,
+        currency: 'HUF',
+        is_used: false,
+        valid_from: '2026-07-17T00:00:00+00:00',   
+        valid_until: '2026-07-19T23:59:59+00:00',  
+      };
+
+      const { data: ticketResult, error: ticketErr } = await supabase
+        .from('tickets')
+        .insert([ticketData])
+        .select();
+
+      if (ticketErr) {
+        console.error('Ticket insertion error:', ticketErr);
+        throw ticketErr;
+      }
+      
+
+      await refreshAll();
+      
+      setPurchasedTicket({ option, id: ticketId });
     } catch (err: any) {
       Alert.alert('Error', err.message);
     } finally {
