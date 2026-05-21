@@ -314,7 +314,7 @@ function WeatherStrip() {
         <Text style={s.weatherCond}>SUNNY</Text>
         <View style={s.weatherSep} />
         <MaterialIcons name="water-drop" size={11} color="#4FC3F7" />
-        <Text style={s.weatherData}>5% RAIN</Text>
+        <Text style={s.weatherData}>NO RAIN TODAY</Text>
         <View style={s.weatherSep} />
         <MaterialIcons name="air" size={11} color={SV.onSurfaceVariant} />
         <Text style={s.weatherData}>12 km/h</Text>
@@ -1318,7 +1318,7 @@ const s = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 11,
     paddingVertical: 5,
-    backgroundColor: 'rgba(22,17,10,0.97)',
+    backgroundColor: 'rgba(22,17,10,0)',
     borderWidth: 1,
     borderColor: 'rgba(245,166,35,0.30)',
     borderRadius: 20,
