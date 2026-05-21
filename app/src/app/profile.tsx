@@ -25,14 +25,15 @@ import { getRank } from '../utils/rank';
 export default function ProfileScreen() {
   const { lang, setLang } = useLanguage();
   const { session, loading: authLoading, signOut } = useAuth();
-  const {
-    profile,
-    tickets,
-    transactions,
-    favourites,
-    friends,
+  const { 
+    profile, 
+    tickets, 
+    transactions, 
+    favourites, 
+    friends, 
     pendingRequests,
-    loading: dbLoading,
+    outgoingRequests,
+    loading: dbLoading, 
     refreshAll,
     refreshProfile,
     updateUsername,
@@ -40,7 +41,9 @@ export default function ProfileScreen() {
     sendFriendRequest,
     acceptFriendRequest,
     rejectFriendRequest,
-    removeFriend
+    cancelFriendRequest,
+    removeFriend,
+    updateUsername
   } = useDatabase();
 
   const [friendInput, setFriendInput] = useState('');
@@ -126,6 +129,11 @@ export default function ProfileScreen() {
   async function handleReject(id: string) {
     const res = await rejectFriendRequest(id);
     if (!res.success) Alert.alert('Error', res.error || 'Failed to reject');
+  }
+
+  async function handleCancel(id: string) {
+      const res = await cancelFriendRequest(id);
+      if (!res.success) Alert.alert('Error', res.error || 'Failed to cancel');
   }
 
   async function handleRemove(id: string) {
@@ -569,11 +577,11 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Friend Requests (New Section) */}
+        {/* Incoming Friend Requests */}
         {pendingRequests && pendingRequests.length > 0 && (
           <View style={styles.card}>
             <View style={styles.cardTitleRow}>
-              <Text style={styles.cardTitle}>{lang === 'hu' ? 'BARÁTKÉRÉSEK' : 'FRIEND REQUESTS'}</Text>
+              <Text style={styles.cardTitle}>{lang === 'hu' ? 'BEÉRKEZŐ BARÁTKÉRÉSEK' : 'INCOMING REQUESTS'}</Text>
               <View style={styles.requestCount}>
                 <Text style={styles.requestCountText}>{pendingRequests.length}</Text>
               </View>
@@ -589,6 +597,24 @@ export default function ProfileScreen() {
                     <MaterialIcons name="close" size={20} color={SV.error} />
                   </TouchableOpacity>
                 </View>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Outgoing Friend Requests */}
+        {outgoingRequests && outgoingRequests.length > 0 && (
+          <View style={styles.card}>
+            <View style={styles.cardTitleRow}>
+              <Text style={styles.cardTitle}>{lang === 'hu' ? 'KIMENŐ BARÁTKÉRÉSEK' : 'OUTGOING REQUESTS'}</Text>
+              <MaterialIcons name="hourglass-empty" size={18} color={SV.onSurfaceVariant} />
+            </View>
+            {outgoingRequests.map(req => (
+              <View key={req.id} style={styles.reqRow}>
+                <Text style={styles.reqUsername}>{req.receiver_username}</Text>
+                <TouchableOpacity onPress={() => handleCancel(req.id)} style={styles.cancelBtn}>
+                  <Text style={styles.cancelBtnText}>{lang === 'hu' ? 'MÉGSE' : 'CANCEL'}</Text>
+                </TouchableOpacity>
               </View>
             ))}
           </View>
@@ -757,6 +783,8 @@ const styles = StyleSheet.create({
   reqActions: { flexDirection: 'row', gap: 12 },
   acceptBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(57,255,20,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: SV.primaryContainer },
   rejectBtn: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,107,107,0.1)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: SV.error },
+  cancelBtn: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
+  cancelBtnText: { color: SV.onSurfaceVariant, fontSize: 11, fontWeight: '700', fontFamily: 'monospace' },
   friendInputRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   friendInput: { flex: 1, backgroundColor: SV.surfaceContainerHigh, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', paddingHorizontal: 12, paddingVertical: 9, color: SV.onSurface, fontFamily: 'monospace', fontSize: 13 },
   friendAddBtn: { width: 40, height: 40, backgroundColor: SV.surfaceContainerHigh, borderRadius: 8, borderWidth: 1, borderColor: `${SV.tertiaryContainer}40`, alignItems: 'center', justifyContent: 'center' },
