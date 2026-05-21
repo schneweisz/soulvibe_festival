@@ -158,7 +158,7 @@ export default function HomeScreen() {
               <PulseDot />
               <Text style={styles.liveBadgeText}>{t('SYS.INIT // JULY 18 2026', 'SYS.INIT // 2026. JÚL. 18.')}</Text>
             </View>
-            <GlitchText style={styles.heroTitle}>{t('THE PULSE\nAWAKENS', 'A PULZUS\nFELÉBRED')}</GlitchText>
+            <GlitchText style={styles.heroTitle}>{t('THE PULSE\nAWAKENS', 'THE PULSE\nAWAKENS')}</GlitchText>
             <View style={styles.countRow}>
               <CountdownCell value={time.days} label={t('DAYS', 'NAP')} />
               <CountdownCell value={time.hrs} label={t('HRS', 'ÓRA')} />
