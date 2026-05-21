@@ -116,7 +116,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
   const pathname = usePathname();
   const { lang } = useLanguage();
   const { session } = useAuth();
-  const { profile, tickets } = useDatabase();
+  const { profile, tickets, locker } = useDatabase();
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
   const translateX = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
   const overlayOpacity = useRef(new Animated.Value(0)).current;
@@ -137,6 +137,7 @@ function Drawer({ onClose }: { onClose: () => void }) {
     { en: 'MY TICKET', hu: 'JEGYEM', icon: 'confirmation-number', href: ticketHref },
     { en: 'WALLET', hu: 'PÉNZTÁRCA', icon: 'account-balance-wallet', href: '/wallet' },
     { en: 'CART', hu: 'KOSÁR', icon: 'shopping-cart', href: '/cart' },
+    ...(locker ? [{ en: 'LOCKER', hu: 'SZÉF', icon: 'lock-open', href: '/locker' } as NavItem] : []),
   ];
 
   useEffect(() => {
