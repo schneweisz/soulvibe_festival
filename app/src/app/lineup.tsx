@@ -1,4 +1,4 @@
-﻿import { MaterialIcons } from "@expo/vector-icons";
+import { MaterialIcons } from "@expo/vector-icons";
 import { useLocalSearchParams } from 'expo-router';
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import {
@@ -22,6 +22,7 @@ import * as Haptics from 'expo-haptics';
 
 type DayIdx = 0 | 1 | 2;
 type StageFilter = "ALL" | "SUBURBIA" | "BASEMENT" | "GRID" | 'FAVOURITES';
+type L10n = { en: string; hu: string };
 
 interface ArtistEntry {
   id: string;          // unique appointment ID: "d{day}-{stage}-{startTime}"
@@ -31,7 +32,7 @@ interface ArtistEntry {
   stage: "suburbia" | "basement" | "grid";
   favorite: boolean;
   live?: boolean;
-  description?: string;
+  description?: L10n;
   imageUrl?: string;
 }
 
@@ -50,8 +51,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "14:00 - 15:30",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Rising star of the Hungarian trap scene with high-octane energy and futuristic soundscapes.",
+    description: {
+      en: "Rising star of the Hungarian trap scene with high-octane energy and futuristic soundscapes.",
+      hu: "A magyar trap szcéna feltörekvő csillaga, magas oktánszámú energiával és futurisztikus hangzásvilággal.",
+    },
     imageUrl:
       "https://i.scdn.co/image/ab6761610000e5ebc13193611c2e508288d29e95",
   },
@@ -61,8 +64,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "15:45 - 17:00",
     stage: "suburbia",
     favorite: false,
-    description:
-      "The unapologetic voice of the streets, known for hard-hitting lyrics and a raw, authentic flow.",
+    description: {
+      en: "The unapologetic voice of the streets, known for hard-hitting lyrics and a raw, authentic flow.",
+      hu: "Az utca kendőzetlen hangja, aki kemény szövegeiről és nyers, hiteles flow-járól ismert.",
+    },
     imageUrl:
       "https://cdn-hfhml.nitrocdn.com/SgcalPnvLecYLTVtMvgFFkFwjiPtAiMV/assets/images/optimized/rev-1beaf96/www.rap.hu/wp-content/uploads/2019/02/LMEN-PRALA.jpg",
   },
@@ -72,8 +77,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "17:15 - 18:30",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Underground Hungarian hip-hop pioneers bringing rebellious energy and cultural storytelling to the main stage.",
+    description: {
+      en: "Underground Hungarian hip-hop pioneers bringing rebellious energy and cultural storytelling to the main stage.",
+      hu: "Underground magyar hip-hop úttörők, akik lázadó energiát és kulturális történetmesélést hoznak a nagyszínpadra.",
+    },
     imageUrl: "https://i.ytimg.com/vi/-KTHTXn7aZk/maxresdefault.jpg",
   },
   {
@@ -82,8 +89,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "18:45 - 20:15",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Trap innovator with punchy beats and infectious hooks that define modern Hungarian hip-hop.",
+    description: {
+      en: "Trap innovator with punchy beats and infectious hooks that define modern Hungarian hip-hop.",
+      hu: "Trap innovátor ütős beatekkel és fülbemászó hookokkal, amelyek meghatározzák a modern magyar hip-hopot.",
+    },
     imageUrl:
       "https://upload.wikimedia.org/wikipedia/en/a/a3/Lordvoldemort.jpg",
   },
@@ -93,8 +102,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "20:30 - 22:00",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Bold trap producer bringing cinematic production and hard-hitting flows to SoulVibe.",
+    description: {
+      en: "Bold trap producer bringing cinematic production and hard-hitting flows to SoulVibe.",
+      hu: "Merész trap producer, aki moziszerű produkciókkal és kemény flow-kkal érkezik a SoulVibe-ra.",
+    },
     imageUrl:
       "https://m.blog.hu/re/recorder/image/filmrecorder/recorder_desh_20230904_097.jpg",
   },
@@ -104,8 +115,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "22:30 - 00:00",
     stage: "suburbia",
     favorite: true,
-    description:
-      "UK drill icon and global superstar bringing the London sound to the SoulVibe main stage.",
+    description: {
+      en: "UK drill icon and global superstar bringing the London sound to the SoulVibe main stage.",
+      hu: "UK drill ikon és globális szupersztár, aki elhozza a londoni hangzást a SoulVibe nagyszínpadára.",
+    },
     imageUrl:
       "https://cdn-p.smehost.net/sites/a6700d2fbaf642099802a57af8b10fe6/wp-content/uploads/2025/01/Central-Cee-PR-image-2-.jpg",
   },
@@ -115,8 +128,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "00:00 - 02:00",
     stage: "suburbia",
     favorite: false,
-    description:
-      "High-energy DJ taking the festival into the night with trap bangers and bass-heavy remixes.",
+    description: {
+      en: "High-energy DJ taking the festival into the night with trap bangers and bass-heavy remixes.",
+      hu: "Nagy energiájú DJ, aki trap slágerekkel és basszus-nehéz remixekkel viszi át a fesztivált az éjszakába.",
+    },
     imageUrl: "https://i1.sndcdn.com/artworks-000340310622-tpdu5n-t240x240.jpg",
   },
 
@@ -126,8 +141,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "14:30 - 16:00",
     stage: "basement",
     favorite: false,
-    description:
-      "Underground trap warrior with hypnotic beats and raw lyrical delivery from Budapest's streets.",
+    description: {
+      en: "Underground trap warrior with hypnotic beats and raw lyrical delivery from Budapest's streets.",
+      hu: "Underground trap harcos hipnotikus beatekkel és nyers szövegvilággal Budapest utcáiról.",
+    },
   },
   {
     day: 0,
@@ -135,8 +152,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "16:15 - 17:45",
     stage: "basement",
     favorite: false,
-    description:
-      "Fresh Hungarian rapper with smooth flows and contemporary trap production on the Basement stage.",
+    description: {
+      en: "Fresh Hungarian rapper with smooth flows and contemporary trap production on the Basement stage.",
+      hu: "Friss magyar rapperlány selymes flow-kkal és kortárs trap produkcióval a Basement színpadon.",
+    },
     imageUrl: "https://marieclaire.hu/uploads/2023/10/sissi-480x320.jpg",
   },
   {
@@ -145,8 +164,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "18:00 - 19:30",
     stage: "basement",
     favorite: false,
-    description:
-      "Versatile underground artists blending trap, cloud rap, and experimental beats.",
+    description: {
+      en: "Versatile underground artists blending trap, cloud rap, and experimental beats.",
+      hu: "Sokoldalú underground művészek, akik a trapet, a cloud rapet és az experimentális beateket ötvözik.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT20_cY43bSNS9x_bQqQXwlpYWUqdDMGpmZIA&s",
   },
@@ -156,8 +177,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "19:45 - 21:15",
     stage: "basement",
     favorite: false,
-    description:
-      "Rising trap producer crafting moody soundscapes and genre-bending productions for the underground.",
+    description: {
+      en: "Rising trap producer crafting moody soundscapes and genre-bending productions for the underground.",
+      hu: "Feltörekvő trap producer, aki hangulatos zenei világokat és műfajhatárokat feszegető produkciókat alkot az underground számára.",
+    },
     imageUrl: "https://m.blog.hu/re/recorder/file/akc-misi.jpg",
   },
   {
@@ -166,8 +189,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "21:30 - 23:00",
     stage: "basement",
     favorite: false,
-    description:
-      "Explosive collaboration featuring innovative trap production and charismatic Hungarian lyrics.",
+    description: {
+      en: "Explosive collaboration featuring innovative trap production and charismatic Hungarian lyrics.",
+      hu: "Robbanékony együttműködés innovatív trap produkcióval és karizmatikus magyar szövegekkel.",
+    },
     imageUrl: "https://m.blog.hu/re/recorder/image/filmrecorder/ress_1.jpg",
   },
   {
@@ -176,8 +201,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "23:15 - 01:00",
     stage: "basement",
     favorite: false,
-    description:
-      "Atmospheric electronic producer creating meditative soundscapes as the night deepens.",
+    description: {
+      en: "Atmospheric electronic producer creating meditative soundscapes as the night deepens.",
+      hu: "Atmoszférikus elektronikus producer, aki meditatív hangzásvilágokat hoz létre az éjszaka folyamán.",
+    },
     imageUrl:
       "https://m.blog.hu/re/recorder/image//slow_village_image_retus_final_a.JPG",
   },
@@ -188,8 +215,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "20:00 - 22:00",
     stage: "grid",
     favorite: false,
-    description:
-      "Techno pioneer bringing dark, industrial vibes to The Grid with hypnotic grooves.",
+    description: {
+      en: "Techno pioneer bringing dark, industrial vibes to The Grid with hypnotic grooves.",
+      hu: "Techno úttörő, aki sötét, indusztriális vibe-okat hoz a Gridre hipnotikus groove-okkal.",
+    },
     imageUrl:
       "https://geo-media.beatport.com/image_size/590x404/413d18d4-6ebe-429b-82a6-c52ce3ebdbc9.jpg",
   },
@@ -199,8 +228,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "22:00 - 00:00",
     stage: "grid",
     favorite: false,
-    description:
-      "Experimental electronic artist merging broken beats and ambient textures on the techno stage.",
+    description: {
+      en: "Experimental electronic artist merging broken beats and ambient textures on the techno stage.",
+      hu: "Experimentális elektronikus művész, aki tört ütemeket és ambient textúrákat vegyít a techno színpadon.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRSVHSO9MmKM6xXEu74P6r7C7u25I1Os2jiOg&s",
   },
@@ -210,8 +241,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "00:00 - 02:00",
     stage: "grid",
     favorite: false,
-    description:
-      "Minimalist techno duo crafting precise, stripped-down industrial sounds with raw energy.",
+    description: {
+      en: "Minimalist techno duo crafting precise, stripped-down industrial sounds with raw energy.",
+      hu: "Minimalista techno duó, akik precíz, lecsupaszított indusztriális hangzásokat alkotnak nyers energiával.",
+    },
     imageUrl:
       "https://i1.sndcdn.com/avatars-NEBEvdsmYEzsSrzs-J6bEpA-t1080x1080.jpg",
   },
@@ -222,8 +255,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     stage: "grid",
     favorite: true,
     live: true,
-    description:
-      "Berghain resident and techno visionary pushing the boundaries of dark industrial sound.",
+    description: {
+      en: "Berghain resident and techno visionary pushing the boundaries of dark industrial sound.",
+      hu: "Berghain rezidens és techno vizionárius, aki a sötét indusztriális hangzás határait feszegeti.",
+    },
     imageUrl:
       "https://i.scdn.co/image/ab676161000051743e28af20164a0e7d062f32ed",
   },
@@ -233,8 +268,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "04:00 - 06:00",
     stage: "grid",
     favorite: false,
-    description:
-      "Closing set specialist delivering peak-time techno and pulsating beats into the early morning.",
+    description: {
+      en: "Closing set specialist delivering peak-time techno and pulsating beats into the early morning.",
+      hu: "Zárószett-specialista, aki peak-time technót és lüktető ütemeket hoz a kora reggeli órákba.",
+    },
     imageUrl:
       "https://lh6.googleusercontent.com/proxy/ZVETL3ikqUfnU5RqpeHWycEGqvIHKqyNLWivwJIaT0aTVkgzNQHolWOth7oQfgslBxpdxtgoJd09INEz4sWrHQdAmU6438MpopgsKWc",
   },
@@ -246,8 +283,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "14:00 - 15:15",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Rising Hungarian hip-hop talent bringing energetic flows and contemporary trap beats.",
+    description: {
+      en: "Rising Hungarian hip-hop talent bringing energetic flows and contemporary trap beats.",
+      hu: "Feltörekvő magyar hip-hop tehetség energikus flow-kkal és kortárs trap beatekkel.",
+    },
     imageUrl:
       "https://i.scdn.co/image/ab6761610000e5eb56eabd0d536ce7a81a15b62d",
   },
@@ -257,8 +296,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "15:30 - 16:45",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Vocalist bringing soulful and atmospheric trap-pop elements to the main stage.",
+    description: {
+      en: "Vocalist bringing soulful and atmospheric trap-pop elements to the main stage.",
+      hu: "Vokalista, aki soulos és atmoszférikus trap-pop elemeket hoz a nagyszínpadra.",
+    },
     imageUrl: "https://pics.radio1.hu/images/yamina_1300x1300.jpg",
   },
   {
@@ -267,8 +308,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "17:00 - 18:30",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Collaborative project merging trap production with melodic sensibilities and experimental flows.",
+    description: {
+      en: "Collaborative project merging trap production with melodic sensibilities and experimental flows.",
+      hu: "Együttműködés, amely ötvözi a trap produkciót a dallamos érzékenységgel és az experimentális flow-kkal.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRzq0VyQhqmQYTQP_xF1sKQqPbSw7wwvRvcbQ&s",
   },
@@ -278,8 +321,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "18:45 - 20:15",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Producer and performer crafting intricate trap arrangements with Hungarian cultural elements.",
+    description: {
+      en: "Producer and performer crafting intricate trap arrangements with Hungarian cultural elements.",
+      hu: "Producer és előadó, aki bonyolult trap hangszereléseket készít magyar kulturális elemekkel.",
+    },
     imageUrl:
       "https://i.scdn.co/image/ab6761610000e5ebd5dbaf6de7c9679149bcee87",
   },
@@ -289,8 +334,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "20:30 - 22:00",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Charismatic rapper taking the stage before the international headliners with infectious energy.",
+    description: {
+      en: "Charismatic rapper taking the stage before the international headliners with infectious energy.",
+      hu: "Karizmatikus rapper, aki a nemzetközi főfellépők előtt lép színpadra magával ragadó energiával.",
+    },
     imageUrl:
       "https://images.genius.com/918cebae5c13274c4f74585f730fa5a3.963x963x1.jpg",
   },
@@ -301,8 +348,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     stage: "suburbia",
     favorite: true,
     live: true,
-    description:
-      "The biggest breakthrough artist of the decade, blending pop, reggaeton, and Hungarian folk.",
+    description: {
+      en: "The biggest breakthrough artist of the decade, blending pop, reggaeton, and Hungarian folk.",
+      hu: "Az évtized legnagyobb áttörést elérő előadója, aki a popot, a reggaetont és a magyar folklórt ötvözi.",
+    },
     imageUrl:
       "https://i.scdn.co/image/ab6761610000e5eb6c7e50cb7df8f1e9125a154b",
   },
@@ -312,8 +361,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "00:00 - 01:15",
     stage: "suburbia",
     favorite: true,
-    description:
-      "The architect of modern trap music, delivering a cinematic DJ set of his chart-topping hits.",
+    description: {
+      en: "The architect of modern trap music, delivering a cinematic DJ set of his chart-topping hits.",
+      hu: "A modern trap zene építésze, aki toplistás slágereiből álló, moziszerű DJ szettet ad elő.",
+    },
     imageUrl:
       "https://i.scdn.co/image/ab6761610000e5eb28f1e72b31e756ea3f3a51e7",
   },
@@ -323,8 +374,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "01:15 - 02:45",
     stage: "suburbia",
     favorite: true,
-    description:
-      "Electronic music’s most emotional and exciting innovator, creating a shared human experience.",
+    description: {
+      en: "Electronic music’s most emotional and exciting innovator, creating a shared human experience.",
+      hu: "Az elektronikus zene legérzelmesebb és legizgalmasabb innovátora, aki közös emberi élményt teremt.",
+    },
     imageUrl:
       "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Fred_Again_2025_%28cropped%29.jpg/960px-Fred_Again_2025_%28cropped%29.jpg",
   },
@@ -335,8 +388,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "14:30 - 16:00",
     stage: "basement",
     favorite: false,
-    description:
-      "Electrifying Hungarian punk-rap fusion bringing raw energy and rebellious spirit to the basement.",
+    description: {
+      en: "Electrifying Hungarian punk-rap fusion bringing raw energy and rebellious spirit to the basement.",
+      hu: "Villanyozó magyar punk-rap fúzió, amely nyers energiát és lázadó szellemet hoz a basementre.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSvthoMN1vaJ-oZ3Yke2SCDmrhR6bLmZ4en9g&s",
   },
@@ -346,8 +401,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "16:15 - 17:45",
     stage: "basement",
     favorite: false,
-    description:
-      "Hungary’s most popular YouTube collective brings their viral music parodies and massive hits to life in a spectacular, high-energy live show.",
+    description: {
+      en: "Hungary’s most popular YouTube collective brings their viral music parodies and massive hits to life in a spectacular, high-energy live show.",
+      hu: "Magyarország legnépszerűbb YouTube-kollektívája életre kelti virális zenei paródiáit és hatalmas slágereit egy látványos, nagy energiájú élő show-ban.",
+    },
     imageUrl: "https://atempo.sk/images/hirek/2025/pamkutya-koncert2.jpg",
   },
   {
@@ -356,8 +413,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "18:00 - 19:45",
     stage: "basement",
     favorite: false,
-    description:
-      "Experimental producer crafting dystopian soundscapes with industrial beats and dark aesthetics.",
+    description: {
+      en: "Experimental producer crafting dystopian soundscapes with industrial beats and dark aesthetics.",
+      hu: "Kísérletező producer, aki disztópikus hangzásvilágokat alkot indusztriális ütemekkel és sötét esztétikával.",
+    },
     imageUrl:
       "https://i.scdn.co/image/ab6761610000e5ebc33a32c07f9362477f7203a8",
   },
@@ -367,8 +426,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "20:00 - 21:30",
     stage: "basement",
     favorite: false,
-    description:
-      "Lo-fi and psychedelic hip-hop artist creating dreamy, introspective soundscapes.",
+    description: {
+      en: "Lo-fi and psychedelic hip-hop artist creating dreamy, introspective soundscapes.",
+      hu: "Lo-fi és pszichedelikus hip-hop művész, aki álomszerű, introspektív zenei tájakat hoz létre.",
+    },
     imageUrl:
       "https://pestibolcsesz.elte.hu/wp-content/uploads/2021/09/krubi.jpg",
   },
@@ -378,8 +439,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "21:45 - 23:15",
     stage: "basement",
     favorite: false,
-    description:
-      "Innovative collaboration merging slow-motion trap with ethereal electronic textures.",
+    description: {
+      en: "Innovative collaboration merging slow-motion trap with ethereal electronic textures.",
+      hu: "Innovatív együttműködés, amely ötvözi a lassított trapet az éteri elektronikus textúrákkal.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ-hjPf70KZBE9ibd6cYO_YFunMmnBiIMF-0w&s",
   },
@@ -389,8 +452,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "23:30 - 01:30",
     stage: "basement",
     favorite: false,
-    description:
-      "Dark, abstract hip-hop group pushing boundaries with unconventional production and surreal lyrics.",
+    description: {
+      en: "Dark, abstract hip-hop group pushing boundaries with unconventional production and surreal lyrics.",
+      hu: "Sötét, absztrakt hip-hop csapat, amely szokatlan produkciókkal és szürreális szövegekkel feszegeti a határokat.",
+    },
     imageUrl:
       "https://telekom-spots-prod.s3.eu-central-1.amazonaws.com/NKS_Kriminal_Beats_32d0dddf81.jpg",
   },
@@ -401,8 +466,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "20:00 - 22:00",
     stage: "grid",
     favorite: false,
-    description:
-      "Live electronic musician delivering hypnotic, meditative techno compositions on The Grid.",
+    description: {
+      en: "Live electronic musician delivering hypnotic, meditative techno compositions on The Grid.",
+      hu: "Live elektronikus zenész, aki hipnotikus, meditatív techno kompozíciókat ad elő a Griden.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTSAYkZEmt3msME0KnuPeuhoa1IptGaXTzhLg&s",
   },
@@ -412,8 +479,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "22:00 - 00:00",
     stage: "grid",
     favorite: false,
-    description:
-      "Techno duo delivering driving beats and immersive industrial soundscapes.",
+    description: {
+      en: "Techno duo delivering driving beats and immersive industrial soundscapes.",
+      hu: "Techno duó, akik sodró ütemeket és magával ragadó indusztriális hangzásvilágot hoznak.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7RioCXJD-K5d0c-KXz4P6vDP5AGYLa5lxjQ&s",
   },
@@ -423,8 +492,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "00:00 - 02:00",
     stage: "grid",
     favorite: false,
-    description:
-      "Italian techno master bringing powerful, peak-time grooves to the dancefloor.",
+    description: {
+      en: "Italian techno master bringing powerful, peak-time grooves to the dancefloor.",
+      hu: "Olasz techno mester, aki erőteljes, peak-time groove-okat hoz a tánctérre.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSgwVuqmL0Q_bQnr3nq3I04yHiLN305Ik8uZQ&s",
   },
@@ -434,8 +505,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "04:00 - 06:00",
     stage: "grid",
     favorite: false,
-    description:
-      "Closing techno specialist delivering relentless beats and industrial energy into the sunrise.",
+    description: {
+      en: "Closing techno specialist delivering relentless beats and industrial energy into the sunrise.",
+      hu: "Záró techno specialista, aki könyörtelen ütemeket és indusztriális energiát hoz a napfelkeltéig.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRMf6Cj0un87uiQ9y3dmlcckj1FoKEEG6mrWg&s",
   },
@@ -447,8 +520,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "14:00 - 15:15",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Hungarian R&B vocalist bringing smooth, soulful vibes to the closing festival day.",
+    description: {
+      en: "Hungarian R&B vocalist bringing smooth, soulful vibes to the closing festival day.",
+      hu: "Magyar R&B vokalista, aki selymes, soulos hangulatot hoz a fesztivál zárónapjára.",
+    },
     imageUrl: "https://pics.radio1.hu/images/metzker-viktoria-2026.jpg",
   },
   {
@@ -457,8 +532,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "15:30 - 16:45",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Eclectic artist blending trap, soul, and underground aesthetics with introspective lyricism.",
+    description: {
+      en: "Eclectic artist blending trap, soul, and underground aesthetics with introspective lyricism.",
+      hu: "Eklektikus művész, aki a trapet, a soult és az underground esztétikát ötvözi introspektív lírával.",
+    },
     imageUrl:
       "https://i.scdn.co/image/ab6761610000e5eb0f8ecc7f67eb89c77132e8dc",
   },
@@ -468,8 +545,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "17:00 - 18:30",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Veteran Hungarian rapper bringing boom-bap production and legendary storytelling to the stage.",
+    description: {
+      en: "Veteran Hungarian rapper bringing boom-bap production and legendary storytelling to the stage.",
+      hu: "Veterán magyar rapperek, akik boom-bap produkciót és legendás történetmesélést hoznak a színpadra.",
+    },
     imageUrl:
       "https://i.scdn.co/image/ab6761610000e5ebc3e6309de5ad64834476700c",
   },
@@ -479,8 +558,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "18:45 - 20:15",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Viral sensation delivering an upgraded main stage performance with explosive trap bangers.",
+    description: {
+      en: "Viral sensation delivering an upgraded main stage performance with explosive trap bangers.",
+      hu: "Virális szenzáció, aki egy továbbfejlesztett nagyszínpados előadást ad elő robbanékony trap slágerekkel.",
+    },
     imageUrl:
       "https://koncertsziget.hu/concert_admin/images/performers/936/9603.jpg",
   },
@@ -490,8 +571,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "20:30 - 22:00",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Rising hip-hop artist bringing fresh sounds and infectious energy before the closing headliner.",
+    description: {
+      en: "Rising hip-hop artist bringing fresh sounds and infectious energy before the closing headliner.",
+      hu: "Feltörekvő hip-hop előadó, aki friss hangzásokat és magával ragadó energiát hoz a záró főfellépő előtt.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcShZtxCjqWIxGi9A4xtfKFnu8HTskygG1XrcA&s",
   },
@@ -501,8 +584,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "00:00 - 02:00",
     stage: "suburbia",
     favorite: false,
-    description:
-      "Festival finale showcase featuring collectives bringing diverse underground styles and legacy sets.",
+    description: {
+      en: "Festival finale showcase featuring collectives bringing diverse underground styles and legacy sets.",
+      hu: "Fesztiál-finálé bemutató, amely különféle underground stílusokat és legacy szetteket felvonultató kollektívákat mutat be.",
+    },
     imageUrl:
       "https://storage.refresher.hu/article/edc627fa4cc95f60ee96.jpg?is=600x600&s=4b5cc9e2449a0e7142f57051aec7de65bc34196ac2142f6ed5ca9c0a6c0f57dd",
   },
@@ -513,8 +598,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     stage: "suburbia",
     favorite: true,
     live: true,
-    description:
-      "The ultimate rager. Cactus Jack brings the highest energy and a mind-blowing visual spectacle.",
+    description: {
+      en: "The ultimate rager. Cactus Jack brings the highest energy and a mind-blowing visual spectacle.",
+      hu: "A végső rager. Cactus Jack a legmagasabb energiát és egy észbontó vizuális látványt hoz el.",
+    },
     imageUrl:
       "https://i.scdn.co/image/ab6761610000e5eb19c2790744c792d05570bb71",
   },
@@ -524,8 +611,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "14:30 - 16:00",
     stage: "basement",
     favorite: false,
-    description:
-      "Young trap artist bringing vibrant energy and contemporary beats to Sunday's basement.",
+    description: {
+      en: "Young trap artist bringing vibrant energy and contemporary beats to Sunday's basement.",
+      hu: "Fiatal trap előadó, aki vibráló energiát és kortárs ütemeket hoz a vasárnapi basementbe.",
+    },
     imageUrl:
       "https://p16-common-sign.tiktokcdn-eu.com/tos-no1a-avt-0068c001-no/f6fd032eee1a5392ab78bb314ec0d12c~tplv-tiktokx-cropcenter:1080:1080.jpeg?dr=10399&refresh_token=444eb3fc&x-expires=1779436800&x-signature=384wlAkVxFsDjSCC9feA0lS1oZM%3D&t=4d5b0474&ps=13740610&shp=a5d48078&shcp=81f88b70&idc=no1a",
   },
@@ -535,8 +624,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "16:15 - 17:45",
     stage: "basement",
     favorite: false,
-    description:
-      "Experimental producer creating innovative trap and electronic fusion sounds.",
+    description: {
+      en: "Experimental producer creating innovative trap and electronic fusion sounds.",
+      hu: "Kísérletező producer, aki innovatív trap és elektronikus fúziós hangzásokat hoz létre.",
+    },
     imageUrl:
       "https://images.genius.com/76acd756a4cf7ac053e2c14d8fa933d9.599x599x1.jpg",
   },
@@ -546,8 +637,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "18:00 - 19:30",
     stage: "basement",
     favorite: false,
-    description:
-      "UK heavy metal-trap crossover artist bringing aggressive energy and distorted visuals.",
+    description: {
+      en: "UK heavy metal-trap crossover artist bringing aggressive energy and distorted visuals.",
+      hu: "Brit heavy metal-trap crossover művész, aki agresszív energiát és torzított vizuális világot hoz el.",
+    },
     imageUrl:
       "https://i.scdn.co/image/ab67616d00001e02e0d5cee5ea08c1cf24eb58a4",
   },
@@ -557,8 +650,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "19:45 - 21:15",
     stage: "basement",
     favorite: false,
-    description:
-      "Underground artist crafting dark, introspective trap productions with atmospheric depth.",
+    description: {
+      en: "Underground artist crafting dark, introspective trap productions with atmospheric depth.",
+      hu: "Underground művész, aki sötét, introspektív trap produkciókat készít atmoszférikus mélységgel.",
+    },
     imageUrl:
       "https://www.beasteemerch.com/shop_ordered/80055/pic/Kategoriakep/KILLA_1x1_670.jpg",
   },
@@ -568,8 +663,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "21:30 - 23:00",
     stage: "basement",
     favorite: false,
-    description:
-      "One of the most unique talents in Hungarian underground trap, blending Libyan roots with catchy melodies and powerful vocals.",
+    description: {
+      en: "One of the most unique talents in Hungarian underground trap, blending Libyan roots with catchy melodies and powerful vocals.",
+      hu: "A magyar underground trap egyik legegyedibb tehetsége, aki líbiai gyökereit fülbemászó dallamokkal és erőteljes énekkel ötvözi.",
+    },
     imageUrl:
       "https://telekom-spots-prod.s3.eu-central-1.amazonaws.com/Jqk_M1_P8t_400x400_0b8923632e.jpg",
   },
@@ -579,8 +676,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "23:15 - 01:00",
     stage: "basement",
     favorite: false,
-    description:
-      "A cornerstone of Hungarian hip-hop for over twenty years, delivering legendary boom-bap beats and honest, generation-defining rap anthems.",
+    description: {
+      en: "A cornerstone of Hungarian hip-hop for over twenty years, delivering legendary boom-bap beats and honest, generation-defining rap anthems.",
+      hu: "A magyar hip-hop alapköve több mint húsz éve, legendás boom-bap ütemekkel és őszinte, generációkat meghatározó rap himnuszokkal.",
+    },
     imageUrl:
       "https://www.a38.hu/storage/app/uploads/public/5ac/ee3/89c/thumb_2592_1200_0_0_0_auto.jpg",
   },
@@ -591,8 +690,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "20:00 - 22:00",
     stage: "grid",
     favorite: false,
-    description:
-      "Techno innovator bringing polarizing, high-intensity industrial sounds to the final Grid night.",
+    description: {
+      en: "Techno innovator bringing polarizing, high-intensity industrial sounds to the final Grid night.",
+      hu: "Techno innovátor, aki megosztó, nagy intenzitású indusztriális hangokat hoz az utolsó Grid éjszakára.",
+    },
     imageUrl: "https://i1.sndcdn.com/artworks-000188696093-s3dey1-t500x500.jpg",
   },
   {
@@ -601,8 +702,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "22:00 - 00:00",
     stage: "grid",
     favorite: false,
-    description:
-      "Hungarian techno master delivering powerful, hypnotic grooves on the dancefloor.",
+    description: {
+      en: "Hungarian techno master delivering powerful, hypnotic grooves on the dancefloor.",
+      hu: "Magyar techno mester, aki erőteljes, hipnotikus groove-okat ad elő a tánctéren.",
+    },
     imageUrl:
       "https://upload.wikimedia.org/wikipedia/commons/0/0d/Jay_Lumen.jpg?utm_source=en.wikipedia.org&utm_campaign=index&utm_content=original",
   },
@@ -612,8 +715,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "00:00 - 02:00",
     stage: "grid",
     favorite: true,
-    description:
-      "Techno titan and Lenske label head, delivering high-energy acid and industrial beats.",
+    description: {
+      en: "Techno titan and Lenske label head, delivering high-energy acid and industrial beats.",
+      hu: "Techno titán és a Lenske kiadó feje, aki nagy energiájú acid és indusztriális ütemeket hoz.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTV65pVL7CiEgdvMZ54BPRZvyOKrWr9AO5rrQ&s",
   },
@@ -623,8 +728,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "02:00 - 04:00",
     stage: "grid",
     favorite: true,
-    description:
-      "Emotional, nostalgic, yet hard-hitting techno that defies labels and captures the soul.",
+    description: {
+      en: "Emotional, nostalgic, yet hard-hitting techno that defies labels and captures the soul.",
+      hu: "Érzelmes, nosztalgikus, mégis kemény techno, amely dacol a címkékkel és megragadja a lelket.",
+    },
     imageUrl:
       "https://weraveyou.com/wp-content/uploads/2024/12/I-Hate-Models-scaled.jpg",
   },
@@ -634,8 +741,10 @@ const ARTISTS_RAW: Omit<ArtistEntry, 'id'>[] = [
     time: "04:00 - 06:00",
     stage: "grid",
     favorite: false,
-    description:
-      "Festival legend bringing an epic closing techno set as the sun rises over SoulVibe 2026.",
+    description: {
+      en: "Festival legend bringing an epic closing techno set as the sun rises over SoulVibe 2026.",
+      hu: "Fesztiál-legenda, aki egy epikus záró techno szettet hoz, miközben a nap felkel a SoulVibe 2026 felett.",
+    },
     imageUrl:
       "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSLy84zaActyVyQ14jtO8d0N5KheCOlnW8uKw&s",
   },
@@ -777,13 +886,14 @@ function FavTimeline({ acts, favs, onFav, stageLabel, lang }: {
   stageLabel: Record<string, string>; lang: string;
 }) {
   const { width: SW } = Dimensions.get('window');
+  const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
 
   if (acts.length === 0) {
     return (
       <View style={tl.empty}>
         <MaterialIcons name="wifi-off" size={44} color={SV.primaryContainer} />
-        <Text style={tl.emptyTitle}>{lang === 'hu' ? 'A FREKVENCIÁD NINCS BEHANGOLVA.' : 'YOUR FREQUENCY IS UNTUNED.'}</Text>
-        <Text style={tl.emptySub}>{lang === 'hu' ? 'NYOMJ ♡-T EGY ELŐADÓNÁL, HOGY SZINKRONIZÁLJ A RÁCCSAL.' : 'TAP ♡ NEXT TO ANY ARTIST TO SYNC WITH THE GRID.'}</Text>
+        <Text style={tl.emptyTitle}>{t('YOUR FREQUENCY IS UNTUNED.', 'A FREKVENCIÁD NINCS BEHANGOLVA.')}</Text>
+        <Text style={tl.emptySub}>{t('TAP ♡ NEXT TO ANY ARTIST TO SYNC WITH THE GRID.', 'NYOMJ ♡-T EGY ELŐADÓNÁL, HOGY SZINKRONIZÁLJ A RÁCCSAL.')}</Text>
       </View>
     );
   }
@@ -986,12 +1096,15 @@ function SkeletonList() {
   return <>{Array.from({ length: 7 }).map((_, i) => <SkeletonLineupRow key={i} />)}</>;
 }
 
-const ArtistRow = React.memo(function ArtistRow({ act, isExpanded, isFav, showStageLabel, stageLabel, onToggleExpand, onToggleFav }: {
+const ArtistRow = React.memo(function ArtistRow({ act, isExpanded, isFav, showStageLabel, stageLabel, onToggleExpand, onToggleFav, lang }: {
   act: ArtistEntry; isExpanded: boolean; isFav: boolean; showStageLabel: boolean;
   stageLabel: Record<string, string>;
   onToggleExpand: (name: string) => void; onToggleFav: (act: ArtistEntry) => void;
+  lang: string;
 }) {
   const color = STAGE_COLOR[act.stage];
+  const description = act.description ? act.description[lang as keyof L10n] : null;
+
   return (
     <View style={[styles.row, act.live && styles.rowLive]}>
       <View style={[styles.stagePill, { backgroundColor: color }]} />
@@ -1038,7 +1151,7 @@ const ArtistRow = React.memo(function ArtistRow({ act, isExpanded, isFav, showSt
           />
         </View>
 
-        {isExpanded && act.description && (
+        {isExpanded && description && (
           <Animated.View
             entering={FadeIn.duration(300)}
             exiting={FadeOut.duration(200)}
@@ -1054,7 +1167,7 @@ const ArtistRow = React.memo(function ArtistRow({ act, isExpanded, isFav, showSt
                   transition={500}
                 />
               ) : null}
-              <Text style={styles.descriptionText}>{act.description}</Text>
+              <Text style={styles.descriptionText}>{description}</Text>
             </View>
           </Animated.View>
         )}
@@ -1068,6 +1181,7 @@ const ArtistRow = React.memo(function ArtistRow({ act, isExpanded, isFav, showSt
 export default function LineupScreen() {
   const { lang } = useLanguage();
   const { filter: filterParam } = useLocalSearchParams<{ filter?: string }>();
+  const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
 
   const [day,     setDay]     = useState<DayIdx>(0);
   const [stage,   setStage]   = useState<StageFilter>("ALL");
@@ -1161,8 +1275,9 @@ export default function LineupScreen() {
       stageLabel={STAGE_LABEL}
       onToggleExpand={toggleExpand}
       onToggleFav={toggleFav}
+      lang={lang}
     />
-  ), [expandedArtist, favs, stage, STAGE_LABEL, toggleExpand, toggleFav]);
+  ), [expandedArtist, favs, stage, STAGE_LABEL, toggleExpand, toggleFav, lang]);
 
   const favCount = Object.values(favs).filter(Boolean).length;
   const isFavMode = stage === 'FAVOURITES';
@@ -1178,7 +1293,7 @@ export default function LineupScreen() {
         activeOpacity={0.8}>
         <MaterialIcons name="favorite" size={16} color={isFavMode ? '#09090E' : '#FF6B9D'} />
         <Text style={[styles.favsBtnText, isFavMode && styles.favsBtnTextActive]}>
-          {lang === 'hu' ? 'KEDVENCEIM' : 'MY FAVOURITES'}
+          {t('MY FAVOURITES', 'KEDVENCEIM')}
         </Text>
         {favCount > 0 && (
           <View style={[styles.favsBadge, isFavMode && styles.favsBadgeActive]}>
@@ -1204,7 +1319,7 @@ export default function LineupScreen() {
                   <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: STAGE_COLOR[s.toLowerCase()] }} />
                 )}
                 <Text style={[styles.chipText, favStageFilter === s && styles.chipTextActive, { marginTop: 0 }]}>
-                  {s === 'ALL' ? (lang === 'hu' ? 'MIND' : 'ALL') :
+                  {s === 'ALL' ? t('ALL', 'MIND') :
                    s === 'SUBURBIA' ? 'SubUrbia' :
                    s === 'BASEMENT' ? 'Basement' : 'The Grid'}
                 </Text>
