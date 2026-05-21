@@ -312,6 +312,12 @@ function WeatherStrip() {
         <Text style={s.weatherTemp}>32°C</Text>
         <View style={s.weatherSep} />
         <Text style={s.weatherCond}>SUNNY</Text>
+        <View style={s.weatherSep} />
+        <MaterialIcons name="water-drop" size={11} color="#4FC3F7" />
+        <Text style={s.weatherData}>5% RAIN</Text>
+        <View style={s.weatherSep} />
+        <MaterialIcons name="air" size={11} color={SV.onSurfaceVariant} />
+        <Text style={s.weatherData}>12 km/h</Text>
       </View>
     </View>
   );
@@ -1303,16 +1309,13 @@ const s = StyleSheet.create({
 
   // Weather strip
   weatherStrip: {
-    backgroundColor: '#09090E',
     alignItems: 'center',
     paddingVertical: 5,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
   },
   weatherPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 5,
     paddingHorizontal: 11,
     paddingVertical: 5,
     backgroundColor: 'rgba(22,17,10,0.97)',
@@ -1341,5 +1344,11 @@ const s = StyleSheet.create({
     fontFamily: 'monospace',
     fontSize: 10,
     letterSpacing: 1.5,
+  },
+  weatherData: {
+    color: SV.onSurfaceVariant,
+    fontFamily: 'monospace',
+    fontSize: 10,
+    letterSpacing: 0.5,
   },
 });
