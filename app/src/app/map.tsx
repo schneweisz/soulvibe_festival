@@ -23,6 +23,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SV, neonShadow } from '../constants/theme';
 import { CartFAB, ScreenHeader } from '../components/screen-header';
+import { useDatabase } from '../context/DatabaseContext';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -338,10 +339,31 @@ const TREES: Array<{ x: number; y: number; r: number }> = [
   { x:1320, y:1150, r:17 }, { x:1265, y:1200, r:15 },
 ];
 
+// Pulsing ring drawn behind the user's reserved vault POI
+function MyVaultPulseRing() {
+  const pulse = useRef(new RNAnimated.Value(1)).current;
+  useEffect(() => {
+    RNAnimated.loop(RNAnimated.sequence([
+      RNAnimated.timing(pulse, { toValue: 1.7, duration: 1100, useNativeDriver: true }),
+      RNAnimated.timing(pulse, { toValue: 1, duration: 1100, useNativeDriver: true }),
+    ])).start();
+  }, []);
+  const opacity = pulse.interpolate({ inputRange: [1, 1.7], outputRange: [0.7, 0] });
+  return (
+    <RNAnimated.View style={{
+      position: 'absolute', width: 44, height: 44, borderRadius: 22,
+      borderWidth: 2, borderColor: SV.tertiaryContainer,
+      transform: [{ scale: pulse }], opacity,
+    }} />
+  );
+}
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function MapScreen() {
   const insets = useSafeAreaInsets();
+  const { locker } = useDatabase();
+  const myVaultPoiId = locker ? `locker_${locker.hub_name}` : null;
   const [filter, setFilter] = useState<FilterKey>('ALL');
   const [selected, setSelected] = useState<POI | null>(null);
   const [legendOpen, setLegendOpen] = useState(false);
@@ -525,6 +547,20 @@ export default function MapScreen() {
           <TouchableOpacity style={s.ctrlBtn} onPress={recenter}>
             <MaterialIcons name="my-location" size={18} color={SV.primaryContainer} />
           </TouchableOpacity>
+          {myVaultPoiId && (
+            <>
+              <View style={s.ctrlDivider} />
+              <TouchableOpacity
+                style={s.ctrlBtn}
+                onPress={() => {
+                  const vaultPoi = POIS.find(p => p.id === myVaultPoiId);
+                  if (vaultPoi) focusPOI(vaultPoi);
+                }}
+              >
+                <MaterialIcons name="lock" size={18} color={SV.tertiaryContainer} />
+              </TouchableOpacity>
+            </>
+          )}
           <View style={s.ctrlDivider} />
           <TouchableOpacity style={s.ctrlBtn} onPress={zoomIn}>
             <MaterialIcons name="add" size={20} color={SV.onSurface} />
@@ -788,11 +824,13 @@ export default function MapScreen() {
 
             {/* ════ LAYER 8 — POIs ════ */}
             {POIS.filter(poi => isVisible(poi, filter)).map(poi => {
+              const isMyVault = poi.id === myVaultPoiId;
               const isLarge = poi.size === 'large';
-              const isMed   = poi.size === 'medium';
+              const isMed   = isMyVault || poi.size === 'medium';
               const boxSize = isLarge ? 72 : isMed ? 56 : 40;
               const iconSz  = isLarge ? 32 : isMed ? 23 : 17;
               const radius  = isLarge ? 16 : isMed ? 12 : 9;
+              const poiColor = isMyVault ? SV.tertiaryContainer : poi.color;
               return (
                 <TouchableOpacity
                   key={poi.id}
@@ -800,13 +838,14 @@ export default function MapScreen() {
                   onPress={() => openSheet(poi)}
                   activeOpacity={0.78}
                   hitSlop={10}>
+                  {isMyVault && <MyVaultPulseRing />}
                   <View style={[
                     s.poiBox,
-                    { width:boxSize, height:boxSize, borderRadius:radius, borderColor:poi.color, backgroundColor:`${poi.color}18` },
-                    isLarge && { shadowColor:poi.color, shadowOffset:{width:0,height:0}, shadowOpacity:0.55, shadowRadius:14, elevation:10 },
+                    { width:boxSize, height:boxSize, borderRadius:radius, borderColor:poiColor, backgroundColor:`${poiColor}22` },
+                    isLarge && { shadowColor:poiColor, shadowOffset:{width:0,height:0}, shadowOpacity:0.55, shadowRadius:14, elevation:10 },
+                    isMyVault && { borderWidth:2, shadowColor:SV.tertiaryContainer, shadowOffset:{width:0,height:0}, shadowOpacity:0.6, shadowRadius:16, elevation:12 },
                   ]}>
-                    <MaterialIcons name={poi.icon as any} size={iconSz} color={poi.color} />
-                    {/* Crowd badge for stages */}
+                    <MaterialIcons name={poi.icon as any} size={iconSz} color={poiColor} />
                     {poi.crowd && poi.size === 'large' && (
                       <View style={[s.poiCrowdBadge, {
                         backgroundColor: poi.crowd==='HIGH'?'rgba(255,107,107,0.9)':poi.crowd==='MED'?'rgba(245,166,35,0.9)':'rgba(126,200,160,0.9)'
@@ -816,12 +855,18 @@ export default function MapScreen() {
                     )}
                   </View>
                   {/* Label tag */}
-                  {poi.label ? (
-                    <View style={[s.poiTag, { borderColor:`${poi.color}45`, backgroundColor:'rgba(9,9,14,0.92)' }]}>
-                      <Text style={[s.poiTagTxt, { color: poi.color }]}>{poi.label}</Text>
-                      {poi.time && (
+                  {(poi.label || isMyVault) ? (
+                    <View style={[s.poiTag, { borderColor:`${poiColor}55`, backgroundColor:'rgba(9,9,14,0.94)' }]}>
+                      <Text style={[s.poiTagTxt, { color: poiColor }]}>
+                        {isMyVault ? 'MY VAULT' : poi.label}
+                      </Text>
+                      {isMyVault && locker ? (
+                        <Text style={[s.poiTagTime, { color:`${SV.tertiaryContainer}BB` }]}>
+                          SLOT #{String(locker.slot_number).padStart(3, '0')}
+                        </Text>
+                      ) : poi.time ? (
                         <Text style={[s.poiTagTime, { color:`${poi.color}AA` }]}>{poi.time.split('–')[0]}</Text>
-                      )}
+                      ) : null}
                     </View>
                   ) : null}
                 </TouchableOpacity>
@@ -1006,29 +1051,65 @@ export default function MapScreen() {
             )}
 
             {/* ── Locker / Vault sheet ── */}
-            {selected.type === 'lockers' && (
-              <>
-                <View style={s.sheetHead}>
-                  <View style={{ flex:1, marginRight:12 }}>
-                    <Text style={[s.stageName, { color:'#55f2ff', fontSize:18 }]}>{selected.label}</Text>
-                    <Text style={s.stageDesc}>{selected.desc}</Text>
+            {selected.type === 'lockers' && (() => {
+              const isMyHub = selected.id === myVaultPoiId;
+              return (
+                <>
+                  <View style={s.sheetHead}>
+                    <View style={{ flex:1, marginRight:12 }}>
+                      {isMyHub && (
+                        <View style={{ flexDirection:'row', alignItems:'center', gap:6, marginBottom:6 }}>
+                          <View style={{ width:7, height:7, borderRadius:3.5, backgroundColor:SV.tertiaryContainer }} />
+                          <Text style={{ color:SV.tertiaryContainer, fontFamily:'monospace', fontSize:10, letterSpacing:2, fontWeight:'700' }}>
+                            YOUR VAULT
+                          </Text>
+                        </View>
+                      )}
+                      <Text style={[s.stageName, { color:'#55f2ff', fontSize:18 }]}>{selected.label}</Text>
+                      <Text style={s.stageDesc}>{selected.desc}</Text>
+                    </View>
+                    <View style={[s.typeIcon, { borderColor:'rgba(85,242,255,0.35)', backgroundColor:'rgba(85,242,255,0.1)' }]}>
+                      <MaterialIcons name="lock" size={22} color="#55f2ff" />
+                    </View>
                   </View>
-                  <View style={[s.typeIcon, { borderColor:'rgba(85,242,255,0.35)', backgroundColor:'rgba(85,242,255,0.1)' }]}>
-                    <MaterialIcons name="lock" size={22} color="#55f2ff" />
-                  </View>
-                </View>
-                <TouchableOpacity
-                  style={[s.btnPrimary, { backgroundColor:'#55f2ff', marginTop:14 }]}
-                  onPress={() => {
-                    const hub = selected.id.replace('locker_', '');
-                    router.push(`/locker?hub=${hub}` as any);
-                  }}
-                >
-                  <MaterialIcons name="lock-open" size={18} color="#07070c" />
-                  <Text style={[s.btnPrimaryTxt, { color:'#07070c' }]}>ACCESS NEURAL VAULT</Text>
-                </TouchableOpacity>
-              </>
-            )}
+
+                  {isMyHub && locker && (
+                    <View style={{
+                      flexDirection:'row', justifyContent:'space-between',
+                      backgroundColor:'rgba(85,242,255,0.08)', borderWidth:1,
+                      borderColor:'rgba(85,242,255,0.25)', borderRadius:12,
+                      paddingHorizontal:16, paddingVertical:12, marginBottom:14,
+                    }}>
+                      <View>
+                        <Text style={{ color:SV.onSurfaceVariant, fontFamily:'monospace', fontSize:10, letterSpacing:1.5, marginBottom:3 }}>SLOT</Text>
+                        <Text style={{ color:SV.tertiaryContainer, fontFamily:'monospace', fontSize:18, fontWeight:'900' }}>
+                          #{String(locker.slot_number).padStart(3, '0')}
+                        </Text>
+                      </View>
+                      <View style={{ alignItems:'flex-end' }}>
+                        <Text style={{ color:SV.onSurfaceVariant, fontFamily:'monospace', fontSize:10, letterSpacing:1.5, marginBottom:3 }}>ACCESS CODE</Text>
+                        <Text style={{ color:SV.tertiaryContainer, fontFamily:'monospace', fontSize:18, fontWeight:'900', letterSpacing:4 }}>
+                          {locker.pin_code}
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+
+                  <TouchableOpacity
+                    style={[s.btnPrimary, { backgroundColor:'#55f2ff', marginTop: isMyHub ? 0 : 14 }]}
+                    onPress={() => {
+                      const hub = selected.id.replace('locker_', '');
+                      router.push(`/locker?hub=${hub}` as any);
+                    }}
+                  >
+                    <MaterialIcons name={isMyHub ? 'lock-open' : 'lock'} size={18} color="#07070c" />
+                    <Text style={[s.btnPrimaryTxt, { color:'#07070c' }]}>
+                      {isMyHub ? 'MANAGE MY VAULT' : 'ACCESS NEURAL VAULT'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
 
           </RNAnimated.View>
         </>

@@ -68,12 +68,14 @@ function mockSupabase() {
     update: jest.fn().mockReturnValue({
       eq: jest.fn().mockResolvedValue({ error: null }),
     }),
+    insert: jest.fn().mockResolvedValue({ error: null }),
   });
 }
 
 function mockDatabase(overrides: Record<string, any> = {}) {
+  const defaultProfile = { points: 0, balance: 10000 };
   (useDatabase as jest.Mock).mockReturnValue({
-    profile: { points: 0 },
+    profile: { ...defaultProfile, ...(overrides.profile || {}) },
     locker: null,
     refreshLocker: jest.fn().mockResolvedValue(undefined),
     ...overrides,
@@ -145,6 +147,8 @@ describe('LockerScreen', () => {
     fireEvent.press(getByText('VAULT ALPHA'));
     fireEvent.press(getByText(/RESERVE VAULT/));
     await flushAsync();
+    fireEvent.press(getByText('CONFIRM PURCHASE'));
+    await flushAsync();
 
     expect(supabase.rpc).toHaveBeenCalledWith('reserve_locker', {
       p_user_id: 'user-abc',
@@ -167,6 +171,8 @@ describe('LockerScreen', () => {
     fireEvent.press(getByText('VAULT BETA'));
     fireEvent.press(getByText(/RESERVE VAULT/));
     await flushAsync();
+    fireEvent.press(getByText('CONFIRM PURCHASE'));
+    await flushAsync();
 
     expect(getByText('This hub is at capacity. Select another vault.')).toBeTruthy();
   });
@@ -187,6 +193,8 @@ describe('LockerScreen', () => {
 
     fireEvent.press(getByText('VAULT GAMMA'));
     fireEvent.press(getByText(/RESERVE VAULT/));
+    await flushAsync();
+    fireEvent.press(getByText('CONFIRM PURCHASE'));
     await flushAsync();
 
     // Should sync, not show a confusing error
@@ -288,6 +296,8 @@ describe('LockerScreen', () => {
 
     // Delta is pre-selected — reserve button should immediately trigger RPC
     fireEvent.press(getByText(/RESERVE VAULT/));
+    await flushAsync();
+    fireEvent.press(getByText('CONFIRM PURCHASE'));
     await flushAsync();
 
     expect(supabase.rpc).toHaveBeenCalledWith('reserve_locker', {
