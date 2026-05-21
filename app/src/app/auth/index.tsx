@@ -1,17 +1,17 @@
 import React, { useState ,useEffect } from 'react';
 import { View, StyleSheet, TextInput, ScrollView, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
-import { supabase } from '../utils/supabase';
+import { supabase } from '../../utils/supabase';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { SV, neonShadow } from '../constants/theme';
-import { ThemedView } from '../components/themed-view';
-import { ThemedText } from '../components/themed-text';
-import { ScreenHeader } from '../components/screen-header';
-import { useAuth } from '../context/AuthContext';
+import { SV, neonShadow } from '../../constants/theme';
+import { ThemedView } from '../../components/themed-view';
+import { ThemedText } from '../../components/themed-text';
+import { ScreenHeader } from '../../components/screen-header';
+import { useAuth } from '../../context/AuthContext';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 
-// Handle redirect for web (though standard OAuth doesn't strictly need it for the popup-less flow)
+// Handle redirect for web
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
@@ -31,22 +31,17 @@ export default function AuthScreen() {
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) Alert.alert('Login Error', error.message);
-    // navigation handled by the session useEffect above
     setLoading(false);
   }
 
   async function signUpWithEmail() {
     setLoading(true);
-    // No emailRedirectTo — avoids the 422 from an un-whitelisted localhost URL.
-    // If email confirmation is disabled in Supabase the session is returned
-    // immediately; if it's enabled the user gets the default confirmation email.
     const { error, data } = await supabase.auth.signUp({ email, password });
     if (error) {
       Alert.alert('Sign Up Error', error.message);
     } else if (!data.session) {
       Alert.alert('Almost there!', 'Check your email and click the confirmation link, then come back to log in.');
     }
-    // If session is returned, the useEffect above handles navigation
     setLoading(false);
   }
 
@@ -73,26 +68,32 @@ export default function AuthScreen() {
         const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
         
         if (result.type === 'success' && result.url) {
-          // Parse tokens from the URL fragment (Supabase uses # for tokens)
-          const fragment = result.url.split('#')[1];
-          if (fragment) {
-            const params = fragment.split('&').reduce((acc, part) => {
+          const { params, errorCode } = Linking.parse(result.url);
+          
+          if (errorCode) throw new Error(errorCode);
+          
+          // Supabase returns tokens in the hash (#) which Linking.parse might put in params or 
+          // we might need to parse manually from the fragment.
+          let accessToken = params?.access_token;
+          let refreshToken = params?.refresh_token;
+
+          // If Linking.parse didn't get them (because of the #), parse manually from the fragment
+          if (!accessToken && result.url.includes('#')) {
+            const fragment = result.url.split('#')[1];
+            const parts = fragment.split('&');
+            for (const part of parts) {
               const [key, value] = part.split('=');
-              acc[key] = value;
-              return acc;
-            }, {} as Record<string, string>);
-
-            if (params.error) {
-              throw new Error(params.error_description?.replace(/\+/g, ' ') || params.error);
+              if (key === 'access_token') accessToken = value;
+              if (key === 'refresh_token') refreshToken = value;
             }
+          }
 
-            if (params.access_token) {
-              const { error: sessionError } = await supabase.auth.setSession({
-                access_token: params.access_token,
-                refresh_token: params.refresh_token,
-              });
-              if (sessionError) throw sessionError;
-            }
+          if (accessToken) {
+            const { error: sessionError } = await supabase.auth.setSession({
+              access_token: accessToken as string,
+              refresh_token: (refreshToken as string) || '',
+            });
+            if (sessionError) throw sessionError;
           }
         }
       }

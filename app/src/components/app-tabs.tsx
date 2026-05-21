@@ -106,9 +106,9 @@ export default function AppTabs() {
       <Tabs.Screen name="cart"    options={HIDDEN} />
       <Tabs.Screen name="wallet"  options={HIDDEN} />
       <Tabs.Screen name="explore" options={HIDDEN} />
-      <Tabs.Screen name="auth"    options={HIDDEN} />
-      <Tabs.Screen name="ticket_shop" options={HIDDEN} />
-      <Tabs.Screen name="locker"      options={HIDDEN} />
+      <Tabs.Screen name="auth/index"    options={HIDDEN} />
+      <Tabs.Screen name="auth/callback" options={HIDDEN} />
+      <Tabs.Screen name="ticket_shop"    options={HIDDEN} />
     </Tabs>
   );
 }

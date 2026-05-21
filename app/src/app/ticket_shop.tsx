@@ -146,9 +146,6 @@ export default function TicketShopScreen() {
       return;
     }
 
-    console.log('--- START PURCHASE FLOW ---');
-    console.log('User ID:', session.user.id);
-    console.log('Option:', option.type, option.duration);
 
     if (balance < option.price) {
       Alert.alert(
@@ -167,10 +164,8 @@ export default function TicketShopScreen() {
     try {
       const ticketId = `SV26-${Math.random().toString(36).toUpperCase().slice(-8)}`;
       const newBalance = balance - option.price;
-      console.log('Generated Ticket ID:', ticketId);
 
       // Update balance
-      console.log('Updating balance to:', newBalance);
       const { error: updateErr } = await supabase
         .from('profiles')
         .update({ balance: newBalance })
@@ -180,10 +175,8 @@ export default function TicketShopScreen() {
         console.error('Balance update error:', updateErr);
         throw updateErr;
       }
-      console.log('Balance updated successfully');
 
       // Insert transaction
-      console.log('Inserting transaction...');
       const { error: transErr } = await supabase.from('transactions').insert([{
         user_id: session.user.id,
         amount: -option.price,
@@ -195,10 +188,8 @@ export default function TicketShopScreen() {
         console.error('Transaction insertion error:', transErr);
         throw transErr;
       }
-      console.log('Transaction inserted successfully');
 
       // Insert ticket
-      console.log('Inserting ticket into "tickets" table...');
       const ticketData = {
         profile_id: session.user.id,
         ticket_id: ticketId,
@@ -211,7 +202,6 @@ export default function TicketShopScreen() {
         valid_from: '2026-07-17T00:00:00+00:00',   
         valid_until: '2026-07-19T23:59:59+00:00',  
       };
-      console.log('Ticket Data Payload:', JSON.stringify(ticketData, null, 2));
 
       const { data: ticketResult, error: ticketErr } = await supabase
         .from('tickets')
@@ -223,13 +213,10 @@ export default function TicketShopScreen() {
         throw ticketErr;
       }
       
-      console.log('Ticket inserted successfully. Result:', JSON.stringify(ticketResult, null, 2));
 
       await refreshAll();
-      console.log('Database context refreshed');
       
       setPurchasedTicket({ option, id: ticketId });
-      console.log('--- PURCHASE FLOW COMPLETE ---');
     } catch (err: any) {
       console.error('CRITICAL PURCHASE ERROR:', err);
       Alert.alert('Error', err.message);
