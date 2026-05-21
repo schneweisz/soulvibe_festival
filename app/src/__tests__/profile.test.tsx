@@ -17,8 +17,9 @@ jest.mock('../context/LanguageContext', () => ({
   useLanguage: jest.fn(),
 }));
 jest.mock('expo-router', () => ({
-  router: { push: jest.fn(), replace: jest.fn() },
+  router: { push: jest.fn(), replace: jest.fn(), setParams: jest.fn() },
   useFocusEffect: jest.fn(),
+  useLocalSearchParams: jest.fn(() => ({})),
   Redirect: 'Redirect',
 }));
 

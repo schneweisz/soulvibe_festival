@@ -11,6 +11,7 @@ jest.mock('../context/LanguageContext', () => ({ useLanguage: jest.fn() }));
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn(), back: jest.fn() },
   useFocusEffect: jest.fn(),
+  useLocalSearchParams: jest.fn(() => ({})),
 }));
 
 jest.mock('@expo/vector-icons', () => ({ MaterialIcons: 'MaterialIcons' }));

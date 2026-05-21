@@ -16,6 +16,7 @@ jest.mock('../context/LanguageContext', () => ({
 jest.mock('expo-router', () => ({
   router: { push: jest.fn(), replace: jest.fn() },
   useFocusEffect: jest.fn(),
+  useLocalSearchParams: jest.fn(() => ({})),
 }));
 
 // Mock MaterialIcons and Image to avoid native module issues
