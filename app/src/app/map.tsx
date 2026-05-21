@@ -303,6 +303,26 @@ function Legend({ visible, onClose }: { visible: boolean; onClose: () => void })
   );
 }
 
+// Compact weather notification pill
+function WeatherStrip() {
+  return (
+    <View style={s.weatherStrip} pointerEvents="none">
+      <View style={s.weatherPill}>
+        <MaterialIcons name="wb-sunny" size={13} color="#F5A623" />
+        <Text style={s.weatherTemp}>32°C</Text>
+        <View style={s.weatherSep} />
+        <Text style={s.weatherCond}>SUNNY</Text>
+        <View style={s.weatherSep} />
+        <MaterialIcons name="water-drop" size={11} color="#4FC3F7" />
+        <Text style={s.weatherData}>NO RAIN TODAY</Text>
+        <View style={s.weatherSep} />
+        <MaterialIcons name="air" size={11} color={SV.onSurfaceVariant} />
+        <Text style={s.weatherData}>12 km/h</Text>
+      </View>
+    </View>
+  );
+}
+
 // Live now strip (above map, below header)
 function LiveStrip() {
   return (
@@ -339,24 +359,7 @@ const TREES: Array<{ x: number; y: number; r: number }> = [
   { x:1320, y:1150, r:17 }, { x:1265, y:1200, r:15 },
 ];
 
-// Pulsing ring drawn behind the user's reserved vault POI
-function MyVaultPulseRing() {
-  const pulse = useRef(new RNAnimated.Value(1)).current;
-  useEffect(() => {
-    RNAnimated.loop(RNAnimated.sequence([
-      RNAnimated.timing(pulse, { toValue: 1.7, duration: 1100, useNativeDriver: true }),
-      RNAnimated.timing(pulse, { toValue: 1, duration: 1100, useNativeDriver: true }),
-    ])).start();
-  }, []);
-  const opacity = pulse.interpolate({ inputRange: [1, 1.7], outputRange: [0.7, 0] });
-  return (
-    <RNAnimated.View style={{
-      position: 'absolute', width: 44, height: 44, borderRadius: 22,
-      borderWidth: 2, borderColor: SV.tertiaryContainer,
-      transform: [{ scale: pulse }], opacity,
-    }} />
-  );
-}
+
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -523,6 +526,7 @@ export default function MapScreen() {
     <GestureHandlerRootView style={s.root}>
       <ScreenHeader />
       <LiveStrip />
+      <WeatherStrip />
 
       <View style={s.viewport}>
 
@@ -838,7 +842,7 @@ export default function MapScreen() {
                   onPress={() => openSheet(poi)}
                   activeOpacity={0.78}
                   hitSlop={10}>
-                  {isMyVault && <MyVaultPulseRing />}
+                  {isMyVault}
                   <View style={[
                     s.poiBox,
                     { width:boxSize, height:boxSize, borderRadius:radius, borderColor:poiColor, backgroundColor:`${poiColor}22` },
@@ -1228,7 +1232,7 @@ const s = StyleSheet.create({
   liveStripBtnTxt: { color:SV.primaryContainer, fontFamily:'monospace', fontSize:10, letterSpacing:1 },
 
   // Filters
-  filterRow: { position:'absolute', top:10, left:10, zIndex:20, flexDirection:'row', gap:6 },
+  filterRow: { position:'absolute', top:36, left:10, zIndex:20, flexDirection:'row', gap:6 },
   chip: { flexDirection:'row', alignItems:'center', gap:5, paddingHorizontal:12, paddingVertical:7, borderRadius:20, backgroundColor:'rgba(14,14,22,0.9)', borderWidth:1, borderColor:'rgba(255,255,255,0.14)' },
   chipActive: { backgroundColor:SV.primaryContainer, borderColor:SV.primaryContainer, ...neonShadow },
   chipTxt: { color:SV.onSurface, fontFamily:'monospace', fontSize:9.5, letterSpacing:0.5 },
@@ -1302,4 +1306,52 @@ const s = StyleSheet.create({
   btnPrimaryTxt: { color:SV.deepCharcoal, fontWeight:'800', fontSize:13, letterSpacing:1.5 },
   btnOutline: { flex:1, borderWidth:1.5, flexDirection:'row', alignItems:'center', justifyContent:'center', gap:8, paddingVertical:13, borderRadius:10 },
   btnOutlineTxt: { fontWeight:'800', fontSize:13, letterSpacing:1.5 },
+
+  // Weather strip
+  weatherStrip: {
+    height: 0,
+    overflow: 'visible',
+    alignItems: 'center',
+    zIndex: 25,
+  },
+  weatherPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    marginTop: 5,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(245,166,35,0.30)',
+    borderRadius: 20,
+    shadowColor: '#F5A623',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.20,
+    shadowRadius: 7,
+  },
+  weatherTemp: {
+    color: '#F5A623',
+    fontFamily: 'monospace',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  weatherSep: {
+    width: 1,
+    height: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  weatherCond: {
+    color: SV.onSurfaceVariant,
+    fontFamily: 'monospace',
+    fontSize: 10,
+    letterSpacing: 1.5,
+  },
+  weatherData: {
+    color: SV.onSurfaceVariant,
+    fontFamily: 'monospace',
+    fontSize: 10,
+    letterSpacing: 0.5,
+  },
 });
