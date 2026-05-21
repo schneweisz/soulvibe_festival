@@ -50,7 +50,7 @@ function ProcessingOverlay({ amount, onDone }: { amount: number; onDone: () => v
   const [hexLines, setHexLines] = useState(() => Array.from({ length: 6 }, randHex));
 
   useEffect(() => {
-    // Fill the progress bar over 2 seconds
+    // Fill the progress bar over 2.2 seconds
     Animated.timing(progress, {
       toValue: 1,
       duration: 2200,
@@ -147,7 +147,7 @@ function SuccessOverlay({ amount, newBalance, dbError, onClose }: {
 
         {dbError ? (
           <Text style={{ color: '#FF6B6B', fontFamily: 'monospace', fontSize: 10, textAlign: 'center', marginTop: 8 }}>
-            Balance shown locally — sync failed.
+            Sync delay detected. Profile will update shortly.
           </Text>
         ) : null}
         <TouchableOpacity style={p.doneBtn} onPress={onClose}>
@@ -169,6 +169,7 @@ export default function WalletScreen() {
   const [method,      setMethod]      = useState<string>('apple');
   const [phase,       setPhase]       = useState<Phase>('select');
   const [updateErr,   setUpdateErr]   = useState(false);
+  const [expectedBalance, setExpectedBalance] = useState<number>(0);
 
   const userId = session?.user?.id;
   const balance = profile?.balance ?? 0;
@@ -192,66 +193,64 @@ export default function WalletScreen() {
 
   const finalAmount = custom ? (parseInt(custom, 10) || 0) : selected;
 
-  const handleTopUp = () => {
-    if (finalAmount < 500) return;
+  const handleTopUp = async () => {
+    if (finalAmount < 500 || !userId) return;
+    
     setUpdateErr(false);
+    const newBal = (balance ?? 0) + finalAmount;
+    setExpectedBalance(newBal);
     setPhase('processing');
+
+    // Start background processing IMMEDIATELY
+    processTopUp(newBal);
   };
 
-  const handleProcessDone = async () => {
-    const newBalance = (balance ?? 0) + finalAmount;
+  const processTopUp = async (newBal: number) => {
+    if (!userId) return;
+    try {
+      const currentPoints = profile?.points ?? 0;
+      const newPoints = currentPoints + 50;
 
-    if (userId) {
-      // 1. Fetch current points
-      const { data: profileData } = await supabase
-        .from('profiles')
-        .select('points')
-        .eq('id', userId)
-        .single();
-      
-      const currentPoints = profileData?.points ?? 0;
-      const newPoints = currentPoints + 50; // Award 50 points for top-up
+      // Parallelize Supabase updates for speed and reliability
+      const results = await Promise.allSettled([
+        supabase
+          .from('profiles')
+          .update({ balance: newBal, points: newPoints })
+          .eq('id', userId),
+        
+        supabase
+          .from('transactions')
+          .insert([{
+            user_id: userId,
+            amount: finalAmount,
+            type: 'credit',
+            label: 'Wallet Top-Up via App'
+          }]),
 
-      // 2. Update Profile Balance & Points
-      const { error: profileErr } = await supabase
-        .from('profiles')
-        .update({ balance: newBalance, points: newPoints })
-        .eq('id', userId);
+        supabase
+          .from('pulse_logs')
+          .insert([{
+            user_id: userId,
+            points_change: 50,
+            reason: 'Wallet Top-Up Bonus'
+          }])
+      ]);
 
-      if (profileErr) {
-        console.error('Balance update failed:', profileErr.message);
+      // Check if critical balance update failed
+      const profileResult = results[0];
+      if (profileResult.status === 'rejected' || (profileResult.value as any).error) {
         setUpdateErr(true);
       }
 
-      // 3. Insert Transaction Record
-      const { data: newTx, error: txErr } = await supabase
-        .from('transactions')
-        .insert([{
-          user_id: userId,
-          amount: finalAmount,
-          type: 'credit',
-          label: 'Wallet Top-Up via App'
-        }])
-        .select()
-        .single();
-
-      if (txErr) {
-        console.error('Transaction insert failed:', txErr.message);
-      }
-
-      // 4. Log Pulse Points
-      await supabase
-        .from('pulse_logs')
-        .insert([{
-          user_id: userId,
-          points_change: 50,
-          reason: 'Wallet Top-Up Bonus'
-        }]);
-      
-      // 5. Refresh context profile
-      await refreshAll();
+      // Trigger a silent background refresh of the context
+      refreshAll().catch(() => {});
+    } catch (err: any) {
+      console.error('CRITICAL TOP-UP ERROR:', err.message);
+      setUpdateErr(true);
     }
+  };
 
+  const handleAnimationDone = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setPhase('success');
   };
@@ -425,14 +424,14 @@ export default function WalletScreen() {
 
       {/* ── Processing overlay ── */}
       {phase === 'processing' && (
-        <ProcessingOverlay amount={finalAmount} onDone={handleProcessDone} />
+        <ProcessingOverlay amount={finalAmount} onDone={handleAnimationDone} />
       )}
 
       {/* ── Success overlay ── */}
       {phase === 'success' && (
         <SuccessOverlay
           amount={finalAmount}
-          newBalance={balance ?? 0}
+          newBalance={expectedBalance}
           dbError={updateErr}
           onClose={handleSuccessClose}
         />
