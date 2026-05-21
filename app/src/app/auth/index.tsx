@@ -1,13 +1,13 @@
 import React, { useState ,useEffect } from 'react';
 import { View, StyleSheet, TextInput, ScrollView, Alert, ActivityIndicator, Pressable, Platform } from 'react-native';
-import { supabase } from '../utils/supabase';
+import { supabase } from '../../utils/supabase';
 import { router } from 'expo-router';
 import { MaterialIcons } from '@expo/vector-icons';
-import { SV, neonShadow } from '../constants/theme';
-import { ThemedView } from '../components/themed-view';
-import { ThemedText } from '../components/themed-text';
-import { ScreenHeader } from '../components/screen-header';
-import { useAuth } from '../context/AuthContext';
+import { SV, neonShadow } from '../../constants/theme';
+import { ThemedView } from '../../components/themed-view';
+import { ThemedText } from '../../components/themed-text';
+import { ScreenHeader } from '../../components/screen-header';
+import { useAuth } from '../../context/AuthContext';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 
