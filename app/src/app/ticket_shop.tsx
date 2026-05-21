@@ -87,7 +87,7 @@ const TICKET_OPTIONS: TicketOption[] = [
 
 // ─── Purchase Success Overlay ────────────────────────────────────────────────
 
-function SuccessOverlay({ ticket, onClose }: { ticket: TicketOption; onClose: () => void }) {
+function SuccessOverlay({ ticket, ticketId, onClose }: { ticket: TicketOption; ticketId: string; onClose: () => void }) {
   const scale = useRef(new Animated.Value(0.6)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
@@ -111,7 +111,7 @@ function SuccessOverlay({ ticket, onClose }: { ticket: TicketOption; onClose: ()
         
         <View style={styles.ticketStub}>
           <Text style={styles.stubLabel}>TICKET ID</Text>
-          <Text style={styles.stubValue}>SV26-{Math.random().toString(36).toUpperCase().slice(-8)}</Text>
+          <Text style={styles.stubValue}>{ticketId}</Text>
         </View>
 
         <TouchableOpacity 
@@ -129,11 +129,11 @@ function SuccessOverlay({ ticket, onClose }: { ticket: TicketOption; onClose: ()
 
 export default function TicketShopScreen() {
   const { lang } = useLanguage();
-  const { profile, refreshProfile } = useDatabase();
+  const { profile, refreshAll } = useDatabase();
   const { session } = useAuth();
   const [selectedType, setSelectedType] = useState<TicketType>('BASE');
   const [isPurchasing, setIsPurchasing] = useState(false);
-  const [purchasedTicket, setPurchasedTicket] = useState<TicketOption | null>(null);
+  const [purchasedTicket, setPurchasedTicket] = useState<{ option: TicketOption; id: string } | null>(null);
 
   const t = (en: string, hu: string) => lang === 'hu' ? hu : en;
 
@@ -145,6 +145,10 @@ export default function TicketShopScreen() {
       router.push('/auth');
       return;
     }
+
+    console.log('--- START PURCHASE FLOW ---');
+    console.log('User ID:', session.user.id);
+    console.log('Option:', option.type, option.duration);
 
     if (balance < option.price) {
       Alert.alert(
@@ -161,24 +165,73 @@ export default function TicketShopScreen() {
     setIsPurchasing(true);
 
     try {
+      const ticketId = `SV26-${Math.random().toString(36).toUpperCase().slice(-8)}`;
       const newBalance = balance - option.price;
+      console.log('Generated Ticket ID:', ticketId);
+
+      // Update balance
+      console.log('Updating balance to:', newBalance);
       const { error: updateErr } = await supabase
         .from('profiles')
         .update({ balance: newBalance })
         .eq('id', session.user.id);
 
-      if (updateErr) throw updateErr;
+      if (updateErr) {
+        console.error('Balance update error:', updateErr);
+        throw updateErr;
+      }
+      console.log('Balance updated successfully');
 
-      await supabase.from('transactions').insert([{
+      // Insert transaction
+      console.log('Inserting transaction...');
+      const { error: transErr } = await supabase.from('transactions').insert([{
         user_id: session.user.id,
-        amount: option.price,
+        amount: -option.price,
         type: 'debit',
         label: `Ticket: ${option.type} ${option.duration}`,
       }]);
+      
+      if (transErr) {
+        console.error('Transaction insertion error:', transErr);
+        throw transErr;
+      }
+      console.log('Transaction inserted successfully');
 
-      await refreshProfile();
-      setPurchasedTicket(option);
+      // Insert ticket
+      console.log('Inserting ticket into "tickets" table...');
+      const ticketData = {
+        profile_id: session.user.id,
+        ticket_id: ticketId,
+        type: option.type,
+        name: `${option.type} ${option.duration} PASS`,
+        description: option.perks.join(', '),
+        price: option.price,
+        currency: 'HUF',
+        is_used: false,
+        valid_from: '2026-07-17T00:00:00+00:00',   
+        valid_until: '2026-07-19T23:59:59+00:00',  
+      };
+      console.log('Ticket Data Payload:', JSON.stringify(ticketData, null, 2));
+
+      const { data: ticketResult, error: ticketErr } = await supabase
+        .from('tickets')
+        .insert([ticketData])
+        .select();
+
+      if (ticketErr) {
+        console.error('Ticket insertion error:', ticketErr);
+        throw ticketErr;
+      }
+      
+      console.log('Ticket inserted successfully. Result:', JSON.stringify(ticketResult, null, 2));
+
+      await refreshAll();
+      console.log('Database context refreshed');
+      
+      setPurchasedTicket({ option, id: ticketId });
+      console.log('--- PURCHASE FLOW COMPLETE ---');
     } catch (err: any) {
+      console.error('CRITICAL PURCHASE ERROR:', err);
       Alert.alert('Error', err.message);
     } finally {
       setIsPurchasing(false);
@@ -266,7 +319,8 @@ export default function TicketShopScreen() {
 
       {purchasedTicket && (
         <SuccessOverlay 
-          ticket={purchasedTicket} 
+          ticket={purchasedTicket.option} 
+          ticketId={purchasedTicket.id}
           onClose={() => {
             setPurchasedTicket(null);
             router.push('/profile');
