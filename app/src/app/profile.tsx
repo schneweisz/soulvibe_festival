@@ -508,7 +508,7 @@ export default function ProfileScreen() {
         {/* My Vault */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>{lang === 'hu' ? 'TREZOROM' : 'MY VAULT'}</Text>
+            <Text style={styles.cardTitle}>{lang === 'hu' ? 'TÁROLÓM' : 'MY VAULT'}</Text>
             <MaterialIcons name="lock" size={20} color={SV.tertiaryContainer} />
           </View>
           {locker ? (
