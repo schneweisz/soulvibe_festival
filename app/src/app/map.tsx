@@ -339,24 +339,7 @@ const TREES: Array<{ x: number; y: number; r: number }> = [
   { x:1320, y:1150, r:17 }, { x:1265, y:1200, r:15 },
 ];
 
-// Pulsing ring drawn behind the user's reserved vault POI
-function MyVaultPulseRing() {
-  const pulse = useRef(new RNAnimated.Value(1)).current;
-  useEffect(() => {
-    RNAnimated.loop(RNAnimated.sequence([
-      RNAnimated.timing(pulse, { toValue: 1.7, duration: 1100, useNativeDriver: true }),
-      RNAnimated.timing(pulse, { toValue: 1, duration: 1100, useNativeDriver: true }),
-    ])).start();
-  }, []);
-  const opacity = pulse.interpolate({ inputRange: [1, 1.7], outputRange: [0.7, 0] });
-  return (
-    <RNAnimated.View style={{
-      position: 'absolute', width: 44, height: 44, borderRadius: 22,
-      borderWidth: 2, borderColor: SV.tertiaryContainer,
-      transform: [{ scale: pulse }], opacity,
-    }} />
-  );
-}
+
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -838,7 +821,7 @@ export default function MapScreen() {
                   onPress={() => openSheet(poi)}
                   activeOpacity={0.78}
                   hitSlop={10}>
-                  {isMyVault && <MyVaultPulseRing />}
+                  {isMyVault}
                   <View style={[
                     s.poiBox,
                     { width:boxSize, height:boxSize, borderRadius:radius, borderColor:poiColor, backgroundColor:`${poiColor}22` },
