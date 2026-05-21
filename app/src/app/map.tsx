@@ -306,7 +306,7 @@ function Legend({ visible, onClose }: { visible: boolean; onClose: () => void })
 // Compact weather notification pill
 function WeatherStrip() {
   return (
-    <View style={s.weatherStrip}>
+    <View style={s.weatherStrip} pointerEvents="none">
       <View style={s.weatherPill}>
         <MaterialIcons name="wb-sunny" size={13} color="#F5A623" />
         <Text style={s.weatherTemp}>32°C</Text>
@@ -1232,7 +1232,7 @@ const s = StyleSheet.create({
   liveStripBtnTxt: { color:SV.primaryContainer, fontFamily:'monospace', fontSize:10, letterSpacing:1 },
 
   // Filters
-  filterRow: { position:'absolute', top:10, left:10, zIndex:20, flexDirection:'row', gap:6 },
+  filterRow: { position:'absolute', top:36, left:10, zIndex:20, flexDirection:'row', gap:6 },
   chip: { flexDirection:'row', alignItems:'center', gap:5, paddingHorizontal:12, paddingVertical:7, borderRadius:20, backgroundColor:'rgba(14,14,22,0.9)', borderWidth:1, borderColor:'rgba(255,255,255,0.14)' },
   chipActive: { backgroundColor:SV.primaryContainer, borderColor:SV.primaryContainer, ...neonShadow },
   chipTxt: { color:SV.onSurface, fontFamily:'monospace', fontSize:9.5, letterSpacing:0.5 },
@@ -1309,8 +1309,10 @@ const s = StyleSheet.create({
 
   // Weather strip
   weatherStrip: {
+    height: 0,
+    overflow: 'visible',
     alignItems: 'center',
-    paddingVertical: 5,
+    zIndex: 25,
   },
   weatherPill: {
     flexDirection: 'row',
@@ -1318,7 +1320,8 @@ const s = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 11,
     paddingVertical: 5,
-    backgroundColor: 'rgba(22,17,10,0)',
+    marginTop: 5,
+    backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: 'rgba(245,166,35,0.30)',
     borderRadius: 20,
