@@ -458,7 +458,7 @@ export default function ProfileScreen() {
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
             <Text style={styles.cardTitle}>
-              {lang === 'hu' ? 'KARSZALAG EGYENLEG' : 'WALLET BALANCE'}
+              {lang === 'hu' ? 'PÉNZTÁRCA EGYENLEG' : 'WALLET BALANCE'}
             </Text>
             <MaterialIcons name="account-balance-wallet" size={20} color={SV.primaryContainer} />
           </View>
@@ -508,7 +508,7 @@ export default function ProfileScreen() {
         {/* My Vault */}
         <View style={styles.card}>
           <View style={styles.cardTitleRow}>
-            <Text style={styles.cardTitle}>{lang === 'hu' ? 'NEURÁLIS TÁROLÓ' : 'MY VAULT'}</Text>
+            <Text style={styles.cardTitle}>{lang === 'hu' ? 'TREZOROM' : 'MY VAULT'}</Text>
             <MaterialIcons name="lock" size={20} color={SV.tertiaryContainer} />
           </View>
           {locker ? (
