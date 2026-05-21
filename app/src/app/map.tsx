@@ -146,7 +146,10 @@ const POIS: POI[] = [
   { id: 'atm1', label: 'ATM', type: 'atm', x: 710, y: 1090, color: '#80CBC4', icon: 'atm', size: 'small' },
   { id: 'charging1', label: 'CHARGE', type: 'charging', x: 460, y: 810, color: '#CE93D8', icon: 'battery-charging-full', size: 'small' },
   { id: 'charging2', label: 'CHARGE', type: 'charging', x: 900, y: 600, color: '#CE93D8', icon: 'battery-charging-full', size: 'small' },
-  { id: 'lockers', label: 'LOCKERS', type: 'lockers', x: 660, y: 1130, color: '#80CBC4', icon: 'lock', size: 'small' },
+  { id: 'locker_alpha', label: 'VAULT ALPHA', type: 'lockers', x: 660, y: 1130, color: '#55f2ff', icon: 'lock', size: 'small', desc: 'Neural Vault Hub Alpha · 100 slots · 2500 HUF/day' },
+  { id: 'locker_beta',  label: 'VAULT BETA',  type: 'lockers', x: 310, y: 780,  color: '#55f2ff', icon: 'lock', size: 'small', desc: 'Neural Vault Hub Beta · 100 slots · 2500 HUF/day'  },
+  { id: 'locker_gamma', label: 'VAULT GAMMA', type: 'lockers', x: 1040, y: 620, color: '#55f2ff', icon: 'lock', size: 'small', desc: 'Neural Vault Hub Gamma · 100 slots · 2500 HUF/day' },
+  { id: 'locker_delta', label: 'VAULT DELTA', type: 'lockers', x: 620, y: 385,  color: '#55f2ff', icon: 'lock', size: 'small', desc: 'Neural Vault Hub Delta · 100 slots · 2500 HUF/day' },
   { id: 'water1', label: '', type: 'water', x: 500, y: 650, color: '#4FC3F7', icon: 'water-drop', size: 'small' },
   { id: 'water2', label: '', type: 'water', x: 820, y: 780, color: '#4FC3F7', icon: 'water-drop', size: 'small' },
   { id: 'water3', label: '', type: 'water', x: 330, y: 940, color: '#4FC3F7', icon: 'water-drop', size: 'small' },
@@ -979,8 +982,8 @@ export default function MapScreen() {
               </>
             )}
 
-            {/* ── Info / Lockers / Charging sheet ── */}
-            {(selected.type === 'info' || selected.type === 'lockers' || selected.type === 'charging') && (
+            {/* ── Info / Charging sheet ── */}
+            {(selected.type === 'info' || selected.type === 'charging') && (
               <>
                 <View style={s.sheetHead}>
                   <View style={{ flex:1, marginRight:12 }}>
@@ -999,6 +1002,31 @@ export default function MapScreen() {
                     </View>
                   </View>
                 )}
+              </>
+            )}
+
+            {/* ── Locker / Vault sheet ── */}
+            {selected.type === 'lockers' && (
+              <>
+                <View style={s.sheetHead}>
+                  <View style={{ flex:1, marginRight:12 }}>
+                    <Text style={[s.stageName, { color:'#55f2ff', fontSize:18 }]}>{selected.label}</Text>
+                    <Text style={s.stageDesc}>{selected.desc}</Text>
+                  </View>
+                  <View style={[s.typeIcon, { borderColor:'rgba(85,242,255,0.35)', backgroundColor:'rgba(85,242,255,0.1)' }]}>
+                    <MaterialIcons name="lock" size={22} color="#55f2ff" />
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[s.btnPrimary, { backgroundColor:'#55f2ff', marginTop:14 }]}
+                  onPress={() => {
+                    const hub = selected.id.replace('locker_', '');
+                    router.push(`/locker?hub=${hub}` as any);
+                  }}
+                >
+                  <MaterialIcons name="lock-open" size={18} color="#07070c" />
+                  <Text style={[s.btnPrimaryTxt, { color:'#07070c' }]}>ACCESS NEURAL VAULT</Text>
+                </TouchableOpacity>
               </>
             )}
 

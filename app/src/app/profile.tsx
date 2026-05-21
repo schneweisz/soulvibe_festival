@@ -34,7 +34,8 @@ export default function ProfileScreen() {
     pendingRequests,
     loading: dbLoading,
     refreshAll,
-    updateUsername,,
+    updateUsername,
+    locker,
     sendFriendRequest,
     acceptFriendRequest,
     rejectFriendRequest,
@@ -495,6 +496,46 @@ export default function ProfileScreen() {
             })}
           </View>
         )}
+
+        {/* My Vault */}
+        <View style={styles.card}>
+          <View style={styles.cardTitleRow}>
+            <Text style={styles.cardTitle}>{lang === 'hu' ? 'NEURÁLIS TÁROLÓ' : 'MY VAULT'}</Text>
+            <MaterialIcons name="lock" size={20} color={SV.tertiaryContainer} />
+          </View>
+          {locker ? (
+            <>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <View>
+                  <Text style={{ color: SV.tertiaryContainer, fontFamily: 'monospace', fontSize: 13, fontWeight: '900', letterSpacing: 1.5 }}>
+                    VAULT {locker.hub_name.toUpperCase()} · #{String(locker.slot_number).padStart(3, '0')}
+                  </Text>
+                  <Text style={{ color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 10, marginTop: 2 }}>
+                    PIN: {locker.pin_code}
+                  </Text>
+                </View>
+                <View style={{ backgroundColor: `${SV.tertiaryContainer}18`, borderWidth: 1, borderColor: `${SV.tertiaryContainer}40`, borderRadius: 20, paddingHorizontal: 10, paddingVertical: 4, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                  <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: SV.tertiaryContainer }} />
+                  <Text style={{ color: SV.tertiaryContainer, fontFamily: 'monospace', fontSize: 9, letterSpacing: 1 }}>SECURED</Text>
+                </View>
+              </View>
+              <TouchableOpacity style={styles.viewMapBtn} onPress={() => router.push('/locker')} activeOpacity={0.8}>
+                <MaterialIcons name="lock-open" size={15} color={SV.tertiaryContainer} />
+                <Text style={styles.viewMapBtnText}>{lang === 'hu' ? 'TÁROLÓ KEZELÉSE' : 'MANAGE VAULT'}</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <>
+              <Text style={{ color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, marginBottom: 12 }}>
+                {lang === 'hu' ? 'Nincs aktív tároló. Foglalj helyet a Neural Vaultban.' : 'No vault reserved. Secure your gear in the Neural Vaults.'}
+              </Text>
+              <TouchableOpacity style={styles.viewMapBtn} onPress={() => router.push('/locker')} activeOpacity={0.8}>
+                <MaterialIcons name="lock" size={15} color={SV.tertiaryContainer} />
+                <Text style={styles.viewMapBtnText}>{lang === 'hu' ? 'TÁROLÓ FOGLALÁSA' : 'RESERVE A VAULT'}</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </View>
 
         {/* My Lineup — shows favourited artists */}
         <View style={styles.card}>

@@ -74,10 +74,18 @@ describe('ProfileScreen', () => {
       transactions: [],
       favourites: [],
       friends: [],
+      pendingRequests: [],
+      locker: null,
       loading: false,
       refreshAll: mockRefreshAll,
       refreshFriends: jest.fn(),
       refreshProfile: jest.fn(),
+      refreshLocker: jest.fn(),
+      updateUsername: jest.fn(),
+      sendFriendRequest: jest.fn(),
+      acceptFriendRequest: jest.fn(),
+      rejectFriendRequest: jest.fn(),
+      removeFriend: jest.fn(),
     });
   });
 
