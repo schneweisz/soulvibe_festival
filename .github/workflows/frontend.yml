@@ -1,0 +1,76 @@
+name: Frontend Preview CI
+
+# Runs on every push to the frontend branch.
+# Publishes a preview EAS Update to the "frontend" channel so anyone with
+# the preview APK (built with --channel preview) or Expo Go can scan the QR
+# from expo.dev → Updates → frontend branch without touching main.
+
+on:
+  push:
+    branches:
+      - frontend
+
+jobs:
+  # ── 1. Tests ────────────────────────────────────────────────────────────────
+  test:
+    name: Tesztek futtatása
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kód letöltése
+        uses: actions/checkout@v4
+
+      - name: Node.js beállítása
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: ./app/package-lock.json
+
+      - name: Függőségek telepítése
+        working-directory: ./app
+        run: npm install --legacy-peer-deps
+
+      - name: Tesztek futtatása
+        working-directory: ./app
+        run: npm test
+
+  # ── 2. Preview update ───────────────────────────────────────────────────────
+  preview:
+    name: EAS Preview frissítés
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Kód letöltése
+        uses: actions/checkout@v4
+
+      - name: Node.js beállítása
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Expo környezet beállítása
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+          packager: npm
+
+      - name: Függőségek telepítése
+        working-directory: ./app
+        run: npm install --legacy-peer-deps
+
+      - name: CLI jogosultságok javítása
+        working-directory: ./app
+        run: |
+          find node_modules -type d -name bin | xargs -I{} find {} -type f | xargs chmod +x 2>/dev/null || true
+          find node_modules/react-native/sdks -type f | xargs chmod +x 2>/dev/null || true
+
+      - name: Frissítés küldése a frontend csatornára
+        working-directory: ./app
+        env:
+          CI: 1
+        # --auto uses the git branch name ("frontend") as the EAS Update branch.
+        # The update is visible at: expo.dev → project → Updates → frontend branch.
+        # Scan the QR from there with Expo Go, or open it in an already-installed
+        # preview APK by switching the update channel in the Expo dev menu.
+        run: eas update --auto --non-interactive

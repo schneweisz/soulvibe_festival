@@ -781,9 +781,9 @@ function FavTimeline({ acts, favs, onFav, stageLabel, lang }: {
   if (acts.length === 0) {
     return (
       <View style={tl.empty}>
-        <MaterialIcons name="favorite-border" size={44} color={SV.surfaceVariant} />
-        <Text style={tl.emptyTitle}>{lang === 'hu' ? 'Még nincs kedvenc' : 'No favourites yet'}</Text>
-        <Text style={tl.emptySub}>{lang === 'hu' ? 'Nyomj a ♡ ikonra bármelyik előadónál.' : 'Tap ♡ next to any artist in the list.'}</Text>
+        <MaterialIcons name="wifi-off" size={44} color={SV.primaryContainer} />
+        <Text style={tl.emptyTitle}>{lang === 'hu' ? 'A FREKVENCIÁD NINCS BEHANGOLVA.' : 'YOUR FREQUENCY IS UNTUNED.'}</Text>
+        <Text style={tl.emptySub}>{lang === 'hu' ? 'NYOMJ ♡-T EGY ELŐADÓNÁL, HOGY SZINKRONIZÁLJ A RÁCCSAL.' : 'TAP ♡ NEXT TO ANY ARTIST TO SYNC WITH THE GRID.'}</Text>
       </View>
     );
   }
@@ -913,8 +913,8 @@ const tl = StyleSheet.create({
 
   // Empty state
   empty:      { alignItems: 'center', paddingVertical: 60, gap: 12, paddingHorizontal: 32 },
-  emptyTitle: { color: SV.onSurfaceVariant, fontSize: 16, fontWeight: '700' },
-  emptySub:   { color: SV.outline, fontFamily: 'monospace', fontSize: 12, textAlign: 'center' },
+  emptyTitle: { color: SV.primaryContainer, fontFamily: 'monospace', fontSize: 13, fontWeight: '900', textAlign: 'center', letterSpacing: 1 },
+  emptySub:   { color: SV.onSurfaceVariant, fontFamily: 'monospace', fontSize: 11, textAlign: 'center', letterSpacing: 0.5 },
 
   // Day header
   dayHeader:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 14, marginTop: 16, marginBottom: 4 },

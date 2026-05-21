@@ -39,6 +39,14 @@ export interface Friend {
   username: string | null;
 }
 
+export interface LockerReservation {
+  id: string;
+  hub_name: string;
+  slot_number: number;
+  pin_code: string;
+  reserved_at: string;
+}
+
 export interface FriendRequest {
   id: string;
   sender_id: string;
@@ -67,6 +75,9 @@ type DatabaseContextType = {
   acceptFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   rejectFriendRequest: (requestId: string) => Promise<{ success: boolean; error?: string }>;
   removeFriend: (friendId: string) => Promise<{ success: boolean; error?: string }>;
+  locker: LockerReservation | null;
+  refreshLocker: () => Promise<void>;
+  updateUsername: (username: string) => Promise<boolean>;
 };
 
 const DatabaseContext = createContext<DatabaseContextType | undefined>(undefined);
@@ -79,6 +90,7 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
   const [favourites, setFavourites] = useState<Favourite[]>([]);
   const [friends, setFriends] = useState<Friend[]>([]);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [locker, setLocker] = useState<LockerReservation | null>(null);
   const [loading, setLoading] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
@@ -301,7 +313,8 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       fetchTickets(user.id),
       fetchTransactions(user.id),
       fetchFavourites(user.id),
-      fetchPendingRequests(user.id)
+      fetchPendingRequests(user.id),
+      fetchLocker(user.id),
     ];
     
     if (profileData?.friends) {
@@ -334,6 +347,20 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
     if (profile?.friends) await fetchFriends(profile.friends);
   }, [profile, fetchFriends]);
 
+  const fetchLocker = useCallback(async (userId: string) => {
+    const { data } = await supabase
+      .from('lockers')
+      .select('id, hub_name, slot_number, pin_code, reserved_at')
+      .eq('user_id', userId)
+      .eq('status', 'occupied')
+      .maybeSingle();
+    setLocker(data ?? null);
+  }, []);
+
+  const refreshLocker = useCallback(async () => {
+    if (user) await fetchLocker(user.id);
+  }, [user, fetchLocker]);
+
   const updateUsername = useCallback(async (newUsername: string): Promise<boolean> => {
     if (!user) return false;
     const { error } = await supabase
@@ -356,6 +383,7 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       setFavourites([]);
       setFriends([]);
       setPendingRequests([]);
+      setLocker(null);
     }
   }, [session, refreshAll]);
 
@@ -375,6 +403,8 @@ export const DatabaseProvider = ({ children }: { children: React.ReactNode }) =>
       refreshFavourites,
       refreshFriends,
       updateUsername,
+      locker,
+      refreshLocker,
       sendFriendRequest,
       acceptFriendRequest,
       rejectFriendRequest,
