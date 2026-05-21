@@ -303,6 +303,20 @@ function Legend({ visible, onClose }: { visible: boolean; onClose: () => void })
   );
 }
 
+// Compact weather notification pill
+function WeatherStrip() {
+  return (
+    <View style={s.weatherStrip}>
+      <View style={s.weatherPill}>
+        <MaterialIcons name="wb-sunny" size={13} color="#F5A623" />
+        <Text style={s.weatherTemp}>32°C</Text>
+        <View style={s.weatherSep} />
+        <Text style={s.weatherCond}>SUNNY</Text>
+      </View>
+    </View>
+  );
+}
+
 // Live now strip (above map, below header)
 function LiveStrip() {
   return (
@@ -506,6 +520,7 @@ export default function MapScreen() {
     <GestureHandlerRootView style={s.root}>
       <ScreenHeader />
       <LiveStrip />
+      <WeatherStrip />
 
       <View style={s.viewport}>
 
@@ -1285,4 +1300,46 @@ const s = StyleSheet.create({
   btnPrimaryTxt: { color:SV.deepCharcoal, fontWeight:'800', fontSize:13, letterSpacing:1.5 },
   btnOutline: { flex:1, borderWidth:1.5, flexDirection:'row', alignItems:'center', justifyContent:'center', gap:8, paddingVertical:13, borderRadius:10 },
   btnOutlineTxt: { fontWeight:'800', fontSize:13, letterSpacing:1.5 },
+
+  // Weather strip
+  weatherStrip: {
+    backgroundColor: '#09090E',
+    alignItems: 'center',
+    paddingVertical: 5,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  weatherPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 11,
+    paddingVertical: 5,
+    backgroundColor: 'rgba(22,17,10,0.97)',
+    borderWidth: 1,
+    borderColor: 'rgba(245,166,35,0.30)',
+    borderRadius: 20,
+    shadowColor: '#F5A623',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.20,
+    shadowRadius: 7,
+  },
+  weatherTemp: {
+    color: '#F5A623',
+    fontFamily: 'monospace',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  weatherSep: {
+    width: 1,
+    height: 10,
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  weatherCond: {
+    color: SV.onSurfaceVariant,
+    fontFamily: 'monospace',
+    fontSize: 10,
+    letterSpacing: 1.5,
+  },
 });
